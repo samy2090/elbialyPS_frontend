@@ -1,6 +1,7 @@
 <script setup>
 import { RouterLink, RouterView } from 'vue-router'
 import HelloWorld from './components/HelloWorld.vue'
+import AuthStatus from './components/auth/AuthStatus.vue'
 </script>
 
 <template>
@@ -14,6 +15,7 @@ import HelloWorld from './components/HelloWorld.vue'
         <RouterLink to="/">Home</RouterLink>
         <RouterLink to="/about">About</RouterLink>
       </nav>
+      <AuthStatus />
     </div>
   </header>
 
@@ -36,6 +38,10 @@ nav {
   font-size: 12px;
   text-align: center;
   margin-top: 2rem;
+}
+
+.auth-status {
+  margin-left: auto;
 }
 
 nav a.router-link-exact-active {
@@ -71,6 +77,7 @@ nav a:first-of-type {
     display: flex;
     place-items: flex-start;
     flex-wrap: wrap;
+    width: 100%;
   }
 
   nav {
@@ -79,6 +86,12 @@ nav a:first-of-type {
     font-size: 1rem;
 
     padding: 1rem 0;
+    margin-top: 1rem;
+  }
+
+  .auth-status {
+    margin-left: auto;
+    align-self: flex-start;
     margin-top: 1rem;
   }
 }
