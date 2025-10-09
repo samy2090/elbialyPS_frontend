@@ -7,44 +7,16 @@ class AuthService {
    */
   static async getCsrfCookie() {
     try {
+      console.log('AuthService: Getting CSRF cookie');
       // Use axios to get CSRF cookie
-      const response = await ApiService.get('/sanctum/csrf-cookie');
-      console.log('CSRF Cookie Response:', response);
-
-      // Extract CSRF token from cookie if needed
-      // The cookie should be automatically handled by the browser with withCredentials: true
-      // But we can also extract it manually if needed
-      const csrfToken = this.extractCsrfTokenFromCookie();
-      if (csrfToken) {
-        ApiService.setCsrfToken(csrfToken);
-      }
-
-      return response;
+      const response = await ApiService.get('/sanctum/csrf-cookie')
+      console.log('AuthService: CSRF cookie response', response);
+      console.log('AuthService: Document cookies after request', document.cookie);
+      return response
     } catch (error) {
-      console.error('Failed to get CSRF cookie:', error);
-      console.error('CSRF Error Details:', {
-        message: error.message,
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        headers: error.response?.headers
-      });
-      throw error;
+      console.error('AuthService: Failed to get CSRF cookie:', error)
+      throw error
     }
-  }
-
-  /**
-   * Extract CSRF token from document cookies
-   * @returns {string|null}
-   */
-  static extractCsrfTokenFromCookie() {
-    const cookies = document.cookie.split(';');
-    for (let cookie of cookies) {
-      const [name, value] = cookie.trim().split('=');
-      if (name === 'XSRF-TOKEN') {
-        return decodeURIComponent(value);
-      }
-    }
-    return null;
   }
 
   /**
@@ -54,14 +26,16 @@ class AuthService {
    */
   static async register(userData) {
     try {
+      console.log('AuthService: Registering user', userData);
       // First get CSRF cookie
-      await this.getCsrfCookie();
+      await this.getCsrfCookie()
 
-      const response = await ApiService.post('/api/register', userData);
-      return response.data;
+      const response = await ApiService.post('/api/register', userData)
+      console.log('AuthService: Registration response', response);
+      return response.data
     } catch (error) {
-      console.error('Registration Error:', error);
-      throw new Error(error.response?.data?.message || 'Registration failed');
+      console.error('AuthService: Registration Error:', error)
+      throw new Error(error.response?.data?.message || 'Registration failed')
     }
   }
 
@@ -72,27 +46,23 @@ class AuthService {
    */
   static async login(credentials) {
     try {
+      console.log('AuthService: Logging in user', credentials);
       // First get CSRF cookie
-      await this.getCsrfCookie();
+      await this.getCsrfCookie()
 
-      const response = await ApiService.post('/api/login', credentials);
-
-      // Store user data if needed
-      if (response.data.user) {
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-      }
-
-      return response.data;
+      const response = await ApiService.post('/api/login', credentials)
+      console.log('AuthService: Login response', response);
+      return response.data
     } catch (error) {
-      console.error('Login Error:', error);
-      console.error('Login Error Details:', {
+      console.error('AuthService: Login Error:', error)
+      console.error('AuthService: Login Error Details:', {
         message: error.message,
         status: error.response?.status,
         statusText: error.response?.statusText,
         data: error.response?.data,
         headers: error.response?.headers
-      });
-      throw new Error(error.response?.data?.message || 'Login failed');
+      })
+      throw new Error(error.response?.data?.message || 'Login failed')
     }
   }
 
@@ -102,8 +72,9 @@ class AuthService {
    * @returns {Promise}
    */
   static async userLogin(credentials) {
+    console.log('AuthService: User login (alias)', credentials);
     // This is an alias for the login method
-    return this.login(credentials);
+    return this.login(credentials)
   }
 
   /**
@@ -113,20 +84,23 @@ class AuthService {
    */
   static async adminLogin(credentials) {
     try {
+      console.log('AuthService: Admin login', credentials);
       // First get CSRF cookie
-      await this.getCsrfCookie();
+      await this.getCsrfCookie()
 
-      const response = await ApiService.post('/api/admins-login', credentials);
-
-      // Store user data if needed
-      if (response.data.user) {
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-      }
-
-      return response.data;
+      const response = await ApiService.post('/api/admins-login', credentials)
+      console.log('AuthService: Admin login response', response);
+      return response.data
     } catch (error) {
-      console.error('Admin Login Error:', error);
-      throw new Error(error.response?.data?.message || 'Admin login failed');
+      console.error('AuthService: Admin Login Error:', error)
+      console.error('AuthService: Admin Login Error Details:', {
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        headers: error.response?.headers
+      })
+      throw new Error(error.response?.data?.message || 'Admin login failed')
     }
   }
 
@@ -136,21 +110,16 @@ class AuthService {
    */
   static async logout() {
     try {
+      console.log('AuthService: Logging out user');
       // First get CSRF cookie
-      await this.getCsrfCookie();
+      await this.getCsrfCookie()
 
-      const response = await ApiService.post('/api/logout');
-
-      // Clear local storage
-      localStorage.removeItem('user');
-      localStorage.removeItem('authToken');
-
-      return response.data;
+      const response = await ApiService.post('/api/logout')
+      console.log('AuthService: Logout response', response);
+      return response.data
     } catch (error) {
-      // Even if API fails, clear local storage
-      localStorage.removeItem('user');
-      localStorage.removeItem('authToken');
-      throw new Error(error.response?.data?.message || 'Logout failed');
+      console.error('AuthService: Logout Error:', error)
+      throw new Error(error.response?.data?.message || 'Logout failed')
     }
   }
 
@@ -160,18 +129,13 @@ class AuthService {
    */
   static async getUser() {
     try {
-      // First get CSRF cookie
-      await this.getCsrfCookie();
-
-      const response = await ApiService.get('/api/user');
-      return response.data;
+      console.log('AuthService: Getting authenticated user');
+      const response = await ApiService.get('/api/user')
+      console.log('AuthService: Get user response', response);
+      return response.data
     } catch (error) {
-      // If we get a 401, clear the user data
-      if (error.response?.status === 401) {
-        localStorage.removeItem('user');
-        localStorage.removeItem('authToken');
-      }
-      throw new Error(error.response?.data?.message || 'Failed to fetch user');
+      console.error('AuthService: Get User Error:', error)
+      throw new Error(error.response?.data?.message || 'Failed to fetch user')
     }
   }
 }

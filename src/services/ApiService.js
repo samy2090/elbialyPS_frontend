@@ -1,8 +1,11 @@
 import axios from 'axios'
 
+// Store the CSRF token once retrieved
+let csrfToken = null
+
 // Create axios instance with default configuration
 const ApiService = axios.create({
-  baseURL: 'http://localhost:8000', // Base URL without /api prefix to allow access to /sanctum/csrf-cookie
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000', // Use environment variable or default
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -12,19 +15,13 @@ const ApiService = axios.create({
   withCredentials: true, // Required for Sanctum session-based auth
 })
 
-// Store the CSRF token once retrieved
-let csrfToken = null
-
 // Request interceptor
 ApiService.interceptors.request.use(
   (config) => {
-    // Add auth token to headers if available
-    const token = localStorage.getItem('authToken')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
+    // Ensure X-Requested-With header is always set
+    config.headers['X-Requested-With'] = 'XMLHttpRequest'
 
-    // If we have a CSRF token, add it to the headers
+    // Add CSRF token to headers if available
     if (csrfToken) {
       config.headers['X-XSRF-TOKEN'] = csrfToken
     }
@@ -42,15 +39,24 @@ ApiService.interceptors.response.use(
     // Extract CSRF token from response if available
     if (response.headers['x-xsrf-token']) {
       csrfToken = response.headers['x-xsrf-token']
+    } else {
+      // Try to extract from cookies
+      const cookies = document.cookie.split(';')
+      for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=')
+        if (name === 'XSRF-TOKEN') {
+          csrfToken = decodeURIComponent(value)
+          break
+        }
+      }
     }
+
     return response
   },
   (error) => {
     // Handle common error responses
     if (error.response?.status === 401) {
-      // Unauthorized - clear auth token and redirect to login
-      localStorage.removeItem('authToken')
-      localStorage.removeItem('user')
+      // Unauthorized - redirect to login
       window.location.href = '/login'
     }
     return Promise.reject(error)
