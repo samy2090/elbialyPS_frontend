@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
-import AuthService from '@/services/AuthService'
+import AuthService from '@/api/auth.js'
+import UserService from '@/api/users.js'
 import router from '@/router'
 
 export const useAuthStore = defineStore('auth', {
@@ -49,7 +50,7 @@ export const useAuthStore = defineStore('auth', {
       this.error = null
 
       try {
-        const response = await AuthService.userLogin(credentials)
+        const response = await AuthService.login(credentials)
         this.user = response.user || response.data?.user || response
         this.isAuthenticated = true
 
@@ -147,7 +148,7 @@ export const useAuthStore = defineStore('auth', {
       this.error = null
 
       try {
-        const response = await AuthService.getUser()
+        const response = await UserService.getAuthenticatedUser()
         this.user = response.user || response.data || response
         this.isAuthenticated = true
         return response
