@@ -20,12 +20,18 @@ api.interceptors.request.use(
   (config) => {
     // Ensure X-Requested-With header is always set
     config.headers['X-Requested-With'] = 'XMLHttpRequest'
-    
+
     // Add CSRF token to headers if available
     if (csrfToken) {
       config.headers['X-XSRF-TOKEN'] = csrfToken
     }
-    
+
+    // Add Bearer token if available
+    const authToken = localStorage.getItem('auth_token')
+    if (authToken) {
+      config.headers['Authorization'] = `Bearer ${authToken}`
+    }
+
     return config
   },
   (error) => {
@@ -36,6 +42,8 @@ api.interceptors.request.use(
 // Response interceptor
 api.interceptors.response.use(
   (response) => {
+    console.log('API Response received:', response.status, response.statusText)
+
     // Extract CSRF token from response if available
     if (response.headers['x-xsrf-token']) {
       csrfToken = response.headers['x-xsrf-token']
@@ -54,14 +62,14 @@ api.interceptors.response.use(
         }
       }
     }
-    
+
     return response
   },
   (error) => {
     // Handle common error responses
     if (error.response?.status === 401) {
-      // Unauthorized - redirect to login
-      window.location.href = '/login'
+      console.log('Unauthorized - should redirect to login')
+      // Don't automatically redirect here, let the component handle it
     }
     return Promise.reject(error)
   }

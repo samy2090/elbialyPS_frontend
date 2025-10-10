@@ -43,10 +43,20 @@
   border-radius: 4px;
   cursor: pointer;
   transition: background-color 0.3s;
+  text-decoration: none;
+  display: inline-block;
 }
 
 .site-btn:hover {
   background-color: #218838;
+}
+
+.site-btn-primary {
+  background-color: #007bff;
+}
+
+.site-btn-primary:hover {
+  background-color: #0056b3;
 }
 
 .site-form {

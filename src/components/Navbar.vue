@@ -7,7 +7,7 @@
     <div class="navbar-menu">
       <div class="navbar-start">
         <router-link to="/dashboard" class="navbar-item">Dashboard</router-link>
-        <router-link to="/users" class="navbar-item">Users</router-link>
+        <router-link to="/users" class="navbar-item" v-if="authStore.isAuthenticated">Users</router-link>
         <router-link to="/products" class="navbar-item">Products</router-link>
       </div>
       

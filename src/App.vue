@@ -2,6 +2,15 @@
 import { RouterLink, RouterView } from 'vue-router'
 import HelloWorld from './components/HelloWorld.vue'
 import AuthStatus from './components/auth/AuthStatus.vue'
+import { useAuthStore } from '@/stores/auth'
+import { onMounted } from 'vue'
+
+const authStore = useAuthStore()
+
+// Initialize auth state when app loads
+onMounted(() => {
+  authStore.initAuth()
+})
 </script>
 
 <template>
@@ -14,6 +23,10 @@ import AuthStatus from './components/auth/AuthStatus.vue'
       <nav>
         <RouterLink to="/">Home</RouterLink>
         <RouterLink to="/about">About</RouterLink>
+        <!-- Show dashboard link only to authenticated users -->
+        <RouterLink v-if="authStore.isAuthenticated" to="/dashboard">Dashboard</RouterLink>
+        <RouterLink v-if="authStore.isAuthenticated" to="/users">Users</RouterLink>
+        <RouterLink v-if="authStore.isAuthenticated" to="/products">Products</RouterLink>
       </nav>
       <AuthStatus />
     </div>
