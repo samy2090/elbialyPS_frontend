@@ -36,7 +36,9 @@
       
       <div class="user-detail-row">
         <strong>Role:</strong>
-        <span>{{ user.is_admin ? 'Admin' : 'User' }}</span>
+        <span :class="getRoleClass(user)" class="role-badge">
+          {{ getUserRole(user) }}
+        </span>
       </div>
       
       <div class="user-detail-row">
@@ -75,6 +77,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/userStore'
+import { getUserRole, getRoleClass } from '@/utils/roleHelpers'
 
 export default {
   name: 'UserDetailView',
@@ -118,7 +121,9 @@ export default {
       user,
       userStore,
       formatDate,
-      deleteUser
+      deleteUser,
+      getUserRole,
+      getRoleClass
     }
   }
 }

@@ -51,7 +51,11 @@
                 </router-link>
               </td>
               <td>{{ user.email }}</td>
-              <td>{{ user.is_admin ? 'Admin' : 'User' }}</td>
+              <td>
+                <span :class="getRoleClass(user)" class="role-badge">
+                  {{ getUserRole(user) }}
+                </span>
+              </td>
               <td>
                 <router-link 
                   :to="`/users/${user.id}/edit`"
@@ -90,6 +94,7 @@
 import { ref, onMounted } from 'vue'
 import { useUserStore } from '@/stores/userStore'
 import { useAuthStore } from '@/stores/auth'
+import { getUserRole, getRoleClass } from '@/utils/roleHelpers'
 
 export default {
   name: 'UserListView',
@@ -129,7 +134,9 @@ export default {
       authStore,
       usersLoaded,
       loadUsers,
-      deleteUser
+      deleteUser,
+      getUserRole,
+      getRoleClass
     }
   }
 }
