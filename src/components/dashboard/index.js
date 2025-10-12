@@ -2,6 +2,7 @@
 export { default as DashboardNavbar } from './layout/DashboardNavbar.vue'
 export { default as DesktopSidebar } from './layout/DesktopSidebar.vue'
 export { default as MobileBottomNav } from './layout/MobileBottomNav.vue'
+export { default as MobileOffcanvas } from './layout/MobileOffcanvas.vue'
 
 // Dashboard Sections
 export { default as HomeSection } from './sections/HomeSection.vue'

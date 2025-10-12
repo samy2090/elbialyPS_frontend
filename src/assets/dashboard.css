@@ -90,3 +90,114 @@
   color: #721c24;
   border: 1px solid #f5c6cb;
 }
+
+/* Dashboard Navbar Styles */
+.dashboard-navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 80px;
+  background: rgba(15, 15, 23, 0.95);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+}
+
+.dashboard-navbar-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0 24px;
+}
+
+.dashboard-navbar-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-logo-icon {
+  width: 32px;
+  height: 32px;
+  color: rgba(139, 92, 246, 1);
+}
+
+.dashboard-logo-text {
+  font-size: 20px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: -0.025em;
+}
+
+.dashboard-navbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.dashboard-navbar-btn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.dashboard-navbar-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  transform: translateY(-1px);
+}
+
+.dashboard-navbar-btn:active {
+  transform: translateY(0);
+}
+
+.dashboard-navbar-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.dashboard-notification-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: rgba(239, 68, 68, 1);
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 10px;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+@media (max-width: 768px) {
+  .dashboard-navbar-container {
+    padding: 0 16px;
+  }
+  
+  .dashboard-logo-text {
+    font-size: 18px;
+  }
+  
+  .dashboard-navbar-controls {
+    gap: 12px;
+  }
+}

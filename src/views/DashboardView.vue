@@ -41,6 +41,13 @@
           @item-selected="onItemSelected"
         />
 
+        <!-- Users Section -->
+        <UsersSection 
+          v-if="activeSection === 'users'"
+          @user-selected="onUserSelected"
+          @action-triggered="onActionTriggered"
+        />
+
         <!-- Settings Section -->
         <SettingsSection 
           v-if="activeSection === 'settings'"
@@ -55,8 +62,16 @@
     <!-- Mobile Bottom Navigation -->
     <MobileBottomNav 
       :active-tab="activeSection"
-      :visible="!sidebarVisible || isMobile"
+      :visible="(!sidebarVisible || isMobile) && !offcanvasVisible"
       @tab-selected="selectSection"
+    />
+
+    <!-- Mobile Offcanvas Menu -->
+    <MobileOffcanvas
+      :visible="offcanvasVisible && isMobile"
+      :active-tab="activeSection"
+      @close="closeOffcanvas"
+      @item-selected="selectSection"
     />
 
     <!-- Notifications Panel (overlay) -->
@@ -92,16 +107,19 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import DashboardNavbar from '@/components/dashboard/layout/DashboardNavbar.vue'
 import DesktopSidebar from '@/components/dashboard/layout/DesktopSidebar.vue'
 import MobileBottomNav from '@/components/dashboard/layout/MobileBottomNav.vue'
+import MobileOffcanvas from '@/components/dashboard/layout/MobileOffcanvas.vue'
 import HomeSection from '@/components/dashboard/sections/HomeSection.vue'
 import ExploreSection from '@/components/dashboard/sections/ExploreSection.vue'
 import ProfileSection from '@/components/dashboard/sections/ProfileSection.vue'
 import SettingsSection from '@/components/dashboard/sections/SettingsSection.vue'
+import UsersSection from '@/components/dashboard/sections/UsersSection.vue'
 
 // Reactive state
 const activeSection = ref('home')
 const sidebarVisible = ref(true)
 const sidebarCollapsed = ref(false)
 const notificationsVisible = ref(false)
+const offcanvasVisible = ref(false)
 const windowWidth = ref(window.innerWidth)
 
 // Computed properties
@@ -160,17 +178,29 @@ const notifications = ref([
 // Methods
 const selectSection = (section) => {
   activeSection.value = section
-  if (isMobile.value && sidebarVisible.value) {
-    sidebarVisible.value = false
+  if (isMobile.value) {
+    // Close offcanvas and sidebar when a section is selected on mobile
+    offcanvasVisible.value = false
+    if (sidebarVisible.value) {
+      sidebarVisible.value = false
+    }
   }
 }
 
 const toggleSidebar = () => {
+  console.log('toggleSidebar called, isMobile:', isMobile.value, 'windowWidth:', windowWidth.value)
   if (isMobile.value) {
-    sidebarVisible.value = !sidebarVisible.value
+    // On mobile, toggle the offcanvas menu instead of sidebar
+    console.log('Toggling offcanvas, current state:', offcanvasVisible.value)
+    offcanvasVisible.value = !offcanvasVisible.value
+    console.log('New offcanvas state:', offcanvasVisible.value)
   } else {
     sidebarCollapsed.value = !sidebarCollapsed.value
   }
+}
+
+const closeOffcanvas = () => {
+  offcanvasVisible.value = false
 }
 
 const toggleSidebarCollapse = () => {
@@ -196,6 +226,10 @@ const onCategorySelected = (category) => {
 
 const onItemSelected = (item) => {
   console.log('Item selected:', item)
+}
+
+const onUserSelected = (user) => {
+  console.log('User selected:', user)
 }
 
 const onEditAvatar = () => {
@@ -234,6 +268,9 @@ const handleResize = () => {
 onMounted(() => {
   window.addEventListener('resize', handleResize)
   handleResize() // Initial check
+  
+  // Debug initial state
+  console.log('Initial state - isMobile:', isMobile.value, 'windowWidth:', windowWidth.value, 'offcanvasVisible:', offcanvasVisible.value)
 })
 
 onUnmounted(() => {

@@ -63,8 +63,16 @@
     <!-- Mobile Bottom Navigation -->
     <MobileBottomNav 
       :active-tab="activeSection"
-      :visible="!sidebarVisible || isMobile"
+      :visible="(!sidebarVisible || isMobile) && !offcanvasVisible"
       @tab-selected="selectSection"
+    />
+
+    <!-- Mobile Offcanvas Menu -->
+    <MobileOffcanvas
+      :visible="offcanvasVisible && isMobile"
+      :active-tab="activeSection"
+      @close="closeOffcanvas"
+      @item-selected="selectSection"
     />
 
     <!-- Notifications Panel (overlay) -->
@@ -100,6 +108,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import DashboardNavbar from '@/components/dashboard/layout/DashboardNavbar.vue'
 import DesktopSidebar from '@/components/dashboard/layout/DesktopSidebar.vue'
 import MobileBottomNav from '@/components/dashboard/layout/MobileBottomNav.vue'
+import MobileOffcanvas from '@/components/dashboard/layout/MobileOffcanvas.vue'
 import HomeSection from '@/components/dashboard/sections/HomeSection.vue'
 import ExploreSection from '@/components/dashboard/sections/ExploreSection.vue'
 import ProfileSection from '@/components/dashboard/sections/ProfileSection.vue'
@@ -111,6 +120,7 @@ const activeSection = ref('home')
 const sidebarVisible = ref(true)
 const sidebarCollapsed = ref(false)
 const notificationsVisible = ref(false)
+const offcanvasVisible = ref(false)
 const windowWidth = ref(window.innerWidth)
 
 // Computed properties
@@ -169,17 +179,26 @@ const notifications = ref([
 // Methods
 const selectSection = (section) => {
   activeSection.value = section
-  if (isMobile.value && sidebarVisible.value) {
-    sidebarVisible.value = false
+  if (isMobile.value) {
+    // Close offcanvas and sidebar when a section is selected on mobile
+    offcanvasVisible.value = false
+    if (sidebarVisible.value) {
+      sidebarVisible.value = false
+    }
   }
 }
 
 const toggleSidebar = () => {
   if (isMobile.value) {
-    sidebarVisible.value = !sidebarVisible.value
+    // On mobile, toggle the offcanvas menu instead of sidebar
+    offcanvasVisible.value = !offcanvasVisible.value
   } else {
     sidebarCollapsed.value = !sidebarCollapsed.value
   }
+}
+
+const closeOffcanvas = () => {
+  offcanvasVisible.value = false
 }
 
 const toggleSidebarCollapse = () => {
