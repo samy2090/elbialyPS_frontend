@@ -22,8 +22,7 @@ const navigationItems = computed(() => [
   { to: '/', label: 'Home', icon: 'home' },
   { to: '/about', label: 'About', icon: 'info' },
   ...(authStore.isAuthenticated ? [
-    { to: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
-    { to: '/users', label: 'Users', icon: 'users' }
+    { to: '/dashboard', label: 'Dashboard', icon: 'dashboard' }
   ] : [])
 ])
 </script>

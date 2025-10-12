@@ -39,38 +39,6 @@ const router = createRouter({
       component: () => import('../views/dashboard/DashboardView.vue'),
       meta: { requiresAuth: true }
     },
-    {
-      path: '/users',
-      name: 'users',
-      component: () => import('../views/dashboard/Users/UserListView.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/users/create',
-      name: 'userCreate',
-      component: () => import('../views/dashboard/Users/UserCreateView.vue'),
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/users/:id',
-      name: 'userDetail',
-      component: () => import('../views/dashboard/Users/UserDetailView.vue'),
-      props: true,
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/users/:id/edit',
-      name: 'userEdit',
-      component: () => import('../views/dashboard/Users/UserEditView.vue'),
-      props: true,
-      meta: { requiresAuth: true }
-    },
-    {
-      path: '/users/profile',
-      name: 'userProfile',
-      component: () => import('../views/dashboard/Users/UserProfileView.vue'),
-      meta: { requiresAuth: true }
-    },
   ],
 })
 

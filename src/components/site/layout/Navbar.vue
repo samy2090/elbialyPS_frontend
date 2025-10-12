@@ -17,10 +17,6 @@
           <i class="item-icon">📊</i>
           Dashboard
         </router-link>
-        <router-link to="/users" class="navbar-item" v-if="authStore.isAuthenticated">
-          <i class="item-icon">👥</i>
-          Users
-        </router-link>
         <router-link to="/about" class="navbar-item">
           <i class="item-icon">ℹ</i>
           About

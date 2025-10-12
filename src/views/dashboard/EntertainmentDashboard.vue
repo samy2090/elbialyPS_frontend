@@ -1,7 +1,7 @@
 <template>
-  <div class="dashboard" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
+  <div class="entertainment-dashboard" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
     <!-- Top Navigation -->
-    <DashboardNavbar 
+    <EntertainmentNavbar 
       :menu-open="sidebarVisible"
       :notification-count="3"
       @toggle-menu="toggleSidebar"
@@ -32,14 +32,6 @@
           v-if="activeSection === 'explore'"
           @category-selected="onCategorySelected"
           @item-selected="onItemSelected"
-        />
-
-        <!-- Users Section -->
-        <UsersSection 
-          v-if="activeSection === 'users'"
-          @user-selected="onUserSelected"
-          @user-created="onUserCreated"
-          @user-updated="onUserUpdated"
         />
 
         <!-- Profile Section -->
@@ -97,14 +89,13 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import DashboardNavbar from '@/components/dashboard/layout/DashboardNavbar.vue'
-import DesktopSidebar from '@/components/dashboard/layout/DesktopSidebar.vue'
-import MobileBottomNav from '@/components/dashboard/layout/MobileBottomNav.vue'
-import HomeSection from '@/components/dashboard/sections/HomeSection.vue'
-import ExploreSection from '@/components/dashboard/sections/ExploreSection.vue'
-import ProfileSection from '@/components/dashboard/sections/ProfileSection.vue'
-import SettingsSection from '@/components/dashboard/sections/SettingsSection.vue'
-import UsersSection from '@/components/dashboard/sections/UsersSection.vue'
+import EntertainmentNavbar from '@/components/features/entertainment/EntertainmentNavbar.vue'
+import DesktopSidebar from '@/components/base/layout/DesktopSidebar.vue'
+import MobileBottomNav from '@/components/base/layout/MobileBottomNav.vue'
+import HomeSection from '@/components/features/dashboard/HomeSection.vue'
+import ExploreSection from '@/components/features/dashboard/ExploreSection.vue'
+import ProfileSection from '@/components/features/dashboard/ProfileSection.vue'
+import SettingsSection from '@/components/features/dashboard/SettingsSection.vue'
 
 // Reactive state
 const activeSection = ref('home')
@@ -145,22 +136,22 @@ const HeartIcon = {
 const notifications = ref([
   {
     id: 1,
-    title: 'New User Registration',
-    message: 'John Doe has just created a new account',
+    title: 'New Episode Available',
+    message: 'Tech Mysteries S1E6 is now streaming',
     time: '2 hours ago',
     icon: PlayIcon
   },
   {
     id: 2,
-    title: 'System Update',
-    message: 'Dashboard analytics have been updated',
+    title: 'Added to Favorites',
+    message: 'Cosmic Journey was added to your favorites',
     time: '1 day ago',
     icon: HeartIcon
   },
   {
     id: 3,
-    title: 'Weekly Report',
-    message: 'Your weekly performance report is ready',
+    title: 'Weekly Recommendations',
+    message: 'Check out your personalized picks for this week',
     time: '2 days ago',
     icon: StarIcon
   }
@@ -227,18 +218,6 @@ const onDeleteAccount = () => {
   console.log('Delete account requested')
 }
 
-const onUserSelected = (user) => {
-  console.log('User selected:', user)
-}
-
-const onUserCreated = (user) => {
-  console.log('User created:', user)
-}
-
-const onUserUpdated = (user) => {
-  console.log('User updated:', user)
-}
-
 // Window resize handler
 const handleResize = () => {
   windowWidth.value = window.innerWidth
@@ -263,24 +242,19 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.dashboard {
+.entertainment-dashboard {
   min-height: 100vh;
   background: radial-gradient(ellipse at top, rgba(139, 92, 246, 0.15) 0%, rgba(15, 15, 23, 1) 50%);
   color: rgba(255, 255, 255, 0.9);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   position: relative;
   overflow-x: hidden;
-  display: flex;
-  flex-direction: column;
 }
 
 .main-content {
   padding-top: 80px; /* Account for navbar height */
   min-height: calc(100vh - 80px);
   transition: all 0.3s ease;
-  flex: 1;
-  position: relative;
-  z-index: 1;
 }
 
 .main-content.with-sidebar {
@@ -292,10 +266,7 @@ onUnmounted(() => {
 }
 
 .content-container {
-  padding: 1.5rem;
-  padding-bottom: 120px; /* Account for mobile bottom nav */
-  max-width: 100%;
-  width: 100%;
+  padding-bottom: 100px; /* Account for mobile bottom nav */
 }
 
 .notifications-overlay {
@@ -416,22 +387,12 @@ onUnmounted(() => {
 
 /* Mobile optimizations */
 @media (max-width: 768px) {
-  .main-content {
-    margin-left: 0 !important;
-    padding-top: 80px;
-  }
-  
   .main-content.with-sidebar {
     margin-left: 0;
   }
   
   .sidebar-collapsed .main-content.with-sidebar {
     margin-left: 0;
-  }
-  
-  .content-container {
-    padding: 1rem;
-    padding-bottom: 120px;
   }
   
   .notifications-overlay {
@@ -444,18 +405,13 @@ onUnmounted(() => {
 }
 
 /* Desktop optimizations */
-@media (min-width: 769px) {
+@media (min-width: 1024px) {
   .main-content.with-sidebar {
     margin-left: 280px;
   }
   
   .sidebar-collapsed .main-content.with-sidebar {
     margin-left: 80px;
-  }
-  
-  .content-container {
-    padding: 2rem;
-    padding-bottom: 2rem;
   }
 }
 
