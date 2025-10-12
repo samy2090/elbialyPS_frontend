@@ -249,12 +249,17 @@ onUnmounted(() => {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   position: relative;
   overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .main-content {
   padding-top: 80px; /* Account for navbar height */
   min-height: calc(100vh - 80px);
   transition: all 0.3s ease;
+  flex: 1;
+  position: relative;
+  z-index: 1;
 }
 
 .main-content.with-sidebar {
@@ -266,7 +271,10 @@ onUnmounted(() => {
 }
 
 .content-container {
-  padding-bottom: 100px; /* Account for mobile bottom nav */
+  padding: 1.5rem;
+  padding-bottom: 120px; /* Account for mobile bottom nav */
+  max-width: 100%;
+  width: 100%;
 }
 
 .notifications-overlay {
@@ -387,12 +395,22 @@ onUnmounted(() => {
 
 /* Mobile optimizations */
 @media (max-width: 768px) {
+  .main-content {
+    margin-left: 0 !important;
+    padding-top: 80px;
+  }
+  
   .main-content.with-sidebar {
     margin-left: 0;
   }
   
   .sidebar-collapsed .main-content.with-sidebar {
     margin-left: 0;
+  }
+  
+  .content-container {
+    padding: 1rem;
+    padding-bottom: 120px;
   }
   
   .notifications-overlay {
@@ -405,13 +423,18 @@ onUnmounted(() => {
 }
 
 /* Desktop optimizations */
-@media (min-width: 1024px) {
+@media (min-width: 769px) {
   .main-content.with-sidebar {
     margin-left: 280px;
   }
   
   .sidebar-collapsed .main-content.with-sidebar {
     margin-left: 80px;
+  }
+  
+  .content-container {
+    padding: 2rem;
+    padding-bottom: 2rem;
   }
 }
 
