@@ -20,23 +20,48 @@
 
       <!-- Navigation Items -->
       <nav class="offcanvas-nav">
-        <button
-          v-for="item in navigationItems"
-          :key="item.id"
-          @click="handleItemClick(item.id)"
-          :class="['nav-item', { active: activeTab === item.id }]"
-          :aria-label="item.label"
-        >
-          <div class="nav-icon">
-            <component :is="item.icon" />
+        <div v-for="item in navigationItems" :key="item.id" class="nav-item-container">
+          <button
+            @click="handleItemClick(item)"
+            :class="['nav-item', { active: activeTab === item.id || (item.subItems && item.subItems.some(sub => activeTab === sub.id)) }]"
+            :aria-label="item.label"
+          >
+            <div class="nav-icon">
+              <component :is="item.icon" />
+            </div>
+            <span class="nav-label">{{ item.label }}</span>
+            <div v-if="item.subItems" class="submenu-arrow" :class="{ expanded: expandedMenus.includes(item.id) }">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <div v-if="activeTab === item.id && !item.subItems" class="active-indicator">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </button>
+          
+          <!-- Submenu -->
+          <div v-if="item.subItems && expandedMenus.includes(item.id)" class="submenu">
+            <button 
+              v-for="subItem in item.subItems"
+              :key="subItem.id"
+              @click="handleSubItemClick(subItem.id)"
+              :class="['submenu-item', { active: activeTab === subItem.id }]"
+            >
+              <div class="submenu-icon">
+                <component :is="subItem.icon" />
+              </div>
+              <span class="submenu-label">{{ subItem.label }}</span>
+              <div v-if="activeTab === subItem.id" class="active-indicator">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+            </button>
           </div>
-          <span class="nav-label">{{ item.label }}</span>
-          <div v-if="activeTab === item.id" class="active-indicator">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M9 12L11 14L15 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </div>
-        </button>
+        </div>
       </nav>
 
       <!-- Footer -->
@@ -56,7 +81,10 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+
+// Track expanded menu items
+const expandedMenus = ref([])
 
 // Icon components (same as MobileBottomNav)
 const HomeIcon = {
@@ -106,6 +134,28 @@ const UsersIcon = {
   `
 }
 
+// Submenu icons
+const SiteIcon = {
+  template: `
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M21 16V8C20.9996 7.64928 20.9071 7.30481 20.7315 7.00116C20.556 6.69751 20.3037 6.44536 20 6.27L13 2.27C12.696 2.09446 12.3511 2.00205 12 2.00205C11.6489 2.00205 11.304 2.09446 11 2.27L4 6.27C3.69626 6.44536 3.44398 6.69751 3.26846 7.00116C3.09294 7.30481 3.00036 7.64928 3 8V16C3.00036 16.3507 3.09294 16.6952 3.26846 16.9988C3.44398 17.3025 3.69626 17.5546 4 17.73L11 21.73C11.304 21.9055 11.6489 21.9979 12 21.9979C12.3511 21.9979 12.696 21.9055 13 21.73L20 17.73C20.3037 17.5546 20.556 17.3025 20.7315 16.9988C20.9071 16.6952 20.9996 16.3507 21 16Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <polyline points="3.27,6.96 12,12.01 20.73,6.96" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="12" y1="22.08" x2="12" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  `
+}
+
+const DevicesIcon = {
+  template: `
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="2"/>
+      <path d="M6 8H18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M6 12H14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M6 16H10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  `
+}
+
 defineProps({
   visible: {
     type: Boolean,
@@ -124,10 +174,34 @@ const navigationItems = computed(() => [
   { id: 'explore', label: 'Explore', icon: ExploreIcon },
   { id: 'users', label: 'Users', icon: UsersIcon },
   { id: 'profile', label: 'Profile', icon: ProfileIcon },
-  { id: 'settings', label: 'Settings', icon: SettingsIcon }
+  { 
+    id: 'settings', 
+    label: 'Settings', 
+    icon: SettingsIcon,
+    subItems: [
+      { id: 'settings-site', label: 'Site', icon: SiteIcon },
+      { id: 'settings-devices', label: 'Devices', icon: DevicesIcon }
+    ]
+  }
 ])
 
-const handleItemClick = (itemId) => {
+const handleItemClick = (item) => {
+  if (item.subItems) {
+    // Toggle submenu
+    const index = expandedMenus.value.indexOf(item.id)
+    if (index > -1) {
+      expandedMenus.value.splice(index, 1)
+    } else {
+      expandedMenus.value.push(item.id)
+    }
+  } else {
+    // Navigate to item
+    emit('item-selected', item.id)
+    emit('close')
+  }
+}
+
+const handleSubItemClick = (itemId) => {
   emit('item-selected', itemId)
   emit('close')
 }
@@ -242,6 +316,61 @@ const handleItemClick = (itemId) => {
   background: rgba(139, 92, 246, 0.1);
   color: rgba(139, 92, 246, 1);
   border-right: 3px solid rgba(139, 92, 246, 1);
+}
+
+.submenu-arrow {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.3s ease;
+  margin-left: auto;
+}
+
+.submenu-arrow.expanded {
+  transform: rotate(90deg);
+}
+
+.submenu {
+  background: rgba(0, 0, 0, 0.2);
+  border-left: 3px solid rgba(139, 92, 246, 0.3);
+  margin-left: 20px;
+}
+
+.submenu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+  position: relative;
+  font-size: 14px;
+}
+
+.submenu-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.submenu-item.active {
+  background: rgba(139, 92, 246, 0.1);
+  color: rgba(139, 92, 246, 1);
+  border-right: 3px solid rgba(139, 92, 246, 1);
+}
+
+.submenu-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.submenu-label {
+  flex: 1;
+  font-weight: 500;
 }
 
 .nav-icon {

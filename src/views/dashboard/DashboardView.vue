@@ -51,11 +51,19 @@
 
         <!-- Settings Section -->
         <SettingsSection 
-          v-if="activeSection === 'settings'"
+          v-if="activeSection === 'settings' || activeSection === 'settings-site'"
           @change-password="onChangePassword"
           @export-data="onExportData"
           @setup-2fa="onSetup2FA"
           @delete-account="onDeleteAccount"
+        />
+
+        <!-- Devices Section -->
+        <DevicesSection 
+          v-if="activeSection === 'settings-devices'"
+          @device-selected="onDeviceSelected"
+          @device-created="onDeviceCreated"
+          @device-updated="onDeviceUpdated"
         />
       </div>
     </main>
@@ -114,6 +122,7 @@ import ExploreSection from '@/components/dashboard/sections/ExploreSection.vue'
 import ProfileSection from '@/components/dashboard/sections/ProfileSection.vue'
 import SettingsSection from '@/components/dashboard/sections/SettingsSection.vue'
 import UsersSection from '@/components/dashboard/sections/UsersSection.vue'
+import DevicesSection from '@/components/dashboard/sections/DevicesSection.vue'
 
 // Reactive state
 const activeSection = ref('home')
@@ -254,11 +263,21 @@ const onUserCreated = (user) => {
   console.log('User created:', user)
 }
 
-const onUserUpdated = (user) => {
-  console.log('User updated:', user)
-}
+  const onUserUpdated = (user) => {
+    console.log('User updated:', user)
+  }
 
-// Window resize handler
+  const onDeviceSelected = (device) => {
+    console.log('Device selected:', device)
+  }
+
+  const onDeviceCreated = (device) => {
+    console.log('Device created:', device)
+  }
+
+  const onDeviceUpdated = (device) => {
+    console.log('Device updated:', device)
+  }// Window resize handler
 const handleResize = () => {
   windowWidth.value = window.innerWidth
   
