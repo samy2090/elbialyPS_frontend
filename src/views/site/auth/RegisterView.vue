@@ -121,7 +121,7 @@
 
           <button 
             type="submit" 
-            class="auth-btn primary"
+            class="btn btn-primary auth-btn"
             :disabled="authStore.loading"
           >
             <svg v-if="!authStore.loading" class="btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -357,41 +357,105 @@ export default {
   gap: 1rem;
 }
 
+/* Auth Form Styles - Using Global Variables */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+/* Use same styles as global components */
 .field-label {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   font-size: 0.875rem;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-secondary);
+  margin-bottom: 0.25rem;
 }
 
 .label-icon {
   width: 1.25rem;
   height: 1.25rem;
-  color: var(--primary-teal);
+  color: var(--primary-color);
+  flex-shrink: 0;
 }
 
 .form-input {
   width: 100%;
-  padding: 1rem;
-  background: var(--bg-quaternary);
-  border: 1px solid var(--border-secondary);
-  border-radius: var(--radius-md);
-  color: var(--text-primary);
+  padding: 1rem 1.25rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--border-radius-md);
+  color: rgba(255, 255, 255, 0.9);
   font-size: 0.875rem;
-  transition: all var(--transition-normal);
+  font-weight: 500;
+  transition: all var(--transition-base);
+  backdrop-filter: blur(10px);
+  box-sizing: border-box;
 }
 
 .form-input:focus {
   outline: none;
-  border-color: var(--primary-teal);
-  box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
-  background: var(--bg-tertiary);
+  border-color: var(--primary-color);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 
+    0 0 0 3px rgba(139, 92, 246, 0.1),
+    0 8px 25px rgba(139, 92, 246, 0.15);
+  transform: translateY(-1px);
+}
+
+.form-input:hover:not(:focus) {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .form-input::placeholder {
-  color: var(--text-tertiary);
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 400;
+}
+
+/* Error Alert */
+.error-alert {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--border-radius-md);
+  color: var(--error-color);
+  margin-bottom: 1.5rem;
+}
+
+.alert-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+.alert-message {
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 /* Form Agreement */
@@ -434,35 +498,33 @@ export default {
 
 /* Auth Button */
 .auth-btn {
+  margin-top: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   padding: 1rem 1.5rem;
-  border-radius: var(--radius-md);
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+  color: white;
+  border: 1px solid var(--primary-color);
+  border-radius: var(--border-radius);
   font-weight: 600;
   font-size: 0.875rem;
-  transition: all var(--transition-normal);
   cursor: pointer;
-  border: 1px solid transparent;
-  margin-top: 0.5rem;
+  transition: all var(--transition-base);
+  box-shadow: var(--shadow-md);
+}
+
+.auth-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--primary-hover) 0%, var(--primary-color) 100%);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-lg);
 }
 
 .auth-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none !important;
-}
-
-.auth-btn.primary {
-  background: var(--gradient-secondary);
-  color: white;
-  box-shadow: var(--shadow-md);
-}
-
-.auth-btn.primary:hover:not(:disabled) {
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
 }
 
 .btn-icon {
