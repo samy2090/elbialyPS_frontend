@@ -134,6 +134,14 @@ const UsersIcon = {
   `
 }
 
+const ProductsIcon = {
+  template: `
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M20 7L12 3L4 7M20 7L12 11M20 7V17L12 21M12 11V21M4 7V17L12 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  `
+}
+
 // Submenu icons
 const SiteIcon = {
   template: `
@@ -173,6 +181,7 @@ const navigationItems = computed(() => [
   { id: 'home', label: 'Home', icon: HomeIcon },
   { id: 'explore', label: 'Explore', icon: ExploreIcon },
   { id: 'users', label: 'Users', icon: UsersIcon },
+  { id: 'products', label: 'Products', icon: ProductsIcon },
   { id: 'profile', label: 'Profile', icon: ProfileIcon },
   { 
     id: 'settings', 

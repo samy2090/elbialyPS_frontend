@@ -75,8 +75,27 @@
           </div>
         </div>
 
+        <!-- Empty State -->
+        <div v-else-if="usersLoaded && userStore.getUsers.length === 0" class="empty-state">
+          <div class="empty-icon">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </div>
+          <h3 class="empty-title">No Users Found</h3>
+          <p class="empty-message">Get started by adding your first user to the platform.</p>
+          <button @click="showCreateModal = true" class="action-btn primary">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 5V19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Add Your First User
+          </button>
+        </div>
+
         <!-- Users Table/Cards -->
-        <div v-else class="users-display">
+        <div v-else-if="userStore.getUsers.length > 0" class="users-display">
           <!-- Desktop Table View -->
           <div class="users-table-container desktop-only">
             <div class="table-card">
@@ -231,7 +250,7 @@
 
     <!-- User Detail Modal -->
     <div v-if="selectedUser" class="user-modal-overlay" @click="closeUserModal">
-      <div class="user-modal" @click.stop>
+      <div class="user-modal user-detail-modal" @click.stop>
         <div class="modal-header">
           <h3>User Details</h3>
           <button @click="closeUserModal" class="close-btn">
@@ -241,20 +260,163 @@
             </svg>
           </button>
         </div>
-        <div class="modal-content">
-          <div class="user-detail-card">
+        <div class="modal-content modal-detail-content">
+          <!-- User Profile Header -->
+          <div class="modal-user-header">
             <div class="user-avatar large">
               {{ getUserInitials(selectedUser.name) }}
             </div>
-            <h4>{{ selectedUser.name }}</h4>
-            <p>{{ selectedUser.email }}</p>
-            <div class="user-badges">
-              <span :class="getRoleClass(selectedUser)" class="role-badge">
-                {{ getUserRole(selectedUser) }}
-              </span>
-              <span :class="getStatusClass(selectedUser)" class="status-badge">
-                {{ getUserStatus(selectedUser) }}
-              </span>
+            <div class="modal-user-info">
+              <h4>{{ selectedUser.name }}</h4>
+              <p>{{ selectedUser.email }}</p>
+              <div class="user-badges">
+                <span :class="getRoleClass(selectedUser)" class="role-badge">
+                  {{ getUserRole(selectedUser) }}
+                </span>
+                <span :class="getStatusClass(selectedUser)" class="status-badge">
+                  {{ getUserStatus(selectedUser) }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- User Information Sections -->
+          <div class="modal-details-grid">
+            <!-- Basic Information -->
+            <div class="modal-detail-section">
+              <h5 class="modal-section-title">Basic Information</h5>
+              <div class="modal-detail-card">
+                <div class="modal-detail-item">
+                  <span class="modal-detail-label">User ID</span>
+                  <span class="modal-detail-value">{{ selectedUser.id }}</span>
+                </div>
+                <div class="modal-detail-item">
+                  <span class="modal-detail-label">Full Name</span>
+                  <span class="modal-detail-value">{{ selectedUser.name || 'N/A' }}</span>
+                </div>
+                <div class="modal-detail-item">
+                  <span class="modal-detail-label">Email Address</span>
+                  <span class="modal-detail-value">
+                    <a :href="`mailto:${selectedUser.email}`" class="email-link">{{ selectedUser.email || 'N/A' }}</a>
+                  </span>
+                </div>
+                <div v-if="selectedUser.phone" class="modal-detail-item">
+                  <span class="modal-detail-label">Phone</span>
+                  <span class="modal-detail-value">
+                    <a :href="`tel:${selectedUser.phone}`" class="phone-link">{{ selectedUser.phone }}</a>
+                  </span>
+                </div>
+                <div v-if="selectedUser.username" class="modal-detail-item">
+                  <span class="modal-detail-label">Username</span>
+                  <span class="modal-detail-value">{{ selectedUser.username }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Account Information -->
+            <div class="modal-detail-section">
+              <h5 class="modal-section-title">Account Information</h5>
+              <div class="modal-detail-card">
+                <div class="modal-detail-item">
+                  <span class="modal-detail-label">Role</span>
+                  <span class="modal-detail-value">
+                    <span :class="getRoleClass(selectedUser)" class="role-badge">
+                      {{ getUserRole(selectedUser) }}
+                    </span>
+                  </span>
+                </div>
+                <div v-if="selectedUser.is_admin !== undefined" class="modal-detail-item">
+                  <span class="modal-detail-label">Admin Status</span>
+                  <span class="modal-detail-value">
+                    <span :class="selectedUser.is_admin ? 'badge-success' : 'badge-secondary'" class="status-badge">
+                      {{ selectedUser.is_admin ? 'Yes' : 'No' }}
+                    </span>
+                  </span>
+                </div>
+                <div v-if="getUserStatus(selectedUser)" class="modal-detail-item">
+                  <span class="modal-detail-label">Status</span>
+                  <span class="modal-detail-value">
+                    <span :class="getStatusClass(selectedUser)" class="status-badge">
+                      {{ getUserStatus(selectedUser) }}
+                    </span>
+                  </span>
+                </div>
+                <div v-if="selectedUser.email_verified_at" class="modal-detail-item">
+                  <span class="modal-detail-label">Email Verified</span>
+                  <span class="modal-detail-value">
+                    <span class="badge-success status-badge">Yes</span>
+                    <span class="modal-detail-meta">({{ formatDateTime(selectedUser.email_verified_at) }})</span>
+                  </span>
+                </div>
+                <div v-else-if="selectedUser.email_verified_at === null" class="modal-detail-item">
+                  <span class="modal-detail-label">Email Verified</span>
+                  <span class="modal-detail-value">
+                    <span class="badge-warning status-badge">No</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Additional Information -->
+            <div v-if="hasAdditionalInfo(selectedUser)" class="modal-detail-section">
+              <h5 class="modal-section-title">Additional Information</h5>
+              <div class="modal-detail-card">
+                <div v-if="selectedUser.address" class="modal-detail-item">
+                  <span class="modal-detail-label">Address</span>
+                  <span class="modal-detail-value">{{ selectedUser.address }}</span>
+                </div>
+                <div v-if="selectedUser.city" class="modal-detail-item">
+                  <span class="modal-detail-label">City</span>
+                  <span class="modal-detail-value">{{ selectedUser.city }}</span>
+                </div>
+                <div v-if="selectedUser.country" class="modal-detail-item">
+                  <span class="modal-detail-label">Country</span>
+                  <span class="modal-detail-value">{{ selectedUser.country }}</span>
+                </div>
+                <div v-if="selectedUser.postal_code" class="modal-detail-item">
+                  <span class="modal-detail-label">Postal Code</span>
+                  <span class="modal-detail-value">{{ selectedUser.postal_code }}</span>
+                </div>
+                <div v-if="selectedUser.bio" class="modal-detail-item">
+                  <span class="modal-detail-label">Bio</span>
+                  <span class="modal-detail-value">{{ selectedUser.bio }}</span>
+                </div>
+                <div v-if="selectedUser.company" class="modal-detail-item">
+                  <span class="modal-detail-label">Company</span>
+                  <span class="modal-detail-value">{{ selectedUser.company }}</span>
+                </div>
+                <div v-if="selectedUser.department" class="modal-detail-item">
+                  <span class="modal-detail-label">Department</span>
+                  <span class="modal-detail-value">{{ selectedUser.department }}</span>
+                </div>
+                <div v-if="selectedUser.position" class="modal-detail-item">
+                  <span class="modal-detail-label">Position</span>
+                  <span class="modal-detail-value">{{ selectedUser.position }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Timestamps -->
+            <div class="modal-detail-section">
+              <h5 class="modal-section-title">Timestamps</h5>
+              <div class="modal-detail-card">
+                <div v-if="selectedUser.created_at" class="modal-detail-item">
+                  <span class="modal-detail-label">Created At</span>
+                  <span class="modal-detail-value">{{ formatDateTime(selectedUser.created_at) }}</span>
+                </div>
+                <div v-if="selectedUser.updated_at" class="modal-detail-item">
+                  <span class="modal-detail-label">Updated At</span>
+                  <span class="modal-detail-value">{{ formatDateTime(selectedUser.updated_at) }}</span>
+                </div>
+                <div v-if="selectedUser.last_login_at" class="modal-detail-item">
+                  <span class="modal-detail-label">Last Login</span>
+                  <span class="modal-detail-value">{{ formatDateTime(selectedUser.last_login_at) }}</span>
+                </div>
+                <div v-if="selectedUser.deleted_at" class="modal-detail-item">
+                  <span class="modal-detail-label">Deleted At</span>
+                  <span class="modal-detail-value text-danger">{{ formatDateTime(selectedUser.deleted_at) }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -337,10 +499,19 @@ const adminUsers = computed(() => userStore.getUsers?.filter(user => getUserRole
 // Methods
 const loadUsers = async () => {
   try {
+    console.log('UsersSection: Loading users...')
+    usersLoaded.value = false
     await userStore.fetchUsers()
     usersLoaded.value = true
+    console.log('UsersSection: Users loaded. Count:', userStore.getUsers.length)
+    
+    // Log if users array is empty
+    if (userStore.getUsers.length === 0) {
+      console.warn('UsersSection: Users array is empty after fetch')
+    }
   } catch (error) {
-    console.error('Error loading users:', error)
+    console.error('UsersSection: Error loading users:', error)
+    usersLoaded.value = true // Set to true even on error to show error state
   }
 }
 
@@ -372,6 +543,32 @@ const getRoleClass = (user) => {
 const getStatusClass = (user) => {
   const status = getUserStatus(user).toLowerCase()
   return `status-${status}`
+}
+
+const formatDateTime = (dateString) => {
+  if (!dateString) return 'N/A'
+  const date = new Date(dateString)
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+const hasAdditionalInfo = (user) => {
+  if (!user) return false
+  return !!(
+    user.address ||
+    user.city ||
+    user.country ||
+    user.postal_code ||
+    user.bio ||
+    user.company ||
+    user.department ||
+    user.position
+  )
 }
 
 const viewUser = (user) => {
@@ -421,7 +618,15 @@ const onUserUpdated = () => {
 
 // Lifecycle
 onMounted(() => {
+  console.log('UsersSection: Component mounted, loading users...')
   loadUsers()
+  
+  // Also fetch user options if available
+  if (userStore.fetchUserOptions) {
+    userStore.fetchUserOptions().catch(err => {
+      console.warn('UsersSection: Failed to fetch user options:', err)
+    })
+  }
 })
 
 // Emit events to parent component
@@ -654,6 +859,37 @@ defineEmits(['user-selected', 'user-created', 'user-updated'])
 .error-message {
   color: rgba(255, 255, 255, 0.7);
   margin-bottom: 1.5rem;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 2rem;
+  text-align: center;
+}
+
+.empty-icon {
+  width: 4rem;
+  height: 4rem;
+  color: rgba(255, 255, 255, 0.4);
+  margin-bottom: 2rem;
+}
+
+.empty-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 1rem;
+}
+
+.empty-message {
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 2rem;
+  max-width: 400px;
+  line-height: 1.6;
 }
 
 /* Users Table */
@@ -933,128 +1169,7 @@ defineEmits(['user-selected', 'user-created', 'user-updated'])
   margin-bottom: 1.5rem;
 }
 
-/* Modal */
-.user-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.user-modal {
-  background: rgba(15, 15, 23, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  max-width: 500px;
-  width: 90%;
-  max-height: 80vh;
-  overflow-y: auto;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.modal-header h3 {
-  color: rgba(255, 255, 255, 0.9);
-  margin: 0;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.6);
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-}
-
-.close-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.close-btn svg {
-  width: 1rem;
-  height: 1rem;
-}
-
-.modal-content {
-  padding: 1.5rem;
-}
-
-.user-detail-card {
-  text-align: center;
-}
-
-.user-detail-card h4 {
-  color: rgba(255, 255, 255, 0.9);
-  margin: 1rem 0 0.5rem;
-}
-
-.user-detail-card p {
-  color: rgba(255, 255, 255, 0.6);
-  margin-bottom: 1rem;
-}
-
-/* Success Notification */
-.success-notification {
-  position: fixed;
-  top: 2rem;
-  right: 2rem;
-  z-index: 1001;
-  background: rgba(34, 197, 94, 0.1);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  border-radius: 12px;
-  padding: 1rem 1.5rem;
-  color: #22c55e;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-  animation: slideInRight 0.3s ease-out;
-}
-
-@keyframes slideInRight {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-.notification-content {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.success-icon {
-  width: 1.5rem;
-  height: 1.5rem;
-  color: #22c55e;
-}
-
-/* Edit Modal Specific Styles */
-.edit-modal {
-  max-width: 600px;
-  width: 95%;
-}
-
-.edit-modal .modal-content {
-  padding: 0;
-}
+/* Modal styles are now in components.css - using shared styles */
 
 /* Responsive */
 @media (max-width: 768px) {

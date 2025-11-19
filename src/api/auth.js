@@ -5,30 +5,12 @@ import api from './axios'
  */
 class AuthService {
   /**
-   * Get CSRF cookie from Laravel Sanctum
-   * @returns {Promise}
-   */
-  static async getCsrfCookie() {
-    try {
-      // Use axios to get CSRF cookie
-      const response = await api.get('/sanctum/csrf-cookie')
-      return response
-    } catch (error) {
-      console.error('Failed to get CSRF cookie:', error)
-      throw error
-    }
-  }
-
-  /**
    * User registration
    * @param {Object} userData - User registration data
    * @returns {Promise}
    */
   static async register(userData) {
     try {
-      // First get CSRF cookie
-      await this.getCsrfCookie()
-
       const response = await api.post('/api/register', userData)
       return response.data
     } catch (error) {
@@ -44,9 +26,6 @@ class AuthService {
    */
   static async login(credentials) {
     try {
-      // First get CSRF cookie
-      await this.getCsrfCookie()
-
       const response = await api.post('/api/login', credentials)
       return response.data
     } catch (error) {
@@ -62,9 +41,6 @@ class AuthService {
    */
   static async adminLogin(credentials) {
     try {
-      // First get CSRF cookie
-      await this.getCsrfCookie()
-
       const response = await api.post('/api/admins-login', credentials)
       return response.data
     } catch (error) {
@@ -79,9 +55,6 @@ class AuthService {
    */
   static async logout() {
     try {
-      // First get CSRF cookie
-      await this.getCsrfCookie()
-
       const response = await api.post('/api/logout')
       return response.data
     } catch (error) {

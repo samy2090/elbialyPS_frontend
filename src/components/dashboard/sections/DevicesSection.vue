@@ -86,7 +86,8 @@
                     <th>Device</th>
                     <th>Type</th>
                     <th>Status</th>
-                    <th>Last Seen</th>
+                    <th>Price/Hour</th>
+                    <th>Notes</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -109,15 +110,24 @@
                       </div>
                     </td>
                     <td>
-                      <span class="device-type">{{ device.type || 'Unknown' }}</span>
+                      <span class="device-type">{{ formatDeviceType(device.device_type || device.type) || 'Unknown' }}</span>
                     </td>
                     <td>
-                      <span :class="['status-badge', getStatusClass(device.active)]">
-                        {{ getStatusText(device.active) }}
+                      <span :class="['status-badge', getStatusClass(device.status || device.active)]">
+                        {{ getStatusText(device.status || device.active) }}
                       </span>
                     </td>
                     <td>
-                      <span class="last-seen">{{ formatDate(device.lastSeen) }}</span>
+                      <span class="price-info">
+                        <span class="price-amount">{{ formatPrice(device.price_per_hour) }}</span>
+                        <span v-if="device.multi_price || device.multi_price_per_hour" class="multi-price">
+                          / Multi: {{ formatPrice(device.multi_price || device.multi_price_per_hour) }}
+                        </span>
+                      </span>
+                    </td>
+                    <td>
+                      <span class="device-notes" v-if="device.notes">{{ device.notes }}</span>
+                      <span v-else class="text-muted">-</span>
                     </td>
                     <td>
                       <div class="action-buttons">
@@ -178,16 +188,30 @@
                   </div>
                 </div>
                 <div class="device-status">
-                  <span :class="['status-badge', getStatusClass(device.active)]">
-                    {{ getStatusText(device.active) }}
+                  <span :class="['status-badge', getStatusClass(device.status || device.active)]">
+                    {{ getStatusText(device.status || device.active) }}
                   </span>
                 </div>
               </div>
               
               <div class="device-card-body">
                 <div class="device-meta">
-                  <span class="device-type">{{ device.type || 'Unknown' }}</span>
-                  <span class="device-last-seen">{{ formatDate(device.lastSeen) }}</span>
+                  <span class="device-type">{{ formatDeviceType(device.device_type || device.type) || 'Unknown' }}</span>
+                  <span class="device-price">
+                    Price: {{ formatPrice(device.price_per_hour) }}
+                    <span v-if="device.multi_price || device.multi_price_per_hour">
+                      / Multi: {{ formatPrice(device.multi_price || device.multi_price_per_hour) }}
+                    </span>
+                  </span>
+                  <span :class="['status-badge', getStatusClass(device.status || device.active)]">
+                    {{ getStatusText(device.status || device.active) }}
+                  </span>
+                </div>
+                <div v-if="device.description" class="device-description">
+                  {{ device.description }}
+                </div>
+                <div v-if="device.notes" class="device-notes">
+                  <strong>Notes:</strong> {{ device.notes }}
                 </div>
               </div>
               
@@ -242,55 +266,105 @@
     </div>
 
     <!-- Device Form Modal -->
-    <div v-if="showCreateModal || showEditModal" class="modal-overlay" @click="closeModals">
-      <div class="modal-content" @click.stop>
-        <DeviceForm
-          :device="editingDevice"
-          :is-editing="showEditModal"
-          @close="closeModals"
-          @success="onDeviceSuccess"
-        />
+    <div v-if="showCreateModal || showEditModal" class="user-modal-overlay" @click="closeModals">
+      <div class="user-modal edit-modal" @click.stop>
+        <div class="modal-header">
+          <h3>{{ showEditModal ? 'Edit Device' : 'Create New Device' }}</h3>
+          <button @click="closeModals" class="close-btn">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+              <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-content">
+          <DeviceForm
+            :device="editingDevice"
+            :is-editing="showEditModal"
+            @close="closeModals"
+            @success="onDeviceSuccess"
+          />
+        </div>
       </div>
     </div>
 
     <!-- Device View Modal -->
-    <div v-if="showViewModal" class="modal-overlay" @click="closeViewModal">
-      <div class="modal-content large" @click.stop>
+    <div v-if="showViewModal" class="user-modal-overlay" @click="closeViewModal">
+      <div class="user-modal user-detail-modal" @click.stop>
         <div class="modal-header">
-          <h2>Device Details</h2>
+          <h3>Device Details</h3>
           <button @click="closeViewModal" class="close-btn">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+              <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
             </svg>
           </button>
         </div>
-        <div class="modal-body">
-          <div v-if="viewingDevice" class="device-details-view">
-            <div class="detail-group">
-              <label>Device Name</label>
-              <span>{{ viewingDevice.name || 'Unknown Device' }}</span>
+        <div class="modal-content modal-detail-content">
+          <div v-if="viewingDevice" class="modal-details-grid">
+            <!-- Basic Information -->
+            <div class="modal-detail-section">
+              <h5 class="modal-section-title">Basic Information</h5>
+              <div class="modal-detail-card">
+                <div class="modal-detail-item">
+                  <span class="modal-detail-label">Device ID</span>
+                  <span class="modal-detail-value">{{ viewingDevice.id }}</span>
+                </div>
+                <div class="modal-detail-item">
+                  <span class="modal-detail-label">Device Name</span>
+                  <span class="modal-detail-value">{{ viewingDevice.name || 'Unknown Device' }}</span>
+                </div>
+                <div class="modal-detail-item">
+                  <span class="modal-detail-label">Type</span>
+                  <span class="modal-detail-value">{{ formatDeviceType(viewingDevice.device_type || viewingDevice.type) || 'Unknown' }}</span>
+                </div>
+                <div class="modal-detail-item">
+                  <span class="modal-detail-label">Status</span>
+                  <span class="modal-detail-value">
+                    <span :class="['status-badge', getStatusClass(viewingDevice.status || viewingDevice.active)]">
+                      {{ getStatusText(viewingDevice.status || viewingDevice.active) }}
+                    </span>
+                  </span>
+                </div>
+                <div class="modal-detail-item">
+                  <span class="modal-detail-label">Description</span>
+                  <span class="modal-detail-value">{{ viewingDevice.description || 'No description available' }}</span>
+                </div>
+              </div>
             </div>
-            <div class="detail-group">
-              <label>Device ID</label>
-              <span>{{ viewingDevice.id }}</span>
+
+            <!-- Pricing Information -->
+            <div class="modal-detail-section">
+              <h5 class="modal-section-title">Pricing Information</h5>
+              <div class="modal-detail-card">
+                <div class="modal-detail-item">
+                  <span class="modal-detail-label">Price per Hour</span>
+                  <span class="modal-detail-value">{{ formatPrice(viewingDevice.price_per_hour) }}</span>
+                </div>
+                <div v-if="viewingDevice.multi_price || viewingDevice.multi_price_per_hour" class="modal-detail-item">
+                  <span class="modal-detail-label">Multi Player Price per Hour</span>
+                  <span class="modal-detail-value">{{ formatPrice(viewingDevice.multi_price || viewingDevice.multi_price_per_hour) }}</span>
+                </div>
+              </div>
             </div>
-            <div class="detail-group">
-              <label>Type</label>
-              <span>{{ viewingDevice.type || 'Unknown' }}</span>
-            </div>
-            <div class="detail-group">
-              <label>Status</label>
-              <span :class="['status-badge', getStatusClass(viewingDevice.active)]">
-                {{ getStatusText(viewingDevice.active) }}
-              </span>
-            </div>
-            <div class="detail-group">
-              <label>Last Seen</label>
-              <span>{{ formatDate(viewingDevice.lastSeen) }}</span>
-            </div>
-            <div class="detail-group">
-              <label>Description</label>
-              <span>{{ viewingDevice.description || 'No description available' }}</span>
+
+            <!-- Additional Information -->
+            <div class="modal-detail-section">
+              <h5 class="modal-section-title">Additional Information</h5>
+              <div class="modal-detail-card">
+                <div v-if="viewingDevice.notes" class="modal-detail-item">
+                  <span class="modal-detail-label">Notes</span>
+                  <span class="modal-detail-value">{{ viewingDevice.notes }}</span>
+                </div>
+                <div class="modal-detail-item">
+                  <span class="modal-detail-label">Created At</span>
+                  <span class="modal-detail-value">{{ formatDate(viewingDevice.created_at) }}</span>
+                </div>
+                <div v-if="viewingDevice.updated_at" class="modal-detail-item">
+                  <span class="modal-detail-label">Updated At</span>
+                  <span class="modal-detail-value">{{ formatDate(viewingDevice.updated_at) }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -298,12 +372,18 @@
     </div>
 
     <!-- Delete Confirmation Modal -->
-    <div v-if="showDeleteModal" class="modal-overlay" @click="closeDeleteModal">
-      <div class="modal-content small" @click.stop>
+    <div v-if="showDeleteModal" class="user-modal-overlay" @click="closeDeleteModal">
+      <div class="user-modal" @click.stop style="max-width: 400px;">
         <div class="modal-header">
-          <h2>Delete Device</h2>
+          <h3>Delete Device</h3>
+          <button @click="closeDeleteModal" class="close-btn">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+              <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </button>
         </div>
-        <div class="modal-body">
+        <div class="modal-content">
           <p>Are you sure you want to delete the device "{{ deletingDevice?.name }}"?</p>
           <p class="warning-text">This action cannot be undone.</p>
         </div>
@@ -417,17 +497,77 @@ const onDeviceSuccess = async (message) => {
   }
 }
 
-const getStatusClass = (active) => {
-  return active ? 'status-online' : 'status-offline'
+const getStatusClass = (status) => {
+  // Handle both old boolean active field and new status string field
+  if (typeof status === 'boolean') {
+    return status ? 'status-online' : 'status-offline'
+  }
+  
+  // Handle status string values
+  const statusLower = (status || '').toLowerCase()
+  if (statusLower === 'available' || statusLower === 'in_use') {
+    return 'status-online'
+  } else if (statusLower === 'maintenance') {
+    return 'status-maintenance'
+  } else if (statusLower === 'inactive' || statusLower === 'offline') {
+    return 'status-offline'
+  }
+  return 'status-unknown'
 }
 
-const getStatusText = (active) => {
-  return active ? 'Active' : 'Inactive'
+const getStatusText = (status) => {
+  // Handle both old boolean active field and new status string field
+  if (typeof status === 'boolean') {
+    return status ? 'Active' : 'Inactive'
+  }
+  
+  // Handle status string values
+  const statusLower = (status || '').toLowerCase()
+  if (statusLower === 'available') {
+    return 'Available'
+  } else if (statusLower === 'in_use') {
+    return 'In Use'
+  } else if (statusLower === 'maintenance') {
+    return 'Maintenance'
+  } else if (statusLower === 'inactive' || statusLower === 'offline') {
+    return 'Inactive'
+  }
+  return status || 'Unknown'
 }
 
 const formatDate = (date) => {
   if (!date) return 'Never'
-  return new Date(date).toLocaleDateString()
+  try {
+    return new Date(date).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  } catch (error) {
+    return 'Invalid Date'
+  }
+}
+
+const formatPrice = (price) => {
+  if (price === null || price === undefined) return 'N/A'
+  // Prices are in cents, so divide by 100
+  const priceInDollars = parseFloat(price) / 100
+  return `$${priceInDollars.toFixed(2)}`
+}
+
+const formatDeviceType = (type) => {
+  if (!type) return 'Unknown'
+  const typeMap = {
+    'ps5': 'PlayStation 5',
+    'ps4': 'PlayStation 4',
+    'billiard': 'Billiard Table',
+    'billiards': 'Billiards Table',
+    'computer': 'Computer',
+    'other': 'Other'
+  }
+  return typeMap[type.toLowerCase()] || type.charAt(0).toUpperCase() + type.slice(1)
 }
 
 // Lifecycle
@@ -690,9 +830,54 @@ defineEmits(['device-selected', 'device-created', 'device-updated'])
 
 .device-meta {
   display: flex;
-  gap: 1rem;
+  flex-direction: column;
+  gap: 0.5rem;
   color: rgba(255, 255, 255, 0.6);
   font-size: 0.875rem;
+}
+
+.device-price {
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 600;
+}
+
+.device-description {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.price-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.price-amount {
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+}
+
+.multi-price {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.75rem;
+}
+
+.device-notes {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.875rem;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.text-muted {
+  color: rgba(255, 255, 255, 0.4);
+  font-style: italic;
 }
 
 .device-card-actions {
@@ -701,100 +886,7 @@ defineEmits(['device-selected', 'device-created', 'device-updated'])
   flex-wrap: wrap;
 }
 
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-}
-
-.modal-content {
-  background: rgba(15, 15, 23, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  width: 100%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
-  backdrop-filter: blur(20px);
-}
-
-.modal-content.large {
-  max-width: 800px;
-}
-
-.modal-content.small {
-  max-width: 400px;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.modal-header h2 {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.6);
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-}
-
-.close-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.modal-body {
-  padding: 1.5rem;
-}
-
-.modal-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: flex-end;
-  padding: 1.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.device-details-view {
-  display: grid;
-  gap: 1.5rem;
-}
-
-.detail-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.detail-group label {
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 0.875rem;
-}
-
-.detail-group span {
-  color: rgba(255, 255, 255, 0.9);
-}
+/* Modal styles are now in components.css - using shared styles */
 
 .warning-text {
   color: #ef4444;
@@ -809,7 +901,16 @@ defineEmits(['device-selected', 'device-created', 'device-updated'])
   display: none;
 }
 
+/* Responsive */
 @media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+  
+  .mobile-only {
+    display: block !important;
+  }
+  
   .devices-content {
     padding: 1rem;
   }
@@ -819,17 +920,17 @@ defineEmits(['device-selected', 'device-created', 'device-updated'])
     align-items: stretch;
   }
   
-  .desktop-only {
-    display: none;
+  .section-tabs {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding-bottom: 0.5rem;
   }
   
-  .mobile-only {
-    display: block;
+  .tab-btn {
+    white-space: nowrap;
+    min-width: fit-content;
   }
   
-  .modal-content {
-    margin: 1rem;
-    max-width: none;
-  }
+  /* Mobile responsive styles are in components.css */
 }
 </style>

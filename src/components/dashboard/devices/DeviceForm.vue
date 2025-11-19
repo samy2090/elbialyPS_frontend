@@ -1,14 +1,5 @@
 <template>
   <div class="device-form">
-    <div class="form-header">
-      <h2>{{ isEditing ? 'Edit Device' : 'Add New Device' }}</h2>
-      <button @click="$emit('close')" class="close-btn">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-      </button>
-    </div>
-
     <form @submit.prevent="handleSubmit" class="form-body">
       <!-- Device Name -->
       <div class="form-group">
@@ -47,15 +38,20 @@
 
       <!-- Device Status -->
       <div class="form-group">
-        <label for="active" class="form-label">Status</label>
+        <label for="status" class="form-label">Status</label>
         <select
-          id="active"
-          v-model="form.active"
+          id="status"
+          v-model="form.status"
           class="form-input"
+          required
         >
-          <option :value="true">Active</option>
-          <option :value="false">Inactive</option>
+          <option value="">Select status</option>
+          <option value="available">Available</option>
+          <option value="in_use">In Use</option>
+          <option value="maintenance">Maintenance</option>
+          <option value="inactive">Inactive</option>
         </select>
+        <span v-if="errors.status" class="error-message">{{ errors.status }}</span>
       </div>
 
       <!-- Description -->
@@ -139,7 +135,7 @@ const errors = reactive({})
 const form = reactive({
   name: '',
   type: '',
-  active: true,
+  status: 'available',
   description: '',
   price_per_hour: 0,
   multi_price_per_hour: 0
@@ -148,14 +144,21 @@ const form = reactive({
 // Initialize form
 const initializeForm = () => {
   if (props.device && props.isEditing) {
-    Object.keys(form).forEach(key => {
-      form[key] = props.device[key] !== undefined ? props.device[key] : (key === 'active' ? true : key === 'price_per_hour' || key === 'multi_price_per_hour' ? 0 : '')
-    })
+    // Map backend field names to form field names
+    form.name = props.device.name || ''
+    form.type = props.device.device_type || props.device.type || ''
+    form.status = props.device.status || (props.device.active ? 'available' : 'inactive') || 'available'
+    form.description = props.device.description || ''
+    form.price_per_hour = props.device.price_per_hour || 0
+    form.multi_price_per_hour = props.device.multi_price || props.device.multi_price_per_hour || 0
   } else {
     // Reset form for new device
-    Object.keys(form).forEach(key => {
-      form[key] = key === 'active' ? true : key === 'price_per_hour' || key === 'multi_price_per_hour' ? 0 : ''
-    })
+    form.name = ''
+    form.type = ''
+    form.status = 'available'
+    form.description = ''
+    form.price_per_hour = 0
+    form.multi_price_per_hour = 0
   }
   clearErrors()
 }
@@ -181,6 +184,11 @@ const validateForm = () => {
     isValid = false
   }
 
+  if (!form.status) {
+    errors.status = 'Status is required'
+    isValid = false
+  }
+
   // Price validation
   if (form.price_per_hour <= 0) {
     errors.price_per_hour = 'Price per hour must be greater than 0'
@@ -201,7 +209,15 @@ const handleSubmit = async () => {
   loading.value = true
 
   try {
-    const deviceData = { ...form }
+    // Map form fields to backend field names
+    const deviceData = {
+      name: form.name,
+      device_type: form.type,
+      description: form.description,
+      price_per_hour: form.price_per_hour,
+      multi_price: form.multi_price_per_hour || null,
+      status: form.status
+    }
 
     if (props.isEditing) {
       await deviceStore.updateDevice(props.device.id, deviceData)
@@ -234,43 +250,8 @@ onMounted(() => {
   width: 100%;
 }
 
-.form-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.form-header h2 {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.9);
-  font-size: 1.5rem;
-  font-weight: 600;
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  color: rgba(255, 255, 255, 0.6);
-  cursor: pointer;
-  padding: 0.5rem;
-  border-radius: 8px;
-  transition: all 0.3s ease;
-}
-
-.close-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.close-btn svg {
-  width: 1.25rem;
-  height: 1.25rem;
-}
-
 .form-body {
-  padding: 1.5rem;
+  padding: 0;
 }
 
 .form-group {
@@ -344,6 +325,7 @@ textarea.form-input {
   justify-content: flex-end;
   margin-top: 2rem;
   padding-top: 1.5rem;
+  padding-bottom: 1rem; /* Extra bottom padding to ensure buttons are visible */
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 

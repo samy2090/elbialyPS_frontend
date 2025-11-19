@@ -7,6 +7,9 @@ export const useUserStore = defineStore('user', {
     currentUser: null,
     loading: false,
     error: null,
+    pagination: null,
+    roles: [],
+    statuses: [],
   }),
 
   getters: {
@@ -18,16 +21,87 @@ export const useUserStore = defineStore('user', {
     /**
      * Fetch all users
      */
-    async fetchUsers() {
+    async fetchUsers(params = {}) {
       this.loading = true
       this.error = null
 
       try {
-        const response = await UserService.getAllUsers()
-        this.users = response.data || response
+        console.log('=== UserStore: Fetching Users ===')
+        console.log('Params:', params)
+        
+        const response = await UserService.getAllUsers(params)
+        
+        console.log('=== UserStore: Processing Response ===')
+        console.log('Response type:', typeof response)
+        console.log('Response:', response)
+        
+        // The API service should return { users: [...], pagination: {...} }
+        // But handle all possible formats as a safety net
+        if (response && typeof response === 'object') {
+          if (response.users && Array.isArray(response.users)) {
+            // Expected format: { users: [...], pagination: {...} }
+            this.users = response.users
+            this.pagination = response.pagination || null
+            console.log('✓ UserStore: Set users from response.users array')
+            console.log('  Users count:', this.users.length)
+            console.log('  Pagination:', this.pagination)
+          } else if (Array.isArray(response)) {
+            // Direct array format (shouldn't happen after API processing, but handle it)
+            this.users = response
+            this.pagination = null
+            console.log('✓ UserStore: Set users from direct array')
+            console.log('  Users count:', this.users.length)
+          } else if (response.data) {
+            // Nested data format (fallback)
+            if (Array.isArray(response.data)) {
+              this.users = response.data
+              this.pagination = response.pagination || null
+              console.log('✓ UserStore: Set users from response.data array')
+              console.log('  Users count:', this.users.length)
+            } else if (response.data.users && Array.isArray(response.data.users)) {
+              this.users = response.data.users
+              this.pagination = response.data.pagination || response.pagination || null
+              console.log('✓ UserStore: Set users from response.data.users')
+              console.log('  Users count:', this.users.length)
+            } else {
+              console.warn('⚠ UserStore: Unexpected response.data format')
+              console.warn('  response.data:', response.data)
+              this.users = []
+            }
+          } else {
+            console.warn('⚠ UserStore: Response object has no users or data property')
+            console.warn('  Response keys:', Object.keys(response))
+            this.users = []
+          }
+        } else {
+          console.error('✗ UserStore: Response is not an object')
+          console.error('  Response:', response)
+          this.users = []
+        }
+        
+        // Final validation: Ensure users is always an array
+        if (!Array.isArray(this.users)) {
+          console.error('✗ UserStore: CRITICAL - Users is not an array!')
+          console.error('  Users value:', this.users)
+          console.error('  Type:', typeof this.users)
+          this.users = []
+        }
+        
+        // Log final state
+        console.log('=== UserStore: Final State ===')
+        console.log('Users array length:', this.users.length)
+        console.log('First user:', this.users[0] || 'No users')
+        console.log('Has pagination:', !!this.pagination)
+        console.log('=============================')
+        
         return response
       } catch (error) {
-        console.error('Failed to fetch users:', error)
+        console.error('UserStore: Failed to fetch users:', error)
+        console.error('UserStore: Error details:', {
+          message: error.message,
+          response: error.response,
+          status: error.response?.status
+        })
 
         // Provide more specific error messages
         if (error.message.includes('401') || error.response?.status === 401) {
@@ -40,6 +114,8 @@ export const useUserStore = defineStore('user', {
           this.error = error.message || 'Failed to fetch users'
         }
 
+        // Reset users on error
+        this.users = []
         throw error
       } finally {
         this.loading = false
@@ -179,6 +255,23 @@ export const useUserStore = defineStore('user', {
         throw error
       } finally {
         this.loading = false
+      }
+    },
+
+    /**
+     * Fetch user options (roles, statuses)
+     */
+    async fetchUserOptions() {
+      try {
+        const response = await UserService.getUserOptions()
+        this.roles = response.roles || []
+        this.statuses = response.statuses || []
+        return response
+      } catch (error) {
+        console.error('Failed to fetch user options:', error)
+        // Don't throw, just use empty arrays
+        this.roles = []
+        this.statuses = []
       }
     },
 

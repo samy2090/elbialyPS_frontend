@@ -42,6 +42,14 @@
           @user-updated="onUserUpdated"
         />
 
+        <!-- Products Section -->
+        <ProductsSection 
+          v-if="activeSection === 'products'"
+          @product-selected="onProductSelected"
+          @product-created="onProductCreated"
+          @product-updated="onProductUpdated"
+        />
+
         <!-- Profile Section -->
         <ProfileSection 
           v-if="activeSection === 'profile'"
@@ -122,6 +130,7 @@ import ExploreSection from '@/components/dashboard/sections/ExploreSection.vue'
 import ProfileSection from '@/components/dashboard/sections/ProfileSection.vue'
 import SettingsSection from '@/components/dashboard/sections/SettingsSection.vue'
 import UsersSection from '@/components/dashboard/sections/UsersSection.vue'
+import ProductsSection from '@/components/dashboard/sections/ProductsSection.vue'
 import DevicesSection from '@/components/dashboard/sections/DevicesSection.vue'
 
 // Reactive state
@@ -265,6 +274,18 @@ const onUserCreated = (user) => {
 
   const onUserUpdated = (user) => {
     console.log('User updated:', user)
+  }
+
+  const onProductSelected = (product) => {
+    console.log('Product selected:', product)
+  }
+
+  const onProductCreated = (product) => {
+    console.log('Product created:', product)
+  }
+
+  const onProductUpdated = (product) => {
+    console.log('Product updated:', product)
   }
 
   const onDeviceSelected = (device) => {

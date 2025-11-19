@@ -1,12 +1,12 @@
 <template>
-  <div class="user-management-page">
+  <div class="dashboard-page">
     <!-- Header Section -->
-    <div class="page-header">
-      <div class="header-content">
-        <h1 class="page-title">Users Management</h1>
-        <p class="page-subtitle">Manage your platform users and their permissions</p>
+    <div class="dashboard-page-header">
+      <div class="dashboard-page-header-content">
+        <h1 class="dashboard-page-title">Users Management</h1>
+        <p class="dashboard-page-subtitle">Manage your platform users and their permissions</p>
       </div>
-      <div class="header-actions">
+      <div class="dashboard-page-header-actions">
         <router-link to="/users/create" class="action-btn primary">
           <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M12 5V19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -62,9 +62,9 @@
     </div>
 
     <!-- Users Table/List -->
-    <div v-else class="users-section">
+    <div v-else class="dashboard-section">
       <!-- Desktop Table View -->
-      <div class="users-table-container desktop-only">
+      <div class="dashboard-table-container desktop-only">
         <div class="table-card">
           <table class="users-table">
             <thead>
@@ -104,6 +104,13 @@
                 </td>
                 <td>
                   <div class="action-buttons">
+                    <router-link :to="`/users/${user.id}`" class="action-btn primary small">
+                      <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 12S5 4 12 4S23 12 23 12S19 20 12 20S1 12 1 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                      </svg>
+                      View
+                    </router-link>
                     <router-link :to="`/users/${user.id}/edit`" class="action-btn secondary small">
                       <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -111,7 +118,7 @@
                       </svg>
                       Edit
                     </router-link>
-                    <button @click="deleteUser(user.id)" :disabled="userStore.loading" class="action-btn danger small">
+                    <button @click="deleteUser(user)" :disabled="userStore.loading" class="action-btn danger small">
                       <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M3 6H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                         <path d="M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -127,7 +134,7 @@
       </div>
 
       <!-- Mobile Card View -->
-      <div class="users-cards-container mobile-only">
+      <div class="dashboard-cards-container mobile-only">
         <div v-for="user in userStore.getUsers" :key="user.id" class="user-card">
           <div class="card-header">
             <div class="user-info">
@@ -158,10 +165,13 @@
             </div>
           </div>
           <div class="card-actions">
+            <router-link :to="`/users/${user.id}`" class="action-btn primary">
+              View
+            </router-link>
             <router-link :to="`/users/${user.id}/edit`" class="action-btn secondary">
               Edit
             </router-link>
-            <button @click="deleteUser(user.id)" :disabled="userStore.loading" class="action-btn danger">
+            <button @click="deleteUser(user)" :disabled="userStore.loading" class="action-btn danger">
               Delete
             </button>
           </div>
@@ -187,6 +197,29 @@
         </router-link>
       </div>
     </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div v-if="showDeleteModal" class="user-modal-overlay" @click="closeDeleteModal">
+      <div class="user-modal delete-modal" @click.stop>
+        <div class="modal-header">
+          <h3>Delete User</h3>
+          <button @click="closeDeleteModal" class="close-btn">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+              <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-content">
+          <p>Are you sure you want to delete the user "{{ deletingUser?.name }}"?</p>
+          <p class="warning-text">This action cannot be undone.</p>
+        </div>
+        <div class="modal-actions">
+          <button @click="closeDeleteModal" class="action-btn secondary">Cancel</button>
+          <button @click="confirmDeleteUser" :disabled="userStore.loading" class="action-btn danger">Delete User</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -202,14 +235,20 @@ export default {
     const userStore = useUserStore()
     const authStore = useAuthStore()
     const usersLoaded = ref(false)
+    const showDeleteModal = ref(false)
+    const deletingUser = ref(null)
     
     // Load users when component mounts
     const loadUsers = async () => {
       try {
+        console.log('UserListView: Loading users...')
+        usersLoaded.value = false
         await userStore.fetchUsers()
         usersLoaded.value = true
+        console.log('UserListView: Users loaded. Count:', userStore.getUsers.length)
       } catch (error) {
-        console.error('Failed to load users:', error)
+        console.error('UserListView: Failed to load users:', error)
+        usersLoaded.value = true // Set to true even on error to show error state
       }
     }
     
@@ -217,14 +256,26 @@ export default {
       loadUsers()
     })
     
-    const deleteUser = async (userId) => {
-      if (confirm('Are you sure you want to delete this user?')) {
+    const deleteUser = (user) => {
+      deletingUser.value = user
+      showDeleteModal.value = true
+    }
+
+    const closeDeleteModal = () => {
+      showDeleteModal.value = false
+      deletingUser.value = null
+    }
+
+    const confirmDeleteUser = async () => {
+      if (deletingUser.value) {
         try {
-          await userStore.deleteUser(userId)
+          await userStore.deleteUser(deletingUser.value.id)
           // Reload users to reflect changes
           loadUsers()
+          closeDeleteModal()
         } catch (error) {
           console.error('Failed to delete user:', error)
+          closeDeleteModal()
         }
       }
     }
@@ -244,6 +295,10 @@ export default {
       usersLoaded,
       loadUsers,
       deleteUser,
+      confirmDeleteUser,
+      closeDeleteModal,
+      showDeleteModal,
+      deletingUser,
       getUserRole,
       getRoleClass,
       getUserInitials
@@ -251,465 +306,3 @@ export default {
   }
 }
 </script>
-
-<style scoped>
-.user-management-page {
-  min-height: 100vh;
-  padding: 0;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 2rem 0 3rem;
-  border-bottom: 1px solid var(--border-primary);
-  margin-bottom: 3rem;
-}
-
-.header-content h1 {
-  font-size: 2.5rem;
-  font-weight: 800;
-  color: var(--text-primary);
-  margin-bottom: 0.5rem;
-}
-
-.page-subtitle {
-  color: var(--text-secondary);
-  font-size: 1.125rem;
-}
-
-.header-actions {
-  display: flex;
-  gap: 1rem;
-}
-
-.action-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.5rem;
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg);
-  color: var(--text-secondary);
-  text-decoration: none;
-  font-weight: 500;
-  transition: all var(--transition-normal);
-  cursor: pointer;
-  font-size: 0.9rem;
-}
-
-.action-btn:hover {
-  background: var(--bg-quaternary);
-  color: var(--text-primary);
-  transform: translateY(-2px);
-}
-
-.action-btn.primary {
-  background: var(--gradient-primary);
-  border-color: transparent;
-  color: white;
-  box-shadow: var(--shadow-md);
-}
-
-.action-btn.primary:hover {
-  box-shadow: var(--shadow-lg);
-}
-
-.action-btn.secondary {
-  background: var(--bg-quaternary);
-  border-color: var(--border-secondary);
-}
-
-.action-btn.danger {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: var(--primary-red);
-  color: var(--primary-red);
-}
-
-.action-btn.danger:hover {
-  background: var(--primary-red);
-  color: white;
-}
-
-.action-btn.small {
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-}
-
-.icon {
-  width: 1.25rem;
-  height: 1.25rem;
-}
-
-/* Loading State */
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 2rem;
-  text-align: center;
-}
-
-.loading-spinner {
-  margin-bottom: 2rem;
-}
-
-.spinner {
-  width: 3rem;
-  height: 3rem;
-  border: 3px solid var(--border-primary);
-  border-top: 3px solid var(--primary-purple);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.loading-text {
-  color: var(--text-secondary);
-  font-size: 1.125rem;
-}
-
-/* Error State */
-.error-state {
-  display: flex;
-  justify-content: center;
-  padding: 2rem;
-}
-
-.error-card {
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg);
-  padding: 3rem;
-  text-align: center;
-  max-width: 500px;
-  width: 100%;
-}
-
-.error-icon {
-  width: 4rem;
-  height: 4rem;
-  margin: 0 auto 2rem;
-  color: var(--primary-red);
-}
-
-.error-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 1rem;
-}
-
-.error-message {
-  color: var(--text-secondary);
-  margin-bottom: 2rem;
-  line-height: 1.6;
-}
-
-.error-actions {
-  display: flex;
-  gap: 1rem;
-  justify-content: center;
-  margin-bottom: 1rem;
-}
-
-.error-note {
-  padding: 1rem;
-  background: rgba(139, 92, 246, 0.1);
-  border: 1px solid rgba(139, 92, 246, 0.2);
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
-/* Users Section */
-.users-section {
-  margin-top: 2rem;
-}
-
-/* Desktop Table */
-.users-table-container {
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-}
-
-.table-card {
-  overflow-x: auto;
-}
-
-.users-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.users-table th {
-  background: var(--bg-quaternary);
-  padding: 1.5rem;
-  text-align: left;
-  font-weight: 600;
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--border-secondary);
-}
-
-.user-row {
-  border-bottom: 1px solid var(--border-secondary);
-  transition: background-color var(--transition-fast);
-}
-
-.user-row:hover {
-  background: var(--bg-quaternary);
-}
-
-.users-table td {
-  padding: 1.5rem;
-  vertical-align: middle;
-}
-
-.user-info {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
-
-.user-avatar {
-  width: 2.5rem;
-  height: 2.5rem;
-  background: var(--gradient-primary);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-weight: 600;
-  font-size: 0.875rem;
-  flex-shrink: 0;
-}
-
-.user-details {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.user-name {
-  font-weight: 500;
-  color: var(--text-primary);
-  text-decoration: none;
-  transition: color var(--transition-fast);
-}
-
-.user-name:hover {
-  color: var(--primary-purple);
-}
-
-.user-id {
-  font-size: 0.75rem;
-  color: var(--text-tertiary);
-}
-
-.user-email {
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-}
-
-.role-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.25rem 0.75rem;
-  background: rgba(139, 92, 246, 0.1);
-  color: var(--primary-purple);
-  border-radius: var(--radius-sm);
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.25rem 0.75rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.75rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.status-badge.online {
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--primary-green);
-}
-
-.action-buttons {
-  display: flex;
-  gap: 0.5rem;
-}
-
-/* Mobile Cards */
-.users-cards-container {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.user-card {
-  background: var(--bg-tertiary);
-  border: 1px solid var(--border-primary);
-  border-radius: var(--radius-lg);
-  overflow: hidden;
-  transition: all var(--transition-normal);
-}
-
-.user-card:hover {
-  border-color: var(--border-accent);
-  box-shadow: var(--shadow-md);
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid var(--border-secondary);
-}
-
-.card-content {
-  padding: 1.5rem;
-}
-
-.user-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.meta-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.meta-label {
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.meta-value {
-  color: var(--text-primary);
-  font-size: 0.875rem;
-}
-
-.card-actions {
-  display: flex;
-  gap: 1rem;
-  padding: 1.5rem;
-  border-top: 1px solid var(--border-secondary);
-}
-
-.card-actions .action-btn {
-  flex: 1;
-  justify-content: center;
-}
-
-/* Empty State */
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 4rem 2rem;
-  text-align: center;
-}
-
-.empty-icon {
-  width: 4rem;
-  height: 4rem;
-  color: var(--text-tertiary);
-  margin-bottom: 2rem;
-}
-
-.empty-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  margin-bottom: 1rem;
-}
-
-.empty-message {
-  color: var(--text-secondary);
-  margin-bottom: 2rem;
-  max-width: 400px;
-  line-height: 1.6;
-}
-
-/* Responsive Design */
-.desktop-only {
-  display: block;
-}
-
-.mobile-only {
-  display: none;
-}
-
-@media (max-width: 768px) {
-  .page-header {
-    flex-direction: column;
-    gap: 2rem;
-    align-items: stretch;
-  }
-  
-  .header-actions {
-    justify-content: stretch;
-  }
-  
-  .action-btn {
-    flex: 1;
-    justify-content: center;
-  }
-  
-  .page-title {
-    font-size: 2rem !important;
-  }
-
-  .desktop-only {
-    display: none;
-  }
-
-  .mobile-only {
-    display: block;
-  }
-
-  .error-actions {
-    flex-direction: column;
-  }
-}
-
-@media (max-width: 480px) {
-  .user-management-page {
-    padding: 0;
-  }
-  
-  .card-actions {
-    flex-direction: column;
-  }
-  
-  .error-card {
-    padding: 2rem;
-  }
-}
-</style>

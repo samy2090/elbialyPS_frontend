@@ -20,9 +20,30 @@ export const useDeviceStore = defineStore('device', () => {
         error.value = null
         try {
             const response = await deviceApi.getAllDevices()
-            console.log('Device API Response:', response)
-            // Handle Laravel API response structure: response.data.devices
-            devices.value = response.data?.devices || response.devices || []
+            console.log('Device Store - API Response:', response)
+            
+            // The API now returns { devices: [...], pagination: {...} }
+            // Handle the processed response from the API
+            if (response && response.devices) {
+                devices.value = Array.isArray(response.devices) ? response.devices : []
+                console.log('Devices loaded:', devices.value.length)
+            } else if (Array.isArray(response)) {
+                // Fallback: if response is directly an array
+                devices.value = response
+                console.log('Devices loaded (direct array):', devices.value.length)
+            } else {
+                // Try to extract devices from various possible structures
+                devices.value = response?.data?.devices || 
+                               response?.data?.data || 
+                               response?.devices || 
+                               (Array.isArray(response?.data) ? response.data : []) ||
+                               []
+                console.log('Devices loaded (fallback):', devices.value.length)
+            }
+            
+            if (devices.value.length === 0) {
+                console.warn('No devices found in response:', response)
+            }
         } catch (err) {
             console.error('Error fetching devices:', err)
             error.value = err.response?.data?.message || err.message || 'Failed to fetch devices'

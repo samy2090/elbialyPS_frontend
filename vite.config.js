@@ -12,18 +12,19 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      'vue': 'vue/dist/vue.esm-bundler.js'
     },
   },
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: process.env.VITE_API_BASE_URL || 'http://localhost:8000',
         changeOrigin: true,
         secure: false,
       },
       '/sanctum': {
-        target: 'http://localhost:8000',
+        target: process.env.VITE_API_BASE_URL || 'http://localhost:8000',
         changeOrigin: true,
         secure: false,
       }
