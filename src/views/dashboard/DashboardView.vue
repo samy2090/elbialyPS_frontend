@@ -50,6 +50,14 @@
           @product-updated="onProductUpdated"
         />
 
+        <!-- Sessions Section -->
+        <SessionsSection 
+          v-if="activeSection === 'sessions'"
+          @session-selected="onSessionSelected"
+          @session-created="onSessionCreated"
+          @session-updated="onSessionUpdated"
+        />
+
         <!-- Profile Section -->
         <ProfileSection 
           v-if="activeSection === 'profile'"
@@ -131,6 +139,7 @@ import ProfileSection from '@/components/dashboard/sections/ProfileSection.vue'
 import SettingsSection from '@/components/dashboard/sections/SettingsSection.vue'
 import UsersSection from '@/components/dashboard/sections/UsersSection.vue'
 import ProductsSection from '@/components/dashboard/sections/ProductsSection.vue'
+import SessionsSection from '@/components/dashboard/sections/SessionsSection.vue'
 import DevicesSection from '@/components/dashboard/sections/DevicesSection.vue'
 
 // Reactive state
@@ -272,33 +281,47 @@ const onUserCreated = (user) => {
   console.log('User created:', user)
 }
 
-  const onUserUpdated = (user) => {
-    console.log('User updated:', user)
-  }
+const onUserUpdated = (user) => {
+  console.log('User updated:', user)
+}
 
-  const onProductSelected = (product) => {
-    console.log('Product selected:', product)
-  }
+const onProductSelected = (product) => {
+  console.log('Product selected:', product)
+}
 
-  const onProductCreated = (product) => {
-    console.log('Product created:', product)
-  }
+const onProductCreated = (product) => {
+  console.log('Product created:', product)
+}
 
-  const onProductUpdated = (product) => {
-    console.log('Product updated:', product)
-  }
+const onProductUpdated = (product) => {
+  console.log('Product updated:', product)
+}
 
-  const onDeviceSelected = (device) => {
-    console.log('Device selected:', device)
-  }
+const onDeviceSelected = (device) => {
+  console.log('Device selected:', device)
+}
 
-  const onDeviceCreated = (device) => {
-    console.log('Device created:', device)
-  }
+const onDeviceCreated = (device) => {
+  console.log('Device created:', device)
+}
 
-  const onDeviceUpdated = (device) => {
-    console.log('Device updated:', device)
-  }// Window resize handler
+const onDeviceUpdated = (device) => {
+  console.log('Device updated:', device)
+}
+
+const onSessionSelected = (session) => {
+  console.log('Session selected:', session)
+}
+
+const onSessionCreated = (session) => {
+  console.log('Session created:', session)
+}
+
+const onSessionUpdated = (session) => {
+  console.log('Session updated:', session)
+}
+
+// Window resize handler
 const handleResize = () => {
   windowWidth.value = window.innerWidth
   

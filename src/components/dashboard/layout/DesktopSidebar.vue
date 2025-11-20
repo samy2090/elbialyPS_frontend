@@ -140,6 +140,20 @@ const ProductsIcon = {
   `
 }
 
+const SessionsIcon = {
+  template: `
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2"/>
+      <path d="M3 10H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M7 4V8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M17 4V8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="9" cy="14" r="1" fill="currentColor"/>
+      <circle cx="15" cy="14" r="1" fill="currentColor"/>
+      <path d="M12 14V18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  `
+}
+
 // Submenu icons
 const SiteIcon = {
   template: `
@@ -179,6 +193,7 @@ defineProps({
 
 const navigationItems = computed(() => [
   { id: 'home', label: 'Home', icon: HomeIcon },
+  { id: 'sessions', label: 'Sessions', icon: SessionsIcon },
   { id: 'explore', label: 'Explore', icon: ExploreIcon },
   { id: 'users', label: 'Users', icon: UsersIcon },
   { id: 'products', label: 'Products', icon: ProductsIcon },

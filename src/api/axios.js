@@ -39,6 +39,9 @@ api.interceptors.request.use(
   }
 )
 
+// Track if we're already redirecting to prevent multiple redirects
+let isRedirecting = false
+
 // Response interceptor
 api.interceptors.response.use(
   (response) => {
@@ -66,11 +69,38 @@ api.interceptors.response.use(
     return response
   },
   (error) => {
-    // Handle common error responses
+    // Handle 401 Unauthorized errors
     if (error.response?.status === 401) {
-      console.log('Unauthorized - should redirect to login')
-      // Don't automatically redirect here, let the component handle it
+      console.log('Unauthorized - redirecting to login')
+      
+      // Clear auth data from localStorage
+      localStorage.removeItem('auth_user_data')
+      localStorage.removeItem('auth_token')
+      csrfToken = null
+      
+      // Redirect to login if not already on an auth page and not already redirecting
+      if (!isRedirecting) {
+        const currentPath = window.location.pathname
+        const isAuthPage = currentPath === '/login' || 
+                          currentPath === '/register' || 
+                          currentPath === '/forgot-password' ||
+                          currentPath === '/'
+        
+        if (!isAuthPage) {
+          isRedirecting = true
+          
+          // Use a small delay to allow the error to propagate first
+          setTimeout(() => {
+            window.location.href = '/login'
+            // Reset flag after redirect
+            setTimeout(() => {
+              isRedirecting = false
+            }, 1000)
+          }, 100)
+        }
+      }
     }
+    
     return Promise.reject(error)
   }
 )

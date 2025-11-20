@@ -17,6 +17,19 @@ export default defineConfig({
     },
   },
   server: {
+    host: 'localhost',
+    port: 5173,
+    strictPort: false, // Allow port fallback if 5173 is busy
+    hmr: {
+      clientPort: 5173,
+      protocol: 'ws',
+      host: 'localhost',
+      overlay: true // Show error overlay on screen
+    },
+    watch: {
+      usePolling: false,
+      interval: 100
+    },
     proxy: {
       '/api': {
         target: process.env.VITE_API_BASE_URL || 'http://localhost:8000',
@@ -29,5 +42,8 @@ export default defineConfig({
         secure: false,
       }
     }
+  },
+  optimizeDeps: {
+    include: ['vue', 'vue-router', 'pinia', 'axios']
   }
 })

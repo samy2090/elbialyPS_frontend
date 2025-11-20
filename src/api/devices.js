@@ -12,18 +12,18 @@ class DeviceService {
         try {
             console.log('=== Devices API Request ===')
             console.log('URL:', api.defaults.baseURL + '/api/devices')
-            
+
             const response = await api.get('/api/devices')
-            
+
             console.log('=== Raw Devices API Response ===')
             console.log('Response object:', response)
             console.log('Response.data:', response.data)
             console.log('Response.data type:', typeof response.data)
             console.log('Is array?', Array.isArray(response.data))
-            
+
             // Handle different Laravel response formats
             let devicesData = null
-            
+
             // Format 1: Laravel Resource Collection with success wrapper
             // { success: true, data: [...], message: "..." }
             if (response.data?.success && Array.isArray(response.data.data)) {
@@ -119,26 +119,26 @@ class DeviceService {
                 console.warn('=== UNEXPECTED RESPONSE FORMAT ===')
                 console.warn('Full response.data:', JSON.stringify(response.data, null, 2))
                 console.warn('Attempting fallback extraction...')
-                
+
                 // Try multiple fallback strategies
-                const fallbackDevices = 
-                    response.data?.data || 
-                    response.data?.devices || 
+                const fallbackDevices =
+                    response.data?.data ||
+                    response.data?.devices ||
                     (Array.isArray(response.data) ? response.data : []) ||
                     []
-                
+
                 devicesData = {
                     devices: Array.isArray(fallbackDevices) ? fallbackDevices : [],
                     pagination: null
                 }
             }
-            
+
             console.log('=== Processed Devices Data ===')
             console.log('Devices count:', devicesData.devices?.length || 0)
             console.log('First device sample:', devicesData.devices?.[0] || 'No devices')
             console.log('Pagination:', devicesData.pagination)
             console.log('==================')
-            
+
             return devicesData
         } catch (error) {
             console.error('Get Devices Error Details:', {
@@ -173,7 +173,7 @@ class DeviceService {
         try {
             const response = await api.get(`/api/devices/${id}`)
             console.log('Get Device By ID Response:', response.data)
-            
+
             // Handle different response formats
             if (response.data?.data) {
                 return response.data.data
@@ -199,7 +199,7 @@ class DeviceService {
         try {
             const response = await api.post('/api/devices', deviceData)
             console.log('Create Device Response:', response.data)
-            
+
             // Handle different response formats
             if (response.data?.data) {
                 return response.data.data
@@ -232,7 +232,7 @@ class DeviceService {
         try {
             const response = await api.put(`/api/devices/${id}`, deviceData)
             console.log('Update Device Response:', response.data)
-            
+
             // Handle different response formats
             if (response.data?.data) {
                 return response.data.data
