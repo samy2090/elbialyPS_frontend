@@ -420,12 +420,38 @@ export const useSessionStore = defineStore('session', {
 
       try {
         const response = await SessionService.updateActivity(sessionId, activityId, activityData)
-        const updatedActivity = response.data || response
+        
+        // Handle different response formats
+        let updatedActivity = null
+        if (response?.data?.data) {
+          // Format: { message: "...", data: { ...activity } }
+          updatedActivity = response.data.data
+        } else if (response?.data) {
+          // Format: { data: { ...activity } } or direct activity object
+          updatedActivity = response.data
+        } else if (response?.id) {
+          // Direct activity object
+          updatedActivity = response
+        }
 
         // Update the activity in the activities list
-        const index = this.activities.findIndex(a => a.id === activityId)
-        if (index !== -1) {
-          this.activities[index] = updatedActivity
+        if (updatedActivity) {
+          const index = this.activities.findIndex(a => a.id === activityId)
+          if (index !== -1) {
+            this.activities[index] = updatedActivity
+          }
+        }
+
+        // Update activity in sessions list if it exists
+        const sessionIndex = this.sessions.findIndex(s => s.id === sessionId)
+        if (sessionIndex !== -1 && updatedActivity) {
+          const session = this.sessions[sessionIndex]
+          if (session.activities && Array.isArray(session.activities)) {
+            const activityIndex = session.activities.findIndex(a => a.id === activityId)
+            if (activityIndex !== -1) {
+              session.activities[activityIndex] = updatedActivity
+            }
+          }
         }
 
         // Refresh the current session to update activities
@@ -433,7 +459,7 @@ export const useSessionStore = defineStore('session', {
           await this.fetchSessionById(sessionId)
         }
 
-        return response
+        return { ...response, data: updatedActivity || response.data }
       } catch (error) {
         this.error = error.message || 'Failed to update activity'
         throw error

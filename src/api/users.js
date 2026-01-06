@@ -208,6 +208,21 @@ class UserService {
   }
 
   /**
+   * Create guest user (minimal data - name and role only)
+   * @param {Object} userData - User data with name and role
+   * @returns {Promise}
+   */
+  static async createGuestUser(userData) {
+    try {
+      const response = await api.post('/api/users/guest', userData)
+      return response.data
+    } catch (error) {
+      console.error('Create Guest User Error:', error)
+      throw new Error(error.response?.data?.message || 'Failed to create guest user')
+    }
+  }
+
+  /**
    * Update user
    * @param {number} id - User ID
    * @param {Object} userData - User data

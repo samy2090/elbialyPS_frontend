@@ -109,24 +109,6 @@
           <small v-if="!isEditing" class="field-hint">Activity will start at the current time when created</small>
         </div>
 
-        <!-- Price Per Hour Field -->
-        <div class="form-field">
-          <label class="field-label">
-            <svg class="label-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M12 2V22M17 5H9.5C8.57174 5 7.6815 5.36875 7.02513 6.02513C6.36875 6.6815 6 7.57174 6 8.5C6 9.42826 6.36875 10.3185 7.02513 10.9749C7.6815 11.6313 8.57174 12 9.5 12H14.5C15.4283 12 16.3185 12.3687 16.9749 13.0251C17.6313 13.6815 18 14.5717 18 15.5C18 16.4283 17.6313 17.3185 16.9749 17.9749C16.3185 18.6313 15.4283 19 14.5 19H6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            Price Per Hour
-          </label>
-          <input 
-            v-model="form.price_per_hour" 
-            type="number" 
-            step="0.01"
-            min="0"
-            class="form-input" 
-            placeholder="0.00"
-          />
-        </div>
-
         <!-- Form Actions -->
         <div class="form-actions">
           <button 
@@ -241,8 +223,7 @@ export default {
       activity_type: 'playing', // Default to playing
       device_id: '',
       mode: 'single',
-      started_at: getCurrentDateTime(),
-      price_per_hour: ''
+      started_at: getCurrentDateTime()
     })
     
     // Load devices for device dropdown
@@ -265,7 +246,6 @@ export default {
         form.value.device_id = props.activity.device_id || props.activity.device?.id || ''
         form.value.mode = props.activity.mode || 'single'
         form.value.started_at = props.activity.started_at ? convertToDatetimeLocal(props.activity.started_at) : getCurrentDateTime()
-        form.value.price_per_hour = props.activity.price_per_hour || ''
       } else {
         // For new activities, start time will be set by backend to current time
         form.value.started_at = ''
@@ -325,11 +305,6 @@ export default {
         // For editing, allow changing started_at
         if (isEditing.value && form.value.started_at) {
           submitData.started_at = convertToApiFormat(form.value.started_at)
-        }
-        
-        // Add optional fields
-        if (form.value.price_per_hour) {
-          submitData.price_per_hour = parseFloat(form.value.price_per_hour)
         }
         
         console.log('ActivityForm: Submitting data:', {

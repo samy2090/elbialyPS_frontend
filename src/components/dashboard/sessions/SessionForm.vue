@@ -18,6 +18,17 @@
         <span class="alert-message">{{ sessionStore.error }}</span>
       </div>
 
+      <!-- Success Alert -->
+      <div v-if="successMessage" class="success-alert">
+        <div class="alert-icon">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+            <polyline points="9,12 11,14 15,10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <span class="alert-message">{{ successMessage }}</span>
+      </div>
+
       <form @submit.prevent="handleSubmit" class="session-form form-container">
         <!-- Customer Field -->
         <div class="form-field">
@@ -29,16 +40,64 @@
             Customer
             <span class="required">*</span>
           </label>
-          <select 
-            v-model="form.customer_id" 
-            class="form-input"
-            required
-          >
-            <option value="">Select a customer</option>
-            <option v-for="user in users" :key="user.id" :value="user.id">
-              {{ user.name }} ({{ user.email }})
-            </option>
-          </select>
+          <div class="customer-search-wrapper">
+            <input 
+              v-model="customerSearchQuery"
+              @input="handleCustomerSearch"
+              @focus="showCustomerDropdown = true"
+              @blur="handleCustomerBlur"
+              type="text"
+              class="form-input"
+              :class="{ 'has-selection': selectedCustomer }"
+              placeholder="Type to search customers..."
+              required
+              autocomplete="off"
+            />
+            <div v-if="customerSearchLoading" class="search-loading">
+              <div class="loading-spinner small"></div>
+            </div>
+            <div 
+              v-if="showCustomerDropdown && (customerSearchResults.length > 0 || customerSearchQuery.length > 0)"
+              class="customer-dropdown"
+            >
+              <div 
+                v-if="customerSearchLoading"
+                class="dropdown-item loading-item"
+              >
+                <div class="loading-spinner small"></div>
+                <span>Searching...</span>
+              </div>
+              <div 
+                v-else-if="customerSearchResults.length === 0 && customerSearchQuery.length > 0 && canCreateNewCustomer"
+                class="dropdown-item create-new-customer"
+                @mousedown.prevent="createAndSelectCustomer"
+              >
+                <svg class="create-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                  <path d="M12 8V16M8 12H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <span>Create new customer: <strong>{{ customerSearchQuery.trim() }}</strong></span>
+              </div>
+              <div 
+                v-else-if="customerSearchResults.length === 0 && customerSearchQuery.length > 0 && !canCreateNewCustomer"
+                class="dropdown-item no-results"
+              >
+                No customers found
+              </div>
+              <div
+                v-for="customer in customerSearchResults"
+                :key="customer.id"
+                @mousedown.prevent="selectCustomer(customer)"
+                class="dropdown-item"
+                :class="{ 'selected': form.customer_id === customer.id }"
+              >
+                <div class="customer-info">
+                  <span class="customer-name">{{ customer.name }}</span>
+                  <span class="customer-email">{{ customer.email }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Device Field (Optional) -->
@@ -66,6 +125,50 @@
           </small>
           <small v-else class="field-hint" style="color: #f59e0b;">
             Chillout session - Customer will have drinks/snacks only
+          </small>
+        </div>
+
+        <!-- Mode Field (Only shown when device is selected) -->
+        <div class="form-field" v-if="form.device_id">
+          <label class="field-label">
+            <svg class="label-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
+              <path d="M9 9H15M9 15H15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            Mode
+          </label>
+          <select 
+            v-model="form.mode" 
+            class="form-input"
+          >
+            <option value="single">Single</option>
+            <option value="multi">Multi</option>
+          </select>
+          <small class="field-hint">
+            Select whether this is a single or multi-player session
+          </small>
+        </div>
+
+        <!-- Duration Field (Only shown when device is selected) -->
+        <div class="form-field" v-if="form.device_id">
+          <label class="field-label">
+            <svg class="label-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+              <polyline points="12,6 12,12 16,14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Session Duration (Optional)
+          </label>
+          <select 
+            v-model="form.duration_hours" 
+            class="form-input"
+          >
+            <option value="">No limit</option>
+            <option v-for="hours in durationOptions" :key="hours" :value="hours">
+              {{ formatDuration(hours) }}
+            </option>
+          </select>
+          <small class="field-hint">
+            Select how long the customer will use the device (0.5 to 3 hours)
           </small>
         </div>
 
@@ -106,8 +209,8 @@
           </select>
         </div>
 
-        <!-- Price and Discount Row -->
-        <div class="form-row">
+        <!-- Price and Discount Row (only shown when status is "ended") -->
+        <div class="form-row" v-if="form.status === 'ended'">
           <div class="form-field">
             <label class="field-label">
               <svg class="label-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -176,11 +279,12 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useUserStore } from '@/stores/userStore'
 import { useDeviceStore } from '@/stores/deviceStore'
 import { useAuthStore } from '@/stores/auth'
+import UserService from '@/api/users'
 
 export default {
   name: 'SessionForm',
@@ -201,6 +305,16 @@ export default {
     const users = ref([])
     const devices = ref([])
     
+    // Customer search state
+    const customerSearchQuery = ref('')
+    const customerSearchResults = ref([])
+    const customerSearchLoading = ref(false)
+    const showCustomerDropdown = ref(false)
+    const selectedCustomer = ref(null)
+    const creatingCustomer = ref(false)
+    const successMessage = ref('')
+    let searchDebounceTimer = null
+    
     // Filter available devices (those not in use in active activities)
     const availableDevices = computed(() => {
       return devices.value.filter(device => {
@@ -209,6 +323,61 @@ export default {
         return device.status === 'available' || device.status === 'in_use'
       })
     })
+    
+    // Duration options from 0.5 to 3 hours, incrementing by 0.5
+    const durationOptions = computed(() => {
+      const options = []
+      for (let hours = 0.5; hours <= 3; hours += 0.5) {
+        options.push(hours)
+      }
+      return options
+    })
+    
+    // Format duration for display
+    const formatDuration = (hours) => {
+      if (hours === 0.5) {
+        return '30 minutes'
+      } else if (hours === 1) {
+        return '1 hour'
+      } else {
+        return `${hours} hours`
+      }
+    }
+    
+    // Calculate ended_at based on started_at and duration_hours
+    const calculateEndDate = (durationHours) => {
+      if (!durationHours) {
+        return null
+      }
+      
+      try {
+        // For new sessions, use current time (backend will set started_at to current time)
+        // For editing, use the started_at from the form
+        let startDate
+        if (isEditing.value && form.value.started_at) {
+          startDate = new Date(form.value.started_at)
+        } else {
+          // For new sessions, backend sets started_at to current time, so we use current time too
+          startDate = new Date()
+        }
+        
+        // Add the duration hours (convert to milliseconds)
+        const endDate = new Date(startDate.getTime() + (parseFloat(durationHours) * 60 * 60 * 1000))
+        
+        // Convert to API format (Y-m-d H:i:s)
+        const year = endDate.getFullYear()
+        const month = String(endDate.getMonth() + 1).padStart(2, '0')
+        const day = String(endDate.getDate()).padStart(2, '0')
+        const hours = String(endDate.getHours()).padStart(2, '0')
+        const minutes = String(endDate.getMinutes()).padStart(2, '0')
+        const seconds = String(endDate.getSeconds()).padStart(2, '0')
+        
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
+      } catch (error) {
+        console.error('Error calculating end date:', error)
+        return null
+      }
+    }
     
     // Get current date/time in format YYYY-MM-DDTHH:mm for datetime-local input
     const getCurrentDateTime = () => {
@@ -252,7 +421,9 @@ export default {
       started_at: getCurrentDateTime(),
       status: 'active',
       total_price: '',
-      discount: ''
+      discount: '',
+      duration_hours: '',
+      mode: 'single'
     })
     
     // Load users for customer dropdown
@@ -263,6 +434,157 @@ export default {
       } catch (error) {
         console.error('Failed to load users:', error)
         users.value = []
+      }
+    }
+    
+    // Check if a customer with the same name (case-insensitive) exists
+    const customerNameExists = (name) => {
+      if (!name || name.trim().length === 0) return false
+      
+      const searchName = name.toLowerCase().trim()
+      const allUsers = users.value.length > 0 ? users.value : (userStore.getUsers || [])
+      
+      return allUsers.some(user => {
+        const userName = user.name?.toLowerCase().trim()
+        return userName === searchName
+      })
+    }
+    
+    // Computed property to check if we can create a new customer
+    const canCreateNewCustomer = computed(() => {
+      if (!customerSearchQuery.value || customerSearchQuery.value.trim().length === 0) {
+        return false
+      }
+      
+      // Only allow creation if no customer with the same name exists (case-insensitive)
+      return !customerNameExists(customerSearchQuery.value)
+    })
+    
+    // Search customers with debouncing (local filtering for performance)
+    const searchCustomers = async (query) => {
+      if (!query || query.trim().length === 0) {
+        customerSearchResults.value = []
+        return
+      }
+      
+      customerSearchLoading.value = true
+      
+      // Use setTimeout to allow UI to update before filtering
+      setTimeout(() => {
+        try {
+          // Filter customers locally (case-insensitive partial match)
+          const searchLower = query.toLowerCase().trim()
+          const allUsers = users.value.length > 0 ? users.value : (userStore.getUsers || [])
+          
+          customerSearchResults.value = allUsers.filter(user => {
+            const nameMatch = user.name?.toLowerCase().includes(searchLower)
+            const emailMatch = user.email?.toLowerCase().includes(searchLower)
+            return nameMatch || emailMatch
+          })
+        } catch (error) {
+          console.error('Failed to search customers:', error)
+          customerSearchResults.value = []
+        } finally {
+          customerSearchLoading.value = false
+        }
+      }, 50) // Small delay to show loading state
+    }
+    
+    // Debounced search handler
+    const handleCustomerSearch = () => {
+      // Clear existing timer
+      if (searchDebounceTimer) {
+        clearTimeout(searchDebounceTimer)
+      }
+      
+      // If query is empty, clear results
+      if (!customerSearchQuery.value || customerSearchQuery.value.trim().length === 0) {
+        customerSearchResults.value = []
+        selectedCustomer.value = null
+        form.value.customer_id = ''
+        showCustomerDropdown.value = false
+        return
+      }
+      
+      // Show dropdown when user starts typing
+      showCustomerDropdown.value = true
+      
+      // Set new timer for debounced search
+      searchDebounceTimer = setTimeout(() => {
+        searchCustomers(customerSearchQuery.value)
+      }, 300) // 300ms debounce delay
+    }
+    
+    // Select customer from dropdown
+    const selectCustomer = (customer) => {
+      selectedCustomer.value = customer
+      form.value.customer_id = customer.id
+      customerSearchQuery.value = customer.name
+      customerSearchResults.value = []
+      showCustomerDropdown.value = false
+    }
+    
+    // Handle blur event (with delay to allow click on dropdown items)
+    const handleCustomerBlur = () => {
+      // Delay hiding dropdown to allow click events on dropdown items
+      setTimeout(() => {
+        showCustomerDropdown.value = false
+      }, 200)
+    }
+    
+    // Create new customer and select it
+    const createAndSelectCustomer = async () => {
+      const customerName = customerSearchQuery.value.trim()
+      
+      if (!customerName || customerName.length === 0) {
+        return
+      }
+      
+      // Double-check that customer doesn't exist (case-insensitive)
+      if (customerNameExists(customerName)) {
+        sessionStore.error = 'A customer with this name already exists'
+        return
+      }
+      
+      creatingCustomer.value = true
+      customerSearchLoading.value = true
+      
+      try {
+        // Create new guest customer with name and role="guest" only
+        const newCustomerData = {
+          name: customerName,
+          role: 'guest'
+        }
+        
+        // Use the guest user endpoint which only requires name and role
+        const response = await UserService.createGuestUser(newCustomerData)
+        const newCustomer = response.data || response.user || response
+        
+        // Refresh users list from store to include the new customer
+        await loadUsers()
+        
+        // Ensure we have the new customer with all its properties
+        const createdCustomer = users.value.find(u => u.id === newCustomer.id) || newCustomer
+        
+        // Select the newly created customer
+        selectedCustomer.value = createdCustomer
+        form.value.customer_id = createdCustomer.id
+        customerSearchQuery.value = createdCustomer.name
+        customerSearchResults.value = []
+        showCustomerDropdown.value = false
+        
+        // Show success message
+        successMessage.value = `Customer "${customerName}" created successfully`
+        setTimeout(() => {
+          successMessage.value = ''
+        }, 3000)
+        
+      } catch (error) {
+        console.error('Failed to create customer:', error)
+        sessionStore.error = error.message || 'Failed to create customer'
+      } finally {
+        creatingCustomer.value = false
+        customerSearchLoading.value = false
       }
     }
     
@@ -277,17 +599,38 @@ export default {
       }
     }
     
+    // Watch device_id to clear duration_hours and reset mode when device is removed
+    watch(() => form.value.device_id, (newDeviceId) => {
+      if (!newDeviceId) {
+        form.value.duration_hours = ''
+        form.value.mode = 'single'
+      }
+    })
+    
     // Populate form if editing existing session
     onMounted(async () => {
       await Promise.all([loadUsers(), loadDevices()])
       
       if (props.session) {
-        form.value.customer_id = props.session.customer_id || props.session.customer?.id || ''
+        const customerId = props.session.customer_id || props.session.customer?.id || ''
+        form.value.customer_id = customerId
+        
+        // Set selected customer name if editing
+        if (customerId) {
+          const customer = users.value.find(u => u.id === customerId)
+          if (customer) {
+            selectedCustomer.value = customer
+            customerSearchQuery.value = customer.name
+          }
+        }
+        
         form.value.device_id = props.session.device_id || (props.session.activities?.[0]?.device_id) || (props.session.activities?.[0]?.device?.id) || ''
         form.value.started_at = props.session.started_at ? convertToDatetimeLocal(props.session.started_at) : getCurrentDateTime()
         form.value.status = props.session.status || 'active'
         form.value.total_price = props.session.total_price || ''
         form.value.discount = props.session.discount || ''
+        form.value.duration_hours = ''
+        form.value.mode = props.session.activities?.[0]?.mode || 'single'
       }
     })
     
@@ -328,12 +671,23 @@ export default {
           submitData.device_id = Number(form.value.device_id)
         }
         
+        // Add duration field at root level (backend expects this to calculate ended_at)
+        if (form.value.duration_hours && form.value.duration_hours !== '') {
+          submitData.duration = parseFloat(form.value.duration_hours)
+          console.log('Sending duration to backend:', {
+            duration_hours: form.value.duration_hours,
+            duration: submitData.duration
+          })
+        }
+        
         // Add activity data for the first activity (only when creating)
+        // Note: Backend only extracts mode from activity_data, then discards it
+        // The duration field above is used by backend to calculate ended_at
         if (!isEditing.value) {
           submitData.activity_data = {
             activity_type: sessionType,
             device_id: form.value.device_id ? Number(form.value.device_id) : null,
-            mode: 'single', // Default mode for first activity
+            mode: form.value.mode || 'single',
           }
         }
         
@@ -349,6 +703,9 @@ export default {
         if (form.value.discount) {
           submitData.discount = parseFloat(form.value.discount)
         }
+        
+        // Debug: Log the data being sent
+        console.log('Submitting session data:', JSON.stringify(submitData, null, 2))
         
         if (isEditing.value) {
           // Editing existing session
@@ -371,7 +728,21 @@ export default {
       users,
       devices,
       availableDevices,
-      handleSubmit
+      durationOptions,
+      formatDuration,
+      handleSubmit,
+      customerSearchQuery,
+      customerSearchResults,
+      customerSearchLoading,
+      showCustomerDropdown,
+      selectedCustomer,
+      canCreateNewCustomer,
+      creatingCustomer,
+      successMessage,
+      handleCustomerSearch,
+      selectCustomer,
+      handleCustomerBlur,
+      createAndSelectCustomer
     }
   }
 }
