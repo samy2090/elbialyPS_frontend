@@ -19,32 +19,7 @@
       </div>
 
       <form @submit.prevent="handleSubmit" class="activity-form form-container">
-        <!-- Activity Type Field -->
-        <div class="form-field">
-          <label class="field-label">
-            <svg class="label-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2"/>
-              <path d="M3 10H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            </svg>
-            Activity Type
-            <span class="required">*</span>
-          </label>
-          <select 
-            v-model="form.activity_type" 
-            class="form-input"
-            required
-            @change="onActivityTypeChange"
-          >
-            <option value="playing">Playing (with device)</option>
-            <option value="chillout">Chillout (drinks/snacks only)</option>
-          </select>
-          <small class="field-hint">
-            <span v-if="form.activity_type === 'playing'">Customer will use a device</span>
-            <span v-else>Customer will have drinks/snacks only</span>
-          </small>
-        </div>
-
-        <!-- Device Field (Required for playing type) -->
+        <!-- Device Field -->
         <div class="form-field">
           <label class="field-label">
             <svg class="label-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -52,33 +27,33 @@
               <path d="M12 18H12.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             </svg>
             Device
-            <span v-if="form.activity_type === 'playing'" class="required">*</span>
+            <span class="field-hint" style="font-weight: normal;">(Optional - for chillout activities without device)</span>
           </label>
           <select 
             v-model="form.device_id" 
             class="form-input"
-            :required="form.activity_type === 'playing'"
-            :disabled="form.activity_type === 'chillout'"
           >
-            <option value="">{{ form.activity_type === 'chillout' ? 'No device needed' : 'Select a device' }}</option>
+            <option value="">No device (Chillout activity)</option>
             <option v-for="device in availableDevices" :key="device.id" :value="device.id">
               {{ device.name }} ({{ device.type }})
               <span v-if="device.status === 'in_use'"> - In Use</span>
             </option>
           </select>
-          <small v-if="form.activity_type === 'chillout'" class="field-hint">No device needed for chillout activities</small>
-          <small v-else-if="form.activity_type === 'playing' && !form.device_id" class="field-hint" style="color: #ef4444;">
-            Device is required for playing activities
+          <small v-if="!devices.length" class="field-hint">Loading devices...</small>
+          <small v-else-if="form.device_id" class="field-hint" style="color: #10b981;">
+            Playing activity - Customer will use a device
+          </small>
+          <small v-else class="field-hint" style="color: #f59e0b;">
+            Chillout activity - Customer will have drinks/snacks only
           </small>
         </div>
 
-        <!-- Mode Field -->
-        <div class="form-field">
+        <!-- Mode Field (Only shown when device is selected) -->
+        <div class="form-field" v-if="form.device_id">
           <label class="field-label">
             <svg class="label-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-              <circle cx="12" cy="12" r="6" stroke="currentColor" stroke-width="2"/>
-              <circle cx="12" cy="12" r="2" fill="currentColor"/>
+              <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
+              <path d="M9 9H15M9 15H15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             </svg>
             Mode
           </label>
@@ -88,6 +63,51 @@
           >
             <option value="single">Single</option>
             <option value="multi">Multi</option>
+          </select>
+          <small class="field-hint">
+            Select whether this is a single or multi-player activity
+          </small>
+        </div>
+
+        <!-- Duration Field (Only shown when device is selected) -->
+        <div class="form-field" v-if="form.device_id">
+          <label class="field-label">
+            <svg class="label-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+              <polyline points="12,6 12,12 16,14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Activity Duration (Optional)
+          </label>
+          <select 
+            v-model="form.duration_hours" 
+            class="form-input"
+          >
+            <option value="">No limit</option>
+            <option v-for="hours in durationOptions" :key="hours" :value="hours">
+              {{ formatDuration(hours) }}
+            </option>
+          </select>
+          <small class="field-hint">
+            Select how long the customer will use the device (0.5 to 3 hours)
+          </small>
+        </div>
+
+        <!-- Status Field -->
+        <div class="form-field">
+          <label class="field-label">
+            <svg class="label-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+              <polyline points="9,12 11,14 15,10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Status
+          </label>
+          <select 
+            v-model="form.status" 
+            class="form-input"
+          >
+            <option value="active">Active</option>
+            <option value="paused">Paused</option>
+            <option value="ended">Ended</option>
           </select>
         </div>
 
@@ -142,7 +162,7 @@
 </template>
 
 <script>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useDeviceStore } from '@/stores/deviceStore'
 
@@ -174,14 +194,6 @@ export default {
         return device.status === 'available' || device.status === 'in_use'
       })
     })
-    
-    // Handle activity type change
-    const onActivityTypeChange = () => {
-      // If changing to chillout, clear device selection
-      if (form.value.activity_type === 'chillout') {
-        form.value.device_id = ''
-      }
-    }
     
     // Get current date/time in format YYYY-MM-DDTHH:mm for datetime-local input
     const getCurrentDateTime = () => {
@@ -219,11 +231,40 @@ export default {
       return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
     }
     
+    // Duration options from 0.5 to 3 hours, incrementing by 0.5
+    const durationOptions = computed(() => {
+      const options = []
+      for (let hours = 0.5; hours <= 3; hours += 0.5) {
+        options.push(hours)
+      }
+      return options
+    })
+    
+    // Format duration for display
+    const formatDuration = (hours) => {
+      if (hours === 0.5) {
+        return '30 minutes'
+      } else if (hours === 1) {
+        return '1 hour'
+      } else {
+        return `${hours} hours`
+      }
+    }
+    
     const form = ref({
-      activity_type: 'playing', // Default to playing
       device_id: '',
       mode: 'single',
-      started_at: getCurrentDateTime()
+      started_at: getCurrentDateTime(),
+      duration_hours: '',
+      status: 'active'
+    })
+    
+    // Watch device_id to clear duration_hours and reset mode when device is removed
+    watch(() => form.value.device_id, (newDeviceId) => {
+      if (!newDeviceId) {
+        form.value.duration_hours = ''
+        form.value.mode = 'single'
+      }
     })
     
     // Load devices for device dropdown
@@ -242,13 +283,16 @@ export default {
       await loadDevices()
       
       if (props.activity) {
-        form.value.activity_type = props.activity.activity_type || 'playing'
         form.value.device_id = props.activity.device_id || props.activity.device?.id || ''
         form.value.mode = props.activity.mode || 'single'
         form.value.started_at = props.activity.started_at ? convertToDatetimeLocal(props.activity.started_at) : getCurrentDateTime()
+        form.value.status = props.activity.status || 'active'
+        form.value.duration_hours = ''
       } else {
         // For new activities, start time will be set by backend to current time
         form.value.started_at = ''
+        form.value.status = 'active'
+        form.value.duration_hours = ''
       }
     })
     
@@ -256,49 +300,67 @@ export default {
       try {
         sessionStore.clearError()
         
-        // Validate session ID
-        if (!props.sessionId || props.sessionId === 0) {
-          sessionStore.error = 'Invalid session ID. Please select a valid session.'
-          console.error('Invalid sessionId:', props.sessionId)
-          return
-        }
-        
-        // Validate required fields
-        if (form.value.activity_type === 'playing' && !form.value.device_id) {
-          sessionStore.error = 'Device is required for playing activities'
-          return
-        }
-        
-        // Validate activity_type
-        if (!form.value.activity_type || !['playing', 'chillout'].includes(form.value.activity_type)) {
-          sessionStore.error = 'Please select a valid activity type'
-          return
-        }
-        
-        // Prepare submit data
-        // Laravel validation 'exists:sessions,id' typically works with integer
-        // Ensure activity_type is lowercase for enum validation
-        const submitData = {
-          session_id: parseInt(props.sessionId, 10), // Send as integer for Laravel exists validation
-          activity_type: String(form.value.activity_type || 'playing').toLowerCase(), // Ensure lowercase
-          mode: String(form.value.mode || 'single').toLowerCase(),
-        }
-        
-        console.log('ActivityForm: Preparing submit data', {
+        // Validate and convert session ID
+        console.log('ActivityForm: Validating session ID:', {
           sessionId: props.sessionId,
           sessionIdType: typeof props.sessionId,
-          submitDataSessionId: submitData.session_id,
-          submitDataSessionIdType: typeof submitData.session_id,
-          activity_type: submitData.activity_type,
-          activity_typeType: typeof submitData.activity_type
+          isNull: props.sessionId === null,
+          isUndefined: props.sessionId === undefined,
+          isZero: props.sessionId === 0,
+          isNaN: isNaN(Number(props.sessionId))
         })
         
-        // Add device_id if activity type is playing
-        if (form.value.activity_type === 'playing' && form.value.device_id) {
+        if (!props.sessionId || props.sessionId === 0 || props.sessionId === null || props.sessionId === undefined) {
+          sessionStore.error = 'Invalid session ID. Please select a valid session.'
+          console.error('Invalid sessionId - missing or zero:', props.sessionId)
+          return
+        }
+        
+        // Convert to number
+        const sessionIdNum = Number(props.sessionId)
+        
+        // Validate session ID is a valid positive integer
+        if (isNaN(sessionIdNum) || sessionIdNum <= 0 || !Number.isInteger(sessionIdNum)) {
+          sessionStore.error = `Invalid session ID: ${props.sessionId}. Please select a valid session.`
+          console.error('Invalid sessionId after conversion:', {
+            original: props.sessionId,
+            converted: sessionIdNum,
+            type: typeof sessionIdNum,
+            isInteger: Number.isInteger(sessionIdNum)
+          })
+          return
+        }
+        
+        console.log('ActivityForm: Session ID validated:', {
+          sessionId: sessionIdNum,
+          sessionIdType: typeof sessionIdNum,
+          isInteger: Number.isInteger(sessionIdNum)
+        })
+        
+        // Determine type based on device selection (like SessionForm)
+        const type = form.value.device_id ? 'playing' : 'chillout'
+        
+        const submitData = {
+          session_id: sessionIdNum, // Send as integer for Laravel exists validation
+          type: type, // 'playing' or 'chillout' based on device selection
+          mode: String(form.value.mode || 'single').toLowerCase().trim(),
+          status: form.value.status || 'active',
+        }
+        
+        // Add activity_type: 'device_use' when device is selected (for playing type)
+        if (form.value.device_id) {
+          submitData.activity_type = 'device_use'
           submitData.device_id = Number(form.value.device_id)
-        } else if (form.value.activity_type === 'chillout') {
-          // For chillout, ensure no device is set (don't include device_id at all)
-          // Don't set device_id to null, just omit it
+        }
+        // For chillout (no device), activity_type is nullable so we don't send it
+        
+        // Add duration field at root level (backend expects this to calculate ended_at)
+        if (form.value.duration_hours && form.value.duration_hours !== '') {
+          submitData.duration = parseFloat(form.value.duration_hours)
+          console.log('Sending duration to backend:', {
+            duration_hours: form.value.duration_hours,
+            duration: submitData.duration
+          })
         }
         
         // For new activities, don't send started_at - backend sets it to current time
@@ -308,18 +370,24 @@ export default {
         }
         
         console.log('ActivityForm: Submitting data:', {
-          sessionId: props.sessionId,
+          sessionId: sessionIdNum,
+          sessionIdType: typeof sessionIdNum,
           isEditing: isEditing.value,
           submitData
         })
         
         if (isEditing.value) {
           // Editing existing activity
-          await sessionStore.updateActivity(props.sessionId, props.activity.id, submitData)
+          await sessionStore.updateActivity(sessionIdNum, props.activity.id, submitData)
           emit('activity-updated')
         } else {
           // Creating new activity
-          await sessionStore.createActivity(props.sessionId, submitData)
+          console.log('Creating activity with:', {
+            sessionId: sessionIdNum,
+            submitData,
+            url: `/api/sessions/${sessionIdNum}/activities`
+          })
+          await sessionStore.createActivity(sessionIdNum, submitData)
           emit('activity-created')
         }
       } catch (error) {
@@ -343,7 +411,8 @@ export default {
       sessionStore,
       devices,
       availableDevices,
-      onActivityTypeChange,
+      durationOptions,
+      formatDuration,
       handleSubmit
     }
   }

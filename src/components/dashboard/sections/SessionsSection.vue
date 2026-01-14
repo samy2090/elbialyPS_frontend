@@ -208,7 +208,7 @@
             </div>
             <!-- Timer Display for Single Activity Sessions -->
             <div v-if="shouldShowSessionTimer(session) && session.activities && session.activities[0] && calculateTime(session.activities[0])" class="session-timer-wrapper">
-              <div class="futuristic-timer">
+              <div class="futuristic-timer" :class="{ 'timer-expired': calculateTime(session.activities[0])?.expired }">
                 <div class="timer-display">
                   <div class="timer-unit">
                     <span class="timer-value">{{ String(calculateTime(session.activities[0])?.hours || 0).padStart(2, '0') }}</span>
@@ -219,9 +219,11 @@
                     <span class="timer-value">{{ String(calculateTime(session.activities[0])?.minutes || 0).padStart(2, '0') }}</span>
                     <span class="timer-label">M</span>
                   </div>
-                  <span v-if="calculateTime(session.activities[0])?.isCountdown" class="timer-countdown-indicator">▼</span>
+                  <span v-if="calculateTime(session.activities[0])?.isCountdown && !calculateTime(session.activities[0])?.expired" class="timer-countdown-indicator">▼</span>
+                  <span v-else-if="calculateTime(session.activities[0])?.expired" class="timer-expired-indicator" title="Time's up!">⏰</span>
                   <span v-else class="timer-countup-indicator">▲</span>
                 </div>
+                <div v-if="calculateTime(session.activities[0])?.expired" class="timer-expired-message">Time's Up!</div>
               </div>
             </div>
             <div class="session-meta">
@@ -338,12 +340,12 @@
                         </span>
                       </div>
                       <div class="activity-header-right">
-                        <span :class="getActivityStatusClass(activity)" class="status-badge small">
-                          {{ activity.status }}
-                        </span>
+                      <span :class="getActivityStatusClass(activity)" class="status-badge small">
+                        {{ activity.status }}
+                      </span>
                         <!-- Timer Display for Activities -->
                         <div v-if="shouldShowActivityTimer(activity) && calculateTime(activity)" class="activity-timer-wrapper">
-                          <div class="futuristic-timer small">
+                          <div class="futuristic-timer small" :class="{ 'timer-expired': calculateTime(activity)?.expired }">
                             <div class="timer-display">
                               <div class="timer-unit">
                                 <span class="timer-value">{{ String(calculateTime(activity)?.hours || 0).padStart(2, '0') }}</span>
@@ -354,9 +356,11 @@
                                 <span class="timer-value">{{ String(calculateTime(activity)?.minutes || 0).padStart(2, '0') }}</span>
                                 <span class="timer-label">M</span>
                               </div>
-                              <span v-if="calculateTime(activity)?.isCountdown" class="timer-countdown-indicator">▼</span>
+                              <span v-if="calculateTime(activity)?.isCountdown && !calculateTime(activity)?.expired" class="timer-countdown-indicator">▼</span>
+                              <span v-else-if="calculateTime(activity)?.expired" class="timer-expired-indicator" title="Time's up!">⏰</span>
                               <span v-else class="timer-countup-indicator">▲</span>
                             </div>
+                            <div v-if="calculateTime(activity)?.expired" class="timer-expired-message">Time's Up!</div>
                           </div>
                         </div>
                       </div>
@@ -455,6 +459,19 @@
                 </div>
                 <div v-else class="expanded-empty-activities">
                   <p>No activities in this session.</p>
+                </div>
+                <!-- Create Activity Button (shown when session is active or paused) -->
+                <div v-if="session.status === 'active' || session.status === 'paused'" class="create-activity-section">
+                  <button 
+                    @click.stop="openCreateActivityForSession(session)" 
+                    class="action-btn primary create-activity-btn"
+                  >
+                    <svg class="btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M12 5V19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      <path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Create New Activity
+                  </button>
                 </div>
               </div>
             </div>
@@ -816,6 +833,11 @@ const loadSessions = async (page = 1) => {
       per_page: perPage.value
     })
     sessionsLoaded.value = true
+    
+    // Clear expired activities handled set when sessions are refreshed
+    // This allows re-checking activities after refresh
+    expiredActivitiesHandled.value.clear()
+    
     console.log('SessionsSection: Sessions loaded. Count:', sessionStore.getSessions.length)
     
     if (sessionStore.getSessions.length === 0) {
@@ -1240,6 +1262,66 @@ const openCreateActivityModalFromEdit = () => {
   showCreateActivityModal.value = true
 }
 
+const openCreateActivityForSession = async (session) => {
+  try {
+    // Ensure we have the full session with ID
+    if (!session || !session.id) {
+      console.error('Session does not have an ID:', session)
+      showSuccessMessage('Error: Session ID is missing')
+      return
+    }
+    
+    // Convert session ID to number to ensure it's valid
+    const sessionIdNum = Number(session.id)
+    if (!sessionIdNum || sessionIdNum <= 0 || isNaN(sessionIdNum)) {
+      console.error('Invalid session ID:', session.id, 'Type:', typeof session.id)
+      showSuccessMessage('Error: Invalid session ID')
+      return
+    }
+    
+    console.log('Opening create activity modal - Initial session:', {
+      sessionId: sessionIdNum,
+      sessionIdType: typeof sessionIdNum,
+      session: session
+    })
+    
+    // Fetch full session details to ensure we have all data and session exists
+    await sessionStore.fetchSessionById(sessionIdNum)
+    const fullSession = sessionStore.getCurrentSession || session
+    
+    // Verify the fetched session has a valid ID
+    if (!fullSession || !fullSession.id) {
+      console.error('Fetched session does not have an ID:', fullSession)
+      showSuccessMessage('Error: Session not found')
+      return
+    }
+    
+    // Ensure the ID is a number
+    const finalSessionId = Number(fullSession.id)
+    if (!finalSessionId || finalSessionId <= 0 || isNaN(finalSessionId)) {
+      console.error('Fetched session has invalid ID:', fullSession.id)
+      showSuccessMessage('Error: Invalid session ID')
+      return
+    }
+    
+    // Set selectedSession to the full session so the activity form can access it
+    selectedSession.value = {
+      ...fullSession,
+      id: finalSessionId // Ensure ID is a number
+    }
+    showCreateActivityModal.value = true
+    
+    console.log('Opening create activity modal for session:', {
+      sessionId: finalSessionId,
+      sessionIdType: typeof finalSessionId,
+      session: selectedSession.value
+    })
+  } catch (error) {
+    console.error('Failed to open create activity modal:', error)
+    showSuccessMessage('Failed to open activity form: ' + (error.message || 'Unknown error'))
+  }
+}
+
 const editActivityFromEditModal = (activity) => {
   editingActivity.value = activity
   // Ensure we have the session ID
@@ -1386,13 +1468,59 @@ const refreshExpandedSession = async (sessionId) => {
 // Timer functionality for real-time updates
 const currentTime = ref(new Date())
 let timerInterval = null
+const expiredActivitiesHandled = ref(new Set()) // Track activities we've already auto-ended
 
 // Update current time every second
 const startTimer = () => {
   if (timerInterval) return
   timerInterval = setInterval(() => {
     currentTime.value = new Date()
+    // Check for expired activities and auto-end them
+    checkAndEndExpiredActivities()
   }, 1000)
+}
+
+// Check and auto-end expired activities
+const checkAndEndExpiredActivities = async () => {
+  if (!sessionStore.getSessions || sessionStore.getSessions.length === 0) return
+  
+  // Check all sessions and their activities
+  for (const session of sessionStore.getSessions) {
+    if (!session.activities || session.activities.length === 0) continue
+    
+    for (const activity of session.activities) {
+      // Skip if already handled or already ended
+      const activityKey = `${session.id}-${activity.id}`
+      if (expiredActivitiesHandled.value.has(activityKey)) continue
+      if (activity.status === 'ended') continue
+      
+      // Check if activity has expired (has ended_at and it's in the past)
+      if (activity.ended_at && activity.status === 'active') {
+        const endTime = new Date(activity.ended_at)
+        const now = currentTime.value
+        
+        if (endTime.getTime() <= now.getTime()) {
+          // Activity has expired - mark as handled and trigger API call
+          expiredActivitiesHandled.value.add(activityKey)
+          
+          try {
+            // Call API to end the activity
+            await sessionStore.endActivity(session.id, activity.id)
+            
+            // Refresh the session data to update the UI
+            await refreshExpandedSession(session.id)
+            
+            // Also refresh the sessions list
+            await loadSessions(currentPage.value)
+          } catch (error) {
+            console.error('Failed to auto-end expired activity:', error)
+            // Remove from handled set so we can retry
+            expiredActivitiesHandled.value.delete(activityKey)
+          }
+        }
+      }
+    }
+  }
 }
 
 // Calculate time display for session or activity
@@ -1520,6 +1648,49 @@ defineEmits(['session-selected', 'session-created', 'session-updated'])
   
   .mobile-only {
     display: none !important;
+  }
+}
+
+/* Timer expired styles */
+.timer-expired {
+  animation: pulse-expired 2s ease-in-out infinite;
+  border-color: #ef4444 !important;
+}
+
+.timer-expired .timer-display {
+  color: #ef4444;
+}
+
+.timer-expired-indicator {
+  color: #ef4444;
+  font-size: 1.2em;
+  animation: blink 1s ease-in-out infinite;
+}
+
+.timer-expired-message {
+  font-size: 0.75rem;
+  color: #ef4444;
+  font-weight: 600;
+  text-align: center;
+  margin-top: 0.25rem;
+  animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes pulse-expired {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(239, 68, 68, 0);
+  }
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
   }
 }
 </style>

@@ -436,9 +436,9 @@ export const useSessionStore = defineStore('session', {
 
         // Update the activity in the activities list
         if (updatedActivity) {
-          const index = this.activities.findIndex(a => a.id === activityId)
-          if (index !== -1) {
-            this.activities[index] = updatedActivity
+        const index = this.activities.findIndex(a => a.id === activityId)
+        if (index !== -1) {
+          this.activities[index] = updatedActivity
           }
         }
 
