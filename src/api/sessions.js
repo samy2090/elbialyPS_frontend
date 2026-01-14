@@ -516,6 +516,93 @@ class SessionService {
             throw new Error(error.response?.data?.message || 'Failed to remove user from activity')
         }
     }
+
+    // ==================== Activity Products Methods ====================
+
+    /**
+     * Get all products for an activity
+     * @param {number} sessionId - Session ID
+     * @param {number} activityId - Activity ID
+     * @returns {Promise}
+     */
+    static async getActivityProducts(sessionId, activityId) {
+        try {
+            const response = await api.get(`/api/sessions/${sessionId}/activities/${activityId}/products`)
+            return response.data
+        } catch (error) {
+            console.error('Get Activity Products Error:', error)
+            throw new Error(error.response?.data?.message || 'Failed to fetch activity products')
+        }
+    }
+
+    /**
+     * Add product to activity
+     * @param {number} sessionId - Session ID
+     * @param {number} activityId - Activity ID
+     * @param {Object} data - Product data (product_id, quantity, ordered_by_user_id)
+     * @returns {Promise}
+     */
+    static async addProductToActivity(sessionId, activityId, data) {
+        try {
+            const response = await api.post(`/api/sessions/${sessionId}/activities/${activityId}/products`, data)
+            return response.data
+        } catch (error) {
+            console.error('Add Product To Activity Error:', error)
+            throw new Error(error.response?.data?.message || 'Failed to add product to activity')
+        }
+    }
+
+    /**
+     * Update product order in activity
+     * @param {number} sessionId - Session ID
+     * @param {number} activityId - Activity ID
+     * @param {number} productOrderId - Product order ID
+     * @param {Object} data - Product data (product_id, quantity, ordered_by_user_id)
+     * @returns {Promise}
+     */
+    static async updateActivityProduct(sessionId, activityId, productOrderId, data) {
+        try {
+            const response = await api.put(`/api/sessions/${sessionId}/activities/${activityId}/products/${productOrderId}`, data)
+            return response.data
+        } catch (error) {
+            console.error('Update Activity Product Error:', error)
+            throw new Error(error.response?.data?.message || 'Failed to update activity product')
+        }
+    }
+
+    /**
+     * Delete product order from activity
+     * @param {number} sessionId - Session ID
+     * @param {number} activityId - Activity ID
+     * @param {number} productOrderId - Product order ID
+     * @returns {Promise}
+     */
+    static async deleteActivityProduct(sessionId, activityId, productOrderId) {
+        try {
+            const response = await api.delete(`/api/sessions/${sessionId}/activities/${activityId}/products/${productOrderId}`)
+            return response.data
+        } catch (error) {
+            console.error('Delete Activity Product Error:', error)
+            throw new Error(error.response?.data?.message || 'Failed to delete activity product')
+        }
+    }
+
+    /**
+     * Get products ordered by a specific user in an activity
+     * @param {number} sessionId - Session ID
+     * @param {number} activityId - Activity ID
+     * @param {number} userId - User ID
+     * @returns {Promise}
+     */
+    static async getActivityProductsByUser(sessionId, activityId, userId) {
+        try {
+            const response = await api.get(`/api/sessions/${sessionId}/activities/${activityId}/products/user/${userId}`)
+            return response.data
+        } catch (error) {
+            console.error('Get Activity Products By User Error:', error)
+            throw new Error(error.response?.data?.message || 'Failed to fetch user products')
+        }
+    }
 }
 
 export default SessionService

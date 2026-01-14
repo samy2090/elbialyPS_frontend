@@ -388,21 +388,146 @@
                       <div class="activity-card-users">
                         <div class="users-label">Users:</div>
                         <div v-if="activity.activity_users && activity.activity_users.length > 0">
-                          <div v-for="au in activity.activity_users" :key="au.id" class="activity-user-card">
-                            <span class="user-name">{{ au.user?.name || 'Unknown' }}</span>
-                            <span v-if="au.duration_hours" class="user-duration">({{ formatDuration(au.duration_hours) || au.duration_formatted }})</span>
-                            <button 
-                              v-if="canRemoveUserFromActivity(session, activity, au.user_id)"
-                              @click.stop="removeUserFromActivity(session, activity, au.user_id)" 
-                              class="user-remove-btn"
-                              title="Remove user"
+                          <template v-for="au in activity.activity_users" :key="au.id">
+                            <div class="activity-user-card">
+                              <span 
+                                @click="toggleUserProducts(session, activity, au.user_id)"
+                                class="user-name-clickable"
+                                :class="{ 'expanded': isUserProductsExpanded(session, activity, au.user_id) }"
+                              >
+                                {{ au.user?.name || 'Unknown' }}
+                              </span>
+                              <span v-if="au.duration_hours" class="user-duration">({{ formatDuration(au.duration_hours) || au.duration_formatted }})</span>
+                              <button 
+                                v-if="canRemoveUserFromActivity(session, activity, au.user_id)"
+                                @click.stop="removeUserFromActivity(session, activity, au.user_id)" 
+                                class="user-remove-btn"
+                                title="Remove user"
+                              >
+                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+                                  <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+                                </svg>
+                              </button>
+                            </div>
+                            <!-- User Products Section - Direct child of activity-card-users -->
+                            <div 
+                              v-if="isUserProductsExpanded(session, activity, au.user_id)"
+                              class="user-products-section"
                             >
-                              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
-                                <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
-                              </svg>
-                            </button>
-                          </div>
+                              <!-- Section Title -->
+                              <h4 class="user-products-title">PRODUCTS FOR {{ (au.user?.name || 'User').toUpperCase() }}</h4>
+                              
+                              <!-- Product Selection Form -->
+                              <div class="product-form">
+                                <div class="form-row">
+                                  <div class="form-field">
+                                    <label class="field-label">Select Product</label>
+                                    <div class="product-dropdown-wrapper">
+                                      <div 
+                                        class="product-dropdown-futuristic"
+                                        :class="{ 'open': getShowProductDropdown(session, activity, au.user_id), 'has-selection': getSelectedProduct(session, activity, au.user_id) }"
+                                        @click.stop="toggleProductDropdown(session, activity, au.user_id)"
+                                      >
+                                        <span class="dropdown-selected-text">
+                                          {{ getSelectedProductText(session, activity, au.user_id) || 'Choose a product...' }}
+                                        </span>
+                                        <svg class="dropdown-arrow" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                          <path d="M8 11L3 6h10z" fill="currentColor"/>
+                                        </svg>
+                                      </div>
+                                      <div 
+                                        v-if="getShowProductDropdown(session, activity, au.user_id)"
+                                        class="product-dropdown-menu"
+                                        @click.stop
+                                      >
+                                        <div 
+                                          class="dropdown-item"
+                                          :class="{ 'selected': !getSelectedProduct(session, activity, au.user_id) }"
+                                          @click="selectProduct(session, activity, au.user_id, null)"
+                                        >
+                                          <span>Choose a product...</span>
+                                        </div>
+                                        <div 
+                                          v-for="product in productStore.getProducts" 
+                                          :key="product.id"
+                                          class="dropdown-item"
+                                          :class="{ 'selected': getSelectedProduct(session, activity, au.user_id) === product.id }"
+                                          @click="selectProduct(session, activity, au.user_id, product.id)"
+                                        >
+                                          <div class="product-option-info">
+                                            <span class="product-option-name">{{ product.name }}</span>
+                                            <span class="product-option-price">${{ parseFloat(product.price || 0).toFixed(2) }}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  <div class="form-field">
+                                    <label class="field-label">Quantity</label>
+                                    <input 
+                                      type="number"
+                                      :value="getProductQuantity(session, activity, au.user_id)"
+                                      @input="setProductQuantity(session, activity, au.user_id, $event.target.value)"
+                                      min="1"
+                                      class="quantity-counter"
+                                      placeholder="1"
+                                    />
+                                  </div>
+                                  
+                                  <div class="form-field">
+                                    <button 
+                                      @click="addProductToUser(session, activity, au.user_id)"
+                                      :disabled="!canAddProduct(session, activity, au.user_id) || getAddingProduct(session, activity, au.user_id)"
+                                      class="add-product-btn"
+                                    >
+                                      <svg v-if="!getAddingProduct(session, activity, au.user_id)" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                      </svg>
+                                      <div v-else class="loading-spinner small"></div>
+                                      <span>{{ getAddingProduct(session, activity, au.user_id) ? 'Adding...' : 'Add' }}</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                              
+                              <!-- User Products List -->
+                              <div class="user-products-list">
+                                <div v-if="getLoadingUserProducts(session, activity, au.user_id)" class="loading-state">
+                                  <div class="loading-spinner"></div>
+                                  <span>Loading products...</span>
+                                </div>
+                                <div v-else-if="getUserProducts(session, activity, au.user_id).length === 0" class="no-products-message">
+                                  <span>No products added yet</span>
+                                </div>
+                                <div v-else class="products-grid">
+                                  <div 
+                                    v-for="productOrder in getUserProducts(session, activity, au.user_id)" 
+                                    :key="productOrder.id"
+                                    class="product-order-item"
+                                  >
+                                    <div class="product-info">
+                                      <span class="product-name">{{ productOrder.product?.name || 'Unknown Product' }}</span>
+                                      <span class="product-details">
+                                        Qty: {{ productOrder.quantity }} × ${{ parseFloat(productOrder.price || 0).toFixed(2) }} = ${{ parseFloat(productOrder.total_price || 0).toFixed(2) }}
+                                      </span>
+                                    </div>
+                                    <button 
+                                      @click="deleteProductFromUser(session, activity, au.user_id, productOrder.id)"
+                                      class="delete-product-btn"
+                                      title="Remove product"
+                                    >
+                                      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+                                        <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+                                      </svg>
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </template>
                         </div>
                         <div v-else class="no-users-message">
                           <span>No users assigned</span>
@@ -721,21 +846,146 @@
                     <div class="activity-users">
                       <strong>Users:</strong>
                       <div v-if="activity.activity_users && activity.activity_users.length > 0">
-                        <div v-for="au in activity.activity_users" :key="au.id" class="activity-user-item">
-                          <span>{{ au.user?.name || 'Unknown' }}</span>
-                          <span v-if="au.duration_hours">({{ formatDuration(au.duration_hours) || au.duration_formatted }})</span>
-                          <button 
-                            v-if="canRemoveUserFromActivity(editingSession, activity, au.user_id)"
-                            @click="removeUserFromActivityInEditModal(editingSession, activity, au.user_id)" 
-                            class="user-remove-btn small"
-                            title="Remove user"
+                        <template v-for="au in activity.activity_users" :key="au.id">
+                          <div class="activity-user-item">
+                            <span 
+                              @click="toggleUserProducts(editingSession, activity, au.user_id)"
+                              class="user-name-clickable"
+                              :class="{ 'expanded': isUserProductsExpanded(editingSession, activity, au.user_id) }"
+                            >
+                              {{ au.user?.name || 'Unknown' }}
+                            </span>
+                            <span v-if="au.duration_hours">({{ formatDuration(au.duration_hours) || au.duration_formatted }})</span>
+                            <button 
+                              v-if="canRemoveUserFromActivity(editingSession, activity, au.user_id)"
+                              @click="removeUserFromActivityInEditModal(editingSession, activity, au.user_id)" 
+                              class="user-remove-btn small"
+                              title="Remove user"
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+                                <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+                              </svg>
+                            </button>
+                          </div>
+                          <!-- User Products Section - Direct child of activity-card-users -->
+                          <div 
+                            v-if="isUserProductsExpanded(editingSession, activity, au.user_id)"
+                            class="user-products-section"
                           >
-                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
-                              <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
-                            </svg>
-                          </button>
-                        </div>
+                            <!-- Section Title -->
+                            <h4 class="user-products-title">PRODUCTS FOR {{ (au.user?.name || 'User').toUpperCase() }}</h4>
+                            
+                            <!-- Product Selection Form -->
+                            <div class="product-form">
+                              <div class="form-row">
+                                <div class="form-field">
+                                  <label class="field-label">Select Product</label>
+                                  <div class="product-dropdown-wrapper">
+                                    <div 
+                                      class="product-dropdown-futuristic"
+                                      :class="{ 'open': getShowProductDropdown(editingSession, activity, au.user_id), 'has-selection': getSelectedProduct(editingSession, activity, au.user_id) }"
+                                      @click.stop="toggleProductDropdown(editingSession, activity, au.user_id)"
+                                    >
+                                      <span class="dropdown-selected-text">
+                                        {{ getSelectedProductText(editingSession, activity, au.user_id) || 'Choose a product...' }}
+                                      </span>
+                                      <svg class="dropdown-arrow" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M8 11L3 6h10z" fill="currentColor"/>
+                                      </svg>
+                                    </div>
+                                    <div 
+                                      v-if="getShowProductDropdown(editingSession, activity, au.user_id)"
+                                      class="product-dropdown-menu"
+                                      @click.stop
+                                    >
+                                      <div 
+                                        class="dropdown-item"
+                                        :class="{ 'selected': !getSelectedProduct(editingSession, activity, au.user_id) }"
+                                        @click="selectProduct(editingSession, activity, au.user_id, null)"
+                                      >
+                                        <span>Choose a product...</span>
+                                      </div>
+                                      <div 
+                                        v-for="product in productStore.getProducts" 
+                                        :key="product.id"
+                                        class="dropdown-item"
+                                        :class="{ 'selected': getSelectedProduct(editingSession, activity, au.user_id) === product.id }"
+                                        @click="selectProduct(editingSession, activity, au.user_id, product.id)"
+                                      >
+                                        <div class="product-option-info">
+                                          <span class="product-option-name">{{ product.name }}</span>
+                                          <span class="product-option-price">${{ parseFloat(product.price || 0).toFixed(2) }}</span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <div class="form-field">
+                                  <label class="field-label">Quantity</label>
+                                  <input 
+                                    type="number"
+                                    :value="getProductQuantity(editingSession, activity, au.user_id)"
+                                    @input="setProductQuantity(editingSession, activity, au.user_id, $event.target.value)"
+                                    min="1"
+                                    class="quantity-counter"
+                                    placeholder="1"
+                                  />
+                                </div>
+                                
+                                <div class="form-field">
+                                  <button 
+                                    @click="addProductToUser(editingSession, activity, au.user_id)"
+                                    :disabled="!canAddProduct(editingSession, activity, au.user_id) || getAddingProduct(editingSession, activity, au.user_id)"
+                                    class="add-product-btn"
+                                  >
+                                    <svg v-if="!getAddingProduct(editingSession, activity, au.user_id)" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                    <div v-else class="loading-spinner small"></div>
+                                    <span>{{ getAddingProduct(editingSession, activity, au.user_id) ? 'Adding...' : 'Add' }}</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <!-- User Products List -->
+                            <div class="user-products-list">
+                              <div v-if="getLoadingUserProducts(editingSession, activity, au.user_id)" class="loading-state">
+                                <div class="loading-spinner"></div>
+                                <span>Loading products...</span>
+                              </div>
+                              <div v-else-if="getUserProducts(editingSession, activity, au.user_id).length === 0" class="no-products-message">
+                                <span>No products added yet</span>
+                              </div>
+                              <div v-else class="products-grid">
+                                <div 
+                                  v-for="productOrder in getUserProducts(editingSession, activity, au.user_id)" 
+                                  :key="productOrder.id"
+                                  class="product-order-item"
+                                >
+                                  <div class="product-info">
+                                    <span class="product-name">{{ productOrder.product?.name || 'Unknown Product' }}</span>
+                                    <span class="product-details">
+                                      Qty: {{ productOrder.quantity }} × ${{ parseFloat(productOrder.price || 0).toFixed(2) }} = ${{ parseFloat(productOrder.total_price || 0).toFixed(2) }}
+                                    </span>
+                                  </div>
+                                  <button 
+                                    @click="deleteProductFromUser(editingSession, activity, au.user_id, productOrder.id)"
+                                    class="delete-product-btn"
+                                    title="Remove product"
+                                  >
+                                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+                                      <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </template>
                       </div>
                       <div v-else class="no-users-message">
                         <span>No users assigned</span>
@@ -971,13 +1221,16 @@
 import { ref, onMounted, computed, onUnmounted, nextTick } from 'vue'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useUserStore } from '@/stores/userStore'
+import { useProductStore } from '@/stores/productStore'
 import SessionForm from '@/components/dashboard/sessions/SessionForm.vue'
 import ActivityForm from '@/components/dashboard/sessions/ActivityForm.vue'
 import { formatDuration } from '@/utils/helpers'
 import UserService from '@/api/users'
+import SessionService from '@/api/sessions'
 
 const sessionStore = useSessionStore()
 const userStore = useUserStore()
+const productStore = useProductStore()
 
 // Reactive state
 const sessionsLoaded = ref(false)
@@ -1010,6 +1263,15 @@ const availableUsersCache = ref({}) // Key: `${sessionId}-${activityId}` - cache
 const creatingUser = ref({}) // Key: `${sessionId}-${activityId}` - creating user state
 const dropdownPosition = ref({}) // Key: `${sessionId}-${activityId}` - { top, left, width } for fixed positioning
 let userSearchDebounceTimer = null // Debounce timer for user search
+
+// Activity Products state management
+const expandedUserProducts = ref({}) // Key: `${sessionId}-${activityId}-${userId}` - track expanded state
+const userProducts = ref({}) // Key: `${sessionId}-${activityId}-${userId}` - store products for each user
+const selectedProduct = ref({}) // Key: `${sessionId}-${activityId}-${userId}` - selected product ID
+const productQuantity = ref({}) // Key: `${sessionId}-${activityId}-${userId}` - quantity input
+const addingProduct = ref({}) // Key: `${sessionId}-${activityId}-${userId}` - loading state
+const loadingUserProducts = ref({}) // Key: `${sessionId}-${activityId}-${userId}` - loading products
+const showProductDropdown = ref({}) // Key: `${sessionId}-${activityId}-${userId}` - show/hide dropdown
 
 // Methods
 const loadSessions = async (page = 1) => {
@@ -2272,6 +2534,210 @@ const removeUserFromActivityInEditModal = async (session, activity, userId) => {
   }
 }
 
+// ==================== Activity Products Methods ====================
+
+// Get key for user products state
+const getUserProductsKey = (session, activity, userId) => {
+  if (!session || !activity || !userId) return null
+  return `${session.id}-${activity.id}-${userId}`
+}
+
+// Toggle user products section
+const toggleUserProducts = async (session, activity, userId) => {
+  const key = getUserProductsKey(session, activity, userId)
+  if (!key) return
+  
+  const isExpanded = expandedUserProducts.value[key] || false
+  expandedUserProducts.value[key] = !isExpanded
+  
+  // Load products if expanding for the first time
+  if (!isExpanded && (!userProducts.value[key] || userProducts.value[key].length === 0)) {
+    await loadUserProducts(session, activity, userId)
+  }
+  
+  // Load products if not already loaded
+  if (!productStore.getProducts || productStore.getProducts.length === 0) {
+    await productStore.fetchProducts()
+  }
+}
+
+// Check if user products section is expanded
+const isUserProductsExpanded = (session, activity, userId) => {
+  const key = getUserProductsKey(session, activity, userId)
+  return key ? (expandedUserProducts.value[key] || false) : false
+}
+
+// Get selected product for user
+const getSelectedProduct = (session, activity, userId) => {
+  const key = getUserProductsKey(session, activity, userId)
+  return key ? (selectedProduct.value[key] || null) : null
+}
+
+// Set selected product for user
+const setSelectedProduct = (session, activity, userId, productId) => {
+  const key = getUserProductsKey(session, activity, userId)
+  if (key) {
+    selectedProduct.value[key] = productId
+  }
+}
+
+// Get product quantity for user
+const getProductQuantity = (session, activity, userId) => {
+  const key = getUserProductsKey(session, activity, userId)
+  return key ? (productQuantity.value[key] || 1) : 1
+}
+
+// Set product quantity for user
+const setProductQuantity = (session, activity, userId, quantity) => {
+  const key = getUserProductsKey(session, activity, userId)
+  if (key) {
+    productQuantity.value[key] = parseInt(quantity) || 1
+  }
+}
+
+// Check if can add product
+const canAddProduct = (session, activity, userId) => {
+  const productId = getSelectedProduct(session, activity, userId)
+  const quantity = getProductQuantity(session, activity, userId)
+  return productId && quantity && quantity > 0
+}
+
+// Get adding product state
+const getAddingProduct = (session, activity, userId) => {
+  const key = getUserProductsKey(session, activity, userId)
+  return key ? (addingProduct.value[key] || false) : false
+}
+
+// Get loading user products state
+const getLoadingUserProducts = (session, activity, userId) => {
+  const key = getUserProductsKey(session, activity, userId)
+  return key ? (loadingUserProducts.value[key] || false) : false
+}
+
+// Get user products
+const getUserProducts = (session, activity, userId) => {
+  const key = getUserProductsKey(session, activity, userId)
+  return key ? (userProducts.value[key] || []) : []
+}
+
+// Load products for a user
+const loadUserProducts = async (session, activity, userId) => {
+  const key = getUserProductsKey(session, activity, userId)
+  if (!key) return
+  
+  loadingUserProducts.value[key] = true
+  
+  try {
+    const response = await SessionService.getActivityProductsByUser(session.id, activity.id, userId)
+    const products = response.data || response || []
+    userProducts.value[key] = products.filter(p => p.ordered_by_user_id === userId)
+  } catch (error) {
+    console.error('Error loading user products:', error)
+    userProducts.value[key] = []
+  } finally {
+    loadingUserProducts.value[key] = false
+  }
+}
+
+// Add product to user
+const addProductToUser = async (session, activity, userId) => {
+  const key = getUserProductsKey(session, activity, userId)
+  if (!key) return
+  
+  const productId = getSelectedProduct(session, activity, userId)
+  const quantity = getProductQuantity(session, activity, userId)
+  
+  if (!productId || !quantity || quantity < 1) {
+    showSuccessMessage('Please select a product and enter a quantity')
+    return
+  }
+  
+  addingProduct.value[key] = true
+  
+  try {
+    await SessionService.addProductToActivity(session.id, activity.id, {
+      product_id: productId,
+      quantity: quantity,
+      ordered_by_user_id: userId
+    })
+    
+    // Reload user products
+    await loadUserProducts(session, activity, userId)
+    
+    // Clear selection
+    selectedProduct.value[key] = null
+    productQuantity.value[key] = 1
+    
+    // Refresh session to update totals
+    if (editingSession.value && editingSession.value.id === session.id) {
+      await sessionStore.fetchSessionById(session.id)
+      editingSession.value = sessionStore.getCurrentSession || editingSession.value
+    } else {
+      await refreshExpandedSession(session.id)
+    }
+    
+    showSuccessMessage('Product added successfully!')
+  } catch (error) {
+    console.error('Error adding product:', error)
+    showSuccessMessage(error.message || 'Failed to add product')
+  } finally {
+    addingProduct.value[key] = false
+  }
+}
+
+// Delete product from user
+const deleteProductFromUser = async (session, activity, userId, productOrderId) => {
+  if (!confirm('Remove this product order?')) return
+  
+  try {
+    await SessionService.deleteActivityProduct(session.id, activity.id, productOrderId)
+    
+    // Reload user products
+    await loadUserProducts(session, activity, userId)
+    
+    // Refresh session to update totals
+    if (editingSession.value && editingSession.value.id === session.id) {
+      await sessionStore.fetchSessionById(session.id)
+      editingSession.value = sessionStore.getCurrentSession || editingSession.value
+    } else {
+      await refreshExpandedSession(session.id)
+    }
+    
+    showSuccessMessage('Product removed successfully!')
+  } catch (error) {
+    console.error('Error deleting product:', error)
+    showSuccessMessage(error.message || 'Failed to remove product')
+  }
+}
+
+// Custom Product Dropdown Methods
+const toggleProductDropdown = (session, activity, userId) => {
+  const key = getUserProductsKey(session, activity, userId)
+  if (!key) return
+  showProductDropdown.value[key] = !showProductDropdown.value[key]
+}
+
+const getShowProductDropdown = (session, activity, userId) => {
+  const key = getUserProductsKey(session, activity, userId)
+  return key ? (showProductDropdown.value[key] || false) : false
+}
+
+const selectProduct = (session, activity, userId, productId) => {
+  setSelectedProduct(session, activity, userId, productId)
+  const key = getUserProductsKey(session, activity, userId)
+  if (key) {
+    showProductDropdown.value[key] = false
+  }
+}
+
+const getSelectedProductText = (session, activity, userId) => {
+  const productId = getSelectedProduct(session, activity, userId)
+  if (!productId) return null
+  const product = productStore.getProducts.find(p => p.id === productId)
+  return product ? `${product.name} - $${parseFloat(product.price || 0).toFixed(2)}` : null
+}
+
+
 // Timer functionality for real-time updates
 const currentTime = ref(new Date())
 let timerInterval = null
@@ -2419,12 +2885,33 @@ const showSuccessMessage = (message) => {
   }, 3000)
 }
 
+// Close dropdown when clicking outside
+const handleClickOutside = (e) => {
+  // Close all product dropdowns when clicking outside
+  if (!e.target.closest('.product-dropdown-wrapper')) {
+    Object.keys(showProductDropdown.value).forEach(key => {
+      showProductDropdown.value[key] = false
+    })
+  }
+}
+
 // Lifecycle
 onMounted(async () => {
   console.log('SessionsSection: Component mounted, loading sessions...')
   await loadAllUsers() // Load users for search functionality
+  // Load products for dropdown
+  if (productStore.getProducts.length === 0) {
+    await productStore.fetchProducts()
+  }
   loadSessions(1)
   startTimer()
+  // Add click outside handler
+  document.addEventListener('click', handleClickOutside)
+})
+
+onUnmounted(() => {
+  // Remove click outside handler
+  document.removeEventListener('click', handleClickOutside)
 })
 
 onUnmounted(() => {
