@@ -333,15 +333,25 @@ export default {
       return options
     })
     
-    // Format duration for display
+    // Format duration for display (H:MM minutes format)
     const formatDuration = (hours) => {
-      if (hours === 0.5) {
-        return '30 minutes'
-      } else if (hours === 1) {
-        return '1 hour'
-      } else {
-        return `${hours} hours`
+      if (hours === null || hours === undefined || hours === '') {
+        return null
       }
+
+      const hoursNum = parseFloat(hours)
+      if (isNaN(hoursNum)) {
+        return null
+      }
+
+      const hoursInt = Math.floor(hoursNum)
+      const minutes = Math.round((hoursNum - hoursInt) * 60)
+      
+      // Handle edge case where minutes round to 60
+      const finalHours = minutes >= 60 ? hoursInt + 1 : hoursInt
+      const finalMinutes = minutes >= 60 ? 0 : minutes
+
+      return `${finalHours}:${String(finalMinutes).padStart(2, '0')} minutes`
     }
     
     // Calculate ended_at based on started_at and duration_hours

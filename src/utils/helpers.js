@@ -52,10 +52,36 @@ export function isAuthenticated(user) {
   return !!user
 }
 
+/**
+ * Format duration hours to "H:MM minutes" format
+ * @param {number|string} hours - Duration in hours (e.g., 0.5, 1.5, 2.0)
+ * @returns {string} Formatted duration string (e.g., "0:30 minutes", "1:30 minutes", "2:00 minutes")
+ */
+export function formatDuration(hours) {
+  if (hours === null || hours === undefined || hours === '') {
+    return null
+  }
+
+  const hoursNum = parseFloat(hours)
+  if (isNaN(hoursNum)) {
+    return null
+  }
+
+  const hoursInt = Math.floor(hoursNum)
+  const minutes = Math.round((hoursNum - hoursInt) * 60)
+  
+  // Handle edge case where minutes round to 60
+  const finalHours = minutes >= 60 ? hoursInt + 1 : hoursInt
+  const finalMinutes = minutes >= 60 ? 0 : minutes
+
+  return `${finalHours}:${String(finalMinutes).padStart(2, '0')} minutes`
+}
+
 export default {
   formatCurrency,
   formatDate,
   truncateText,
   isAdmin,
-  isAuthenticated
+  isAuthenticated,
+  formatDuration
 }

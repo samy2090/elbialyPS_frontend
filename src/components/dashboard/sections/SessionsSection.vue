@@ -377,7 +377,7 @@
                         </div>
                         <div v-if="activity.duration_hours" class="activity-meta-item">
                           <span class="meta-icon">⏱️</span>
-                          <span>Duration: {{ activity.duration_hours }}h</span>
+                          <span>Duration: {{ formatDuration(activity.duration_hours) || activity.duration_formatted }}</span>
                         </div>
                         <div class="activity-meta-item">
                           <span class="meta-icon">💰</span>
@@ -388,7 +388,7 @@
                         <div class="users-label">Users:</div>
                         <div v-for="au in activity.activity_users" :key="au.id" class="activity-user-card">
                           <span class="user-name">{{ au.user?.name || 'Unknown' }}</span>
-                          <span v-if="au.duration_hours" class="user-duration">({{ au.duration_hours }}h)</span>
+                          <span v-if="au.duration_hours" class="user-duration">({{ formatDuration(au.duration_hours) || au.duration_formatted }})</span>
                           <span v-if="au.cost_share" class="user-cost">${{ parseFloat(au.cost_share).toFixed(2) }}</span>
                         </div>
                       </div>
@@ -627,7 +627,7 @@
                     <div class="activity-meta">
                       <span>Started: {{ formatDateTime(activity.started_at) }}</span>
                       <span v-if="activity.ended_at">Ended: {{ formatDateTime(activity.ended_at) }}</span>
-                      <span v-if="activity.duration_hours">Duration: {{ activity.duration_hours }}h</span>
+                      <span v-if="activity.duration_hours">Duration: {{ formatDuration(activity.duration_hours) || activity.duration_formatted }}</span>
                       <span>Price: ${{ parseFloat(activity.total_price || 0).toFixed(2) }}</span>
                     </div>
                     <!-- Activity Users -->
@@ -635,7 +635,7 @@
                       <strong>Users:</strong>
                       <div v-for="au in activity.activity_users" :key="au.id" class="activity-user-item">
                         <span>{{ au.user?.name || 'Unknown' }}</span>
-                        <span v-if="au.duration_hours">({{ au.duration_hours }}h)</span>
+                        <span v-if="au.duration_hours">({{ formatDuration(au.duration_hours) || au.duration_formatted }})</span>
                         <span v-if="au.cost_share"> - ${{ parseFloat(au.cost_share).toFixed(2) }}</span>
                       </div>
                     </div>
@@ -799,6 +799,7 @@ import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useSessionStore } from '@/stores/sessionStore'
 import SessionForm from '@/components/dashboard/sessions/SessionForm.vue'
 import ActivityForm from '@/components/dashboard/sessions/ActivityForm.vue'
+import { formatDuration } from '@/utils/helpers'
 
 const sessionStore = useSessionStore()
 
