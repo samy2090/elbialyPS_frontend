@@ -3491,6 +3491,17 @@ button:disabled,
 .customer-search-wrapper {
   position: relative;
   width: 100%;
+  /* Ensure dropdown is not clipped by parent containers */
+  z-index: 1;
+}
+
+/* Ensure parent containers don't clip the dropdown */
+.customer-search-wrapper,
+.add-user-section,
+.activity-card-users,
+.activity-card,
+.expanded-section {
+  overflow: visible !important;
 }
 
 .customer-search-wrapper .form-input.has-selection {
@@ -3520,31 +3531,54 @@ button:disabled,
   background: rgba(15, 15, 23, 0.98);
   border: 1.5px solid rgba(139, 92, 246, 0.3);
   border-radius: var(--border-radius-md);
-  max-height: 300px;
+  max-height: 140px; /* Show approximately 2 users (each ~55-60px) with scrolling */
   overflow-y: auto;
-  z-index: 1000;
+  overflow-x: hidden;
+  z-index: 99999 !important; /* Extremely high z-index to appear above everything */
   box-shadow: 
     0 8px 25px rgba(0, 0, 0, 0.3),
     0 0 0 1px rgba(139, 92, 246, 0.1);
   backdrop-filter: blur(20px);
+  /* Ensure smooth scrolling */
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  /* Ensure dropdown is not clipped */
+  isolation: isolate;
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 92, 246, 0.6) rgba(255, 255, 255, 0.05);
+}
+
+/* Fixed positioning for teleported dropdowns */
+.customer-dropdown.fixed-dropdown {
+  position: fixed !important;
+  z-index: 99999 !important;
 }
 
 .customer-dropdown::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
 }
 
 .customer-dropdown::-webkit-scrollbar-track {
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 3px;
+  border-radius: 4px;
+  margin: 4px 0;
 }
 
 .customer-dropdown::-webkit-scrollbar-thumb {
-  background: rgba(139, 92, 246, 0.5);
-  border-radius: 3px;
+  background: rgba(139, 92, 246, 0.6);
+  border-radius: 4px;
+  border: 1px solid rgba(139, 92, 246, 0.2);
 }
 
 .customer-dropdown::-webkit-scrollbar-thumb:hover {
-  background: rgba(139, 92, 246, 0.7);
+  background: rgba(139, 92, 246, 0.8);
+}
+
+/* Firefox scrollbar */
+.customer-dropdown {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 92, 246, 0.6) rgba(255, 255, 255, 0.05);
 }
 
 .dropdown-item {
@@ -3552,6 +3586,10 @@ button:disabled,
   cursor: pointer;
   transition: all var(--transition-fast);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  min-height: 55px; /* Ensure consistent height for better scrolling */
+  display: flex;
+  align-items: center;
+  flex-shrink: 0; /* Prevent items from shrinking */
 }
 
 .dropdown-item:last-child {
@@ -3626,6 +3664,9 @@ button:disabled,
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  flex: 1;
+  min-width: 0; /* Allow text truncation if needed */
+  overflow: hidden;
 }
 
 .customer-name {

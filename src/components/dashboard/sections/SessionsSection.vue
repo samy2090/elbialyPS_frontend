@@ -384,12 +384,99 @@
                           <span>Price: ${{ parseFloat(activity.total_price || 0).toFixed(2) }}</span>
                         </div>
                       </div>
-                      <div v-if="activity.activity_users && activity.activity_users.length > 0" class="activity-card-users">
+                      <!-- Users Section -->
+                      <div class="activity-card-users">
                         <div class="users-label">Users:</div>
-                        <div v-for="au in activity.activity_users" :key="au.id" class="activity-user-card">
-                          <span class="user-name">{{ au.user?.name || 'Unknown' }}</span>
-                          <span v-if="au.duration_hours" class="user-duration">({{ formatDuration(au.duration_hours) || au.duration_formatted }})</span>
-                          <span v-if="au.cost_share" class="user-cost">${{ parseFloat(au.cost_share).toFixed(2) }}</span>
+                        <div v-if="activity.activity_users && activity.activity_users.length > 0">
+                          <div v-for="au in activity.activity_users" :key="au.id" class="activity-user-card">
+                            <span class="user-name">{{ au.user?.name || 'Unknown' }}</span>
+                            <span v-if="au.duration_hours" class="user-duration">({{ formatDuration(au.duration_hours) || au.duration_formatted }})</span>
+                            <button 
+                              v-if="canRemoveUserFromActivity(session, activity, au.user_id)"
+                              @click.stop="removeUserFromActivity(session, activity, au.user_id)" 
+                              class="user-remove-btn"
+                              title="Remove user"
+                            >
+                              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+                                <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                        <div v-else class="no-users-message">
+                          <span>No users assigned</span>
+                        </div>
+                        
+                        <!-- Add User Input (only for active/paused activities) -->
+                        <div v-if="canAddUsersToActivity(activity)" class="add-user-section">
+                          <div class="user-search-wrapper customer-search-wrapper">
+                            <input 
+                              :value="getUserSearchQuery(session, activity)"
+                              @input="handleUserSearch(session, activity, $event)"
+                              @focus="handleUserSearchFocus(session, activity)"
+                              @blur="handleUserSearchBlur(session, activity)"
+                              type="text"
+                              class="form-input user-search-input"
+                              :class="{ 'has-selection': getSelectedUser(session, activity) }"
+                              :data-key="getUserDropdownKey(session, activity)"
+                              placeholder="Type to search users..."
+                              autocomplete="off"
+                            />
+                            <div v-if="getUserSearchLoading(session, activity)" class="search-loading">
+                              <div class="loading-spinner small"></div>
+                            </div>
+                            <Teleport to="body">
+                              <div 
+                                v-if="getShowUserSearchDropdown(session, activity) && (getUserSearchResults(session, activity).length > 0 || getUserSearchQuery(session, activity).length > 0)"
+                                class="user-search-dropdown customer-dropdown fixed-dropdown"
+                                :style="getDropdownStyle(session, activity)"
+                              >
+                              <div 
+                                v-if="getUserSearchLoading(session, activity)"
+                                class="dropdown-item loading-item"
+                              >
+                                <div class="loading-spinner small"></div>
+                                <span>Searching...</span>
+                              </div>
+                              <div 
+                                v-else-if="getUserSearchResults(session, activity).length === 0 && getUserSearchQuery(session, activity).length > 0 && canCreateNewUser(session, activity)"
+                                class="dropdown-item create-new-customer"
+                                @mousedown.prevent="createAndSelectUser(session, activity)"
+                              >
+                                <svg class="create-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                                  <path d="M12 8V16M8 12H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                </svg>
+                                <span>Create new user: <strong>{{ getUserSearchQuery(session, activity).trim() }}</strong></span>
+                              </div>
+                              <div 
+                                v-else-if="getUserSearchResults(session, activity).length === 0 && getUserSearchQuery(session, activity).length > 0 && !canCreateNewUser(session, activity)"
+                                class="dropdown-item no-results"
+                              >
+                                No users found
+                              </div>
+                              <div
+                                v-for="user in getUserSearchResults(session, activity)"
+                                :key="user.id"
+                                @mousedown.prevent="user.is_available && !user.in_active_activity ? selectUserForActivity(session, activity, user) : null"
+                                class="dropdown-item"
+                                :class="{ 
+                                  'disabled': user.in_active_activity || !user.is_available,
+                                  'selected': getSelectedUser(session, activity)?.id === user.id
+                                }"
+              >
+                                <div class="customer-info">
+                                  <span class="customer-name">{{ user.name }}</span>
+                                  <span class="customer-email">{{ user.email }}</span>
+                                  <span v-if="user.in_active_activity" class="user-status-badge" style="font-size: 0.7rem; color: #f59e0b; margin-top: 0.25rem;">
+                                    (In active activity - cannot select)
+                                  </span>
+                                </div>
+                              </div>
+                              </div>
+                            </Teleport>
+                          </div>
                         </div>
                       </div>
                       <div class="activity-card-actions">
@@ -631,12 +718,98 @@
                       <span>Price: ${{ parseFloat(activity.total_price || 0).toFixed(2) }}</span>
                     </div>
                     <!-- Activity Users -->
-                    <div v-if="activity.activity_users && activity.activity_users.length > 0" class="activity-users">
+                    <div class="activity-users">
                       <strong>Users:</strong>
-                      <div v-for="au in activity.activity_users" :key="au.id" class="activity-user-item">
-                        <span>{{ au.user?.name || 'Unknown' }}</span>
-                        <span v-if="au.duration_hours">({{ formatDuration(au.duration_hours) || au.duration_formatted }})</span>
-                        <span v-if="au.cost_share"> - ${{ parseFloat(au.cost_share).toFixed(2) }}</span>
+                      <div v-if="activity.activity_users && activity.activity_users.length > 0">
+                        <div v-for="au in activity.activity_users" :key="au.id" class="activity-user-item">
+                          <span>{{ au.user?.name || 'Unknown' }}</span>
+                          <span v-if="au.duration_hours">({{ formatDuration(au.duration_hours) || au.duration_formatted }})</span>
+                          <button 
+                            v-if="canRemoveUserFromActivity(editingSession, activity, au.user_id)"
+                            @click="removeUserFromActivityInEditModal(editingSession, activity, au.user_id)" 
+                            class="user-remove-btn small"
+                            title="Remove user"
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+                              <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                      <div v-else class="no-users-message">
+                        <span>No users assigned</span>
+                      </div>
+                      
+                      <!-- Add User Input (only for active/paused activities) -->
+                      <div v-if="editingSession && canAddUsersToActivity(activity)" class="add-user-section">
+                          <div class="user-search-wrapper customer-search-wrapper">
+                            <input 
+                              :value="getUserSearchQuery(editingSession, activity)"
+                              @input="handleUserSearch(editingSession, activity, $event)"
+                              @focus="handleUserSearchFocus(editingSession, activity)"
+                              @blur="handleUserSearchBlur(editingSession, activity)"
+                              type="text"
+                              class="form-input user-search-input"
+                              :class="{ 'has-selection': getSelectedUser(editingSession, activity) }"
+                              :data-key="getUserDropdownKey(editingSession, activity)"
+                              placeholder="Type to search users..."
+                              autocomplete="off"
+                            />
+                          <div v-if="getUserSearchLoading(editingSession, activity)" class="search-loading">
+                            <div class="loading-spinner small"></div>
+                          </div>
+                          <Teleport to="body">
+                            <div 
+                              v-if="getShowUserSearchDropdown(editingSession, activity) && (getUserSearchResults(editingSession, activity).length > 0 || getUserSearchQuery(editingSession, activity).length > 0)"
+                              class="user-search-dropdown customer-dropdown fixed-dropdown"
+                              :style="getDropdownStyle(editingSession, activity)"
+                            >
+                            <div 
+                              v-if="getUserSearchLoading(editingSession, activity)"
+                              class="dropdown-item loading-item"
+                            >
+                              <div class="loading-spinner small"></div>
+                              <span>Searching...</span>
+                            </div>
+                            <div 
+                              v-else-if="getUserSearchResults(editingSession, activity).length === 0 && getUserSearchQuery(editingSession, activity).length > 0 && canCreateNewUser(editingSession, activity)"
+                              class="dropdown-item create-new-customer"
+                              @mousedown.prevent="createAndSelectUserInEdit(editingSession, activity)"
+                            >
+                              <svg class="create-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                                <path d="M12 8V16M8 12H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                              </svg>
+                              <span>Create new user: <strong>{{ getUserSearchQuery(editingSession, activity).trim() }}</strong></span>
+                            </div>
+                            <div 
+                              v-else-if="getUserSearchResults(editingSession, activity).length === 0 && getUserSearchQuery(editingSession, activity).length > 0 && !canCreateNewUser(editingSession, activity)"
+                              class="dropdown-item no-results"
+                            >
+                              No users found
+                            </div>
+                            <div
+                              v-for="user in getUserSearchResults(editingSession, activity)"
+                              :key="user.id"
+                              @mousedown.prevent="user.is_available && !user.in_active_activity ? selectUserForActivityInEdit(editingSession, activity, user) : null"
+                              class="dropdown-item"
+                              :class="{ 
+                                'disabled': user.in_active_activity || !user.is_available,
+                                'selected': getSelectedUser(editingSession, activity)?.id === user.id
+                              }"
+                            >
+                              <div class="customer-info">
+                                <span class="customer-name">{{ user.name }}</span>
+                                <span class="customer-email">{{ user.email }}</span>
+                                <span v-if="user.in_active_activity" class="user-status-badge" style="font-size: 0.7rem; color: #f59e0b; margin-top: 0.25rem;">
+                                  (In active activity - cannot select)
+                                </span>
+                              </div>
+                            </div>
+                            </div>
+                          </Teleport>
+                        </div>
                       </div>
                     </div>
                     <div class="activity-actions">
@@ -795,13 +968,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, onUnmounted } from 'vue'
+import { ref, onMounted, computed, onUnmounted, nextTick } from 'vue'
 import { useSessionStore } from '@/stores/sessionStore'
+import { useUserStore } from '@/stores/userStore'
 import SessionForm from '@/components/dashboard/sessions/SessionForm.vue'
 import ActivityForm from '@/components/dashboard/sessions/ActivityForm.vue'
 import { formatDuration } from '@/utils/helpers'
+import UserService from '@/api/users'
 
 const sessionStore = useSessionStore()
+const userStore = useUserStore()
 
 // Reactive state
 const sessionsLoaded = ref(false)
@@ -822,6 +998,18 @@ const showSuccess = ref(false)
 const currentPage = ref(1)
 const perPage = ref(10)
 const expandedSessionId = ref(null)
+
+// User management state - using searchable input pattern like customer input
+const userSearchQuery = ref({}) // Key: `${sessionId}-${activityId}` - search query text
+const userSearchResults = ref({}) // Key: `${sessionId}-${activityId}` - filtered search results
+const userSearchLoading = ref({}) // Key: `${sessionId}-${activityId}` - loading state
+const showUserSearchDropdown = ref({}) // Key: `${sessionId}-${activityId}` - show/hide dropdown
+const selectedUser = ref({}) // Key: `${sessionId}-${activityId}` - selected user object
+const allUsers = ref([]) // All users loaded from store
+const availableUsersCache = ref({}) // Key: `${sessionId}-${activityId}` - cached available users from API
+const creatingUser = ref({}) // Key: `${sessionId}-${activityId}` - creating user state
+const dropdownPosition = ref({}) // Key: `${sessionId}-${activityId}` - { top, left, width } for fixed positioning
+let userSearchDebounceTimer = null // Debounce timer for user search
 
 // Methods
 const loadSessions = async (page = 1) => {
@@ -1466,6 +1654,624 @@ const refreshExpandedSession = async (sessionId) => {
   }
 }
 
+// User Management Methods
+const canAddUsersToActivity = (activity) => {
+  // Button only shown if activity is active or paused, NOT ended
+  return activity.status === 'active' || activity.status === 'paused'
+}
+
+// Check if user can be removed from activity
+// Session customer cannot be removed from the first activity
+const canRemoveUserFromActivity = (session, activity, userId) => {
+  // Check if user is the session customer
+  if (session.customer_id === userId) {
+    // Check if this is the first activity of the session
+    if (session.activities && session.activities.length > 0) {
+      // Sort activities by ID (first created will have lowest ID) or by started_at
+      const sortedActivities = [...session.activities].sort((a, b) => {
+        // First try by ID (lower ID = created first)
+        if (a.id && b.id) {
+          return a.id - b.id
+        }
+        // Fallback to started_at
+        if (a.started_at && b.started_at) {
+          return new Date(a.started_at) - new Date(b.started_at)
+        }
+        return 0
+      })
+      
+      // Check if current activity is the first one
+      const firstActivity = sortedActivities[0]
+      if (firstActivity && firstActivity.id === activity.id) {
+        // This is the first activity and user is the session customer - cannot remove
+        return false
+      }
+    }
+  }
+  
+  // All other cases - can remove
+  return true
+}
+
+// Helper methods to access reactive refs with dynamic keys
+const getUserDropdownKey = (session, activity) => {
+  return `${session.id}-${activity.id}`
+}
+
+// Get user search query for an activity
+const getUserSearchQuery = (session, activity) => {
+  if (!session || !activity || !session.id || !activity.id) return ''
+  const key = getUserDropdownKey(session, activity)
+  return userSearchQuery.value[key] || ''
+}
+
+// Get user search results for an activity
+const getUserSearchResults = (session, activity) => {
+  if (!session || !activity || !session.id || !activity.id) return []
+  const key = getUserDropdownKey(session, activity)
+  return userSearchResults.value[key] || []
+}
+
+// Get user search loading state
+const getUserSearchLoading = (session, activity) => {
+  if (!session || !activity || !session.id || !activity.id) return false
+  const key = getUserDropdownKey(session, activity)
+  return !!userSearchLoading.value[key]
+}
+
+// Get show user search dropdown state
+const getShowUserSearchDropdown = (session, activity) => {
+  if (!session || !activity || !session.id || !activity.id) return false
+  const key = getUserDropdownKey(session, activity)
+  return !!showUserSearchDropdown.value[key]
+}
+
+// Get selected user for an activity
+const getSelectedUser = (session, activity) => {
+  if (!session || !activity || !session.id || !activity.id) return null
+  const key = getUserDropdownKey(session, activity)
+  return selectedUser.value[key] || null
+}
+
+// Get dropdown style for fixed positioning
+const getDropdownStyle = (session, activity) => {
+  const key = getUserDropdownKey(session, activity)
+  const pos = dropdownPosition.value[key]
+  if (pos) {
+    return {
+      position: 'fixed',
+      top: `${pos.top}px`,
+      left: `${pos.left}px`,
+      width: `${pos.width}px`,
+      zIndex: '99999'
+    }
+  }
+  return {}
+}
+
+// Load all users from store (for local filtering)
+const loadAllUsers = async () => {
+  try {
+    await userStore.fetchUsers()
+    allUsers.value = userStore.getUsers || []
+  } catch (error) {
+    console.error('Failed to load users:', error)
+    allUsers.value = []
+  }
+}
+
+// Check if a user with the same name (case-insensitive) exists
+const userNameExists = (name) => {
+  if (!name || name.trim().length === 0) return false
+  
+  const searchName = name.toLowerCase().trim()
+  const allUsersList = allUsers.value.length > 0 ? allUsers.value : (userStore.getUsers || [])
+  
+  return allUsersList.some(user => {
+    const userName = user.name?.toLowerCase().trim()
+    return userName === searchName
+  })
+}
+
+// Computed property to check if we can create a new user (per activity)
+const canCreateNewUser = (session, activity) => {
+  const key = getUserDropdownKey(session, activity)
+  const query = userSearchQuery.value[key]
+  
+  if (!query || query.trim().length === 0) {
+    return false
+  }
+  
+  // Only allow creation if no user with the same name exists (case-insensitive)
+  return !userNameExists(query)
+}
+
+// Load available users from API (called once when input is focused)
+const loadAvailableUsers = async (session, activity) => {
+  const key = getUserDropdownKey(session, activity)
+  
+  // If already cached, don't reload
+  if (availableUsersCache.value[key] && availableUsersCache.value[key].length > 0) {
+    return availableUsersCache.value[key]
+  }
+  
+  userSearchLoading.value[key] = true
+  
+  try {
+    // Get available users from API (respects business rules, includes all users with metadata)
+    const availableUsers = await sessionStore.getAvailableUsersForActivity(session.id, activity.id)
+    
+    // Cache the results
+    availableUsersCache.value[key] = availableUsers || []
+    
+    return availableUsersCache.value[key]
+  } catch (error) {
+    console.error('Failed to load available users:', error)
+    availableUsersCache.value[key] = []
+    return []
+  } finally {
+    userSearchLoading.value[key] = false
+  }
+}
+
+// Search users with debouncing (local filtering from cached available users)
+// This is synchronous like the customer search - filters from cached data
+const searchUsers = (session, activity, query) => {
+  const key = getUserDropdownKey(session, activity)
+  
+  if (!query || query.trim().length === 0) {
+    userSearchResults.value[key] = []
+    return
+  }
+  
+  // Get cached available users (should already be loaded when input was focused)
+  const availableUsers = availableUsersCache.value[key] || []
+  
+  // If cache is empty, don't search (cache should be loaded by handleUserSearch or handleUserSearchFocus)
+  if (availableUsers.length === 0) {
+    console.warn('User search: Cache is empty for', key, '- users may still be loading')
+    userSearchResults.value[key] = []
+    return
+  }
+  
+  userSearchLoading.value[key] = true
+  
+  // Use setTimeout to allow UI to update before filtering (same as customer search)
+  setTimeout(() => {
+    try {
+      // Filter locally by search query (case-insensitive partial match)
+      const searchLower = query.toLowerCase().trim()
+      const filtered = availableUsers.filter(user => {
+        if (!user) return false
+        const nameMatch = user.name?.toLowerCase().includes(searchLower)
+        const emailMatch = user.email?.toLowerCase().includes(searchLower)
+        return nameMatch || emailMatch
+      })
+      
+      // Sort: available users first, then unavailable users (in active activities) at the end
+      const sorted = filtered.sort((a, b) => {
+        const aAvailable = a.is_available && !a.in_active_activity
+        const bAvailable = b.is_available && !b.in_active_activity
+        
+        // If both are available or both are unavailable, maintain original order
+        if (aAvailable === bAvailable) {
+          return 0
+        }
+        
+        // Available users come first (return -1 means a comes before b)
+        return aAvailable ? -1 : 1
+      })
+      
+      userSearchResults.value[key] = sorted
+    } catch (error) {
+      console.error('Failed to search users:', error)
+      userSearchResults.value[key] = []
+    } finally {
+      userSearchLoading.value[key] = false
+    }
+  }, 50) // Small delay to show loading state
+}
+
+// Debounced search handler
+const handleUserSearch = async (session, activity, event) => {
+  const key = getUserDropdownKey(session, activity)
+  const query = event.target.value
+  userSearchQuery.value[key] = query
+  
+  // Clear existing timer
+  if (userSearchDebounceTimer) {
+    clearTimeout(userSearchDebounceTimer)
+  }
+  
+  // If query is empty, clear results
+  if (!query || query.trim().length === 0) {
+    userSearchResults.value[key] = []
+    selectedUser.value[key] = null
+    showUserSearchDropdown.value[key] = false
+    return
+  }
+  
+  // Show dropdown when user starts typing
+  showUserSearchDropdown.value[key] = true
+  
+  // Recalculate position
+  await nextTick()
+  calculateDropdownPosition(session, activity)
+  
+  // Ensure cache is loaded before searching (loadAvailableUsers handles loading state)
+  if (!availableUsersCache.value[key] || availableUsersCache.value[key].length === 0) {
+    await loadAvailableUsers(session, activity)
+  }
+  
+  // Set new timer for debounced search
+  userSearchDebounceTimer = setTimeout(() => {
+    searchUsers(session, activity, query)
+  }, 300) // 300ms debounce delay
+}
+
+// Calculate dropdown position for fixed positioning
+const calculateDropdownPosition = (session, activity) => {
+  const key = getUserDropdownKey(session, activity)
+  // Find the input element
+  const inputSelector = `.user-search-input[data-key="${key}"]`
+  const inputElement = document.querySelector(inputSelector)
+  
+  if (inputElement) {
+    const rect = inputElement.getBoundingClientRect()
+    dropdownPosition.value[key] = {
+      top: rect.bottom + window.scrollY + 8, // 8px gap
+      left: rect.left + window.scrollX,
+      width: rect.width
+    }
+  }
+}
+
+// Handle focus event - load available users when input is focused
+const handleUserSearchFocus = async (session, activity) => {
+  const key = getUserDropdownKey(session, activity)
+  showUserSearchDropdown.value[key] = true
+  
+  // Calculate dropdown position
+  await nextTick()
+  calculateDropdownPosition(session, activity)
+  
+  // Load available users if not already cached (loadAvailableUsers handles loading state)
+  if (!availableUsersCache.value[key] || availableUsersCache.value[key].length === 0) {
+    await loadAvailableUsers(session, activity)
+  }
+  
+  // If there's a query, show filtered results immediately
+  const query = userSearchQuery.value[key]
+  if (query && query.trim().length > 0) {
+    searchUsers(session, activity, query)
+  }
+}
+
+// Handle blur event (with delay to allow click on dropdown items)
+const handleUserSearchBlur = (session, activity) => {
+  const key = getUserDropdownKey(session, activity)
+  // Delay hiding dropdown to allow click events on dropdown items
+  setTimeout(() => {
+    showUserSearchDropdown.value[key] = false
+  }, 200)
+}
+
+// Select user from dropdown and add to activity
+const selectUserForActivity = async (session, activity, user) => {
+  // Don't allow selection if user is in active activity
+  if (user.in_active_activity || !user.is_available) {
+    return
+  }
+  
+  const key = getUserDropdownKey(session, activity)
+  selectedUser.value[key] = user
+  userSearchQuery.value[key] = user.name
+  userSearchResults.value[key] = []
+  showUserSearchDropdown.value[key] = false
+  
+  // Add user to activity
+  await addUserToActivity(session, activity, user.id)
+  
+  // Clear cache to reload available users (user should now be marked as in_current_activity)
+  delete availableUsersCache.value[key]
+  
+  // Clear selection after adding
+  setTimeout(() => {
+    selectedUser.value[key] = null
+    userSearchQuery.value[key] = ''
+  }, 100)
+}
+
+// Select user from dropdown and add to activity (edit modal)
+const selectUserForActivityInEdit = async (session, activity, user) => {
+  // Don't allow selection if user is in active activity
+  if (user.in_active_activity || !user.is_available) {
+    return
+  }
+  
+  const key = getUserDropdownKey(session, activity)
+  selectedUser.value[key] = user
+  userSearchQuery.value[key] = user.name
+  userSearchResults.value[key] = []
+  showUserSearchDropdown.value[key] = false
+  
+  // Add user to activity
+  await addUserToActivityInEditModal(session, activity, user.id)
+  
+  // Clear cache to reload available users (user should now be marked as in_current_activity)
+  delete availableUsersCache.value[key]
+  
+  // Clear selection after adding
+  setTimeout(() => {
+    selectedUser.value[key] = null
+    userSearchQuery.value[key] = ''
+  }, 100)
+}
+
+// Create new user and add to activity
+const createAndSelectUser = async (session, activity) => {
+  const key = getUserDropdownKey(session, activity)
+  const userName = userSearchQuery.value[key]?.trim()
+  
+  if (!userName || userName.length === 0) {
+    return
+  }
+  
+  // Double-check that user doesn't exist (case-insensitive)
+  if (userNameExists(userName)) {
+    showSuccessMessage('A user with this name already exists')
+    return
+  }
+  
+  creatingUser.value[key] = true
+  userSearchLoading.value[key] = true
+  
+  try {
+    // Create new guest user with name and role="guest" only
+    const newUserData = {
+      name: userName,
+      role: 'guest'
+    }
+    
+    // Use the guest user endpoint which only requires name and role
+    const response = await UserService.createGuestUser(newUserData)
+    const newUser = response.data || response.user || response
+    
+    // Refresh users list from store to include the new user
+    await loadAllUsers()
+    
+    // Ensure we have the new user with all its properties
+    const createdUser = allUsers.value.find(u => u.id === newUser.id) || newUser
+    
+    // Add metadata for the new user (should be available since it's new)
+    createdUser.in_active_activity = false
+    createdUser.in_current_activity = false
+    createdUser.is_available = true
+    
+    // Select the newly created user and add to activity
+    selectedUser.value[key] = createdUser
+    userSearchQuery.value[key] = createdUser.name
+    userSearchResults.value[key] = []
+    showUserSearchDropdown.value[key] = false
+    
+  // Add user to activity
+  await addUserToActivity(session, activity, createdUser.id)
+  
+  // Clear cache to reload available users (new user should now appear)
+  delete availableUsersCache.value[key]
+  
+  // Clear selection after adding
+  setTimeout(() => {
+    selectedUser.value[key] = null
+    userSearchQuery.value[key] = ''
+  }, 100)
+  
+  // Show success message
+  showSuccessMessage(`User "${userName}" created and added successfully`)
+  } catch (error) {
+    console.error('Failed to create user:', error)
+    showSuccessMessage('Failed to create user: ' + (error.message || 'Unknown error'))
+  } finally {
+    creatingUser.value[key] = false
+    userSearchLoading.value[key] = false
+  }
+}
+
+// Create new user and add to activity (edit modal)
+const createAndSelectUserInEdit = async (session, activity) => {
+  const key = getUserDropdownKey(session, activity)
+  const userName = userSearchQuery.value[key]?.trim()
+  
+  if (!userName || userName.length === 0) {
+    return
+  }
+  
+  // Double-check that user doesn't exist (case-insensitive)
+  if (userNameExists(userName)) {
+    showSuccessMessage('A user with this name already exists')
+    return
+  }
+  
+  creatingUser.value[key] = true
+  userSearchLoading.value[key] = true
+  
+  try {
+    // Create new guest user with name and role="guest" only
+    const newUserData = {
+      name: userName,
+      role: 'guest'
+    }
+    
+    // Use the guest user endpoint which only requires name and role
+    const response = await UserService.createGuestUser(newUserData)
+    const newUser = response.data || response.user || response
+    
+    // Refresh users list from store to include the new user
+    await loadAllUsers()
+    
+    // Ensure we have the new user with all its properties
+    const createdUser = allUsers.value.find(u => u.id === newUser.id) || newUser
+    
+    // Add metadata for the new user (should be available since it's new)
+    createdUser.in_active_activity = false
+    createdUser.in_current_activity = false
+    createdUser.is_available = true
+    
+    // Select the newly created user and add to activity
+    selectedUser.value[key] = createdUser
+    userSearchQuery.value[key] = createdUser.name
+    userSearchResults.value[key] = []
+    showUserSearchDropdown.value[key] = false
+    
+  // Add user to activity
+  await addUserToActivityInEditModal(session, activity, createdUser.id)
+  
+  // Clear cache to reload available users (new user should now appear)
+  delete availableUsersCache.value[key]
+  
+  // Clear selection after adding
+  setTimeout(() => {
+    selectedUser.value[key] = null
+    userSearchQuery.value[key] = ''
+  }, 100)
+  
+  // Show success message
+  showSuccessMessage(`User "${userName}" created and added successfully`)
+  } catch (error) {
+    console.error('Failed to create user:', error)
+    showSuccessMessage('Failed to create user: ' + (error.message || 'Unknown error'))
+  } finally {
+    creatingUser.value[key] = false
+    userSearchLoading.value[key] = false
+  }
+}
+
+const addUserToActivity = async (session, activity, userId = null) => {
+  if (!userId) return
+  
+  try {
+    const response = await sessionStore.addUserToActivity(session.id, activity.id, {
+      user_id: userId
+    })
+    
+    // Get the new activity user from response
+    const newActivityUser = response?.data || response
+    
+    // Update local state - add user to activity
+    if (!activity.activity_users) {
+      activity.activity_users = []
+    }
+    
+    // Add the new user to the activity
+    if (newActivityUser && newActivityUser.user) {
+      activity.activity_users.push(newActivityUser)
+    }
+    
+    // Refresh the session to ensure all data is up to date
+    await refreshExpandedSession(session.id)
+    
+    // Also update the session in the sessions list
+    const sessionIndex = sessionStore.getSessions.findIndex(s => s.id === session.id)
+    if (sessionIndex !== -1) {
+      const sessionObj = sessionStore.getSessions[sessionIndex]
+      if (sessionObj.activities) {
+        const activityIndex = sessionObj.activities.findIndex(a => a.id === activity.id)
+        if (activityIndex !== -1 && sessionStore.getCurrentSession) {
+          const updatedActivity = sessionStore.getCurrentSession.activities?.find(a => a.id === activity.id)
+          if (updatedActivity) {
+            sessionObj.activities[activityIndex] = updatedActivity
+          }
+        }
+      }
+    }
+    
+    showSuccessMessage('User added successfully!')
+  } catch (error) {
+    console.error('Error adding user:', error)
+    const message = error.message || 'Failed to add user'
+    showSuccessMessage(message)
+  }
+}
+
+const addUserToActivityInEditModal = async (session, activity, userId = null) => {
+  if (!userId) return
+  
+  try {
+    await sessionStore.addUserToActivity(session.id, activity.id, {
+      user_id: userId
+    })
+    
+    // Refresh the editing session to update activities
+    if (editingSession.value && editingSession.value.id === session.id) {
+      await sessionStore.fetchSessionById(session.id)
+      editingSession.value = sessionStore.getCurrentSession || editingSession.value
+    }
+    
+    showSuccessMessage('User added successfully!')
+  } catch (error) {
+    console.error('Error adding user:', error)
+    const message = error.message || 'Failed to add user'
+    showSuccessMessage(message)
+  }
+}
+
+const removeUserFromActivity = async (session, activity, userId) => {
+  if (!confirm('Remove this user from activity?')) return
+  
+  try {
+    await sessionStore.removeUserFromActivity(session.id, activity.id, userId)
+    
+    // Update local state - remove user from activity
+    if (activity.activity_users) {
+      activity.activity_users = activity.activity_users.filter(
+        au => au.user_id !== userId
+      )
+    }
+    
+    // Refresh the session data to ensure consistency
+    await refreshExpandedSession(session.id)
+    
+    // Also update the session in the sessions list
+    const sessionIndex = sessionStore.getSessions.findIndex(s => s.id === session.id)
+    if (sessionIndex !== -1 && sessionStore.getCurrentSession) {
+      const sessionObj = sessionStore.getSessions[sessionIndex]
+      if (sessionObj.activities) {
+        const activityIndex = sessionObj.activities.findIndex(a => a.id === activity.id)
+        if (activityIndex !== -1) {
+          const updatedActivity = sessionStore.getCurrentSession.activities?.find(a => a.id === activity.id)
+          if (updatedActivity) {
+            sessionObj.activities[activityIndex] = updatedActivity
+          }
+        }
+      }
+    }
+    
+    showSuccessMessage('User removed successfully!')
+  } catch (error) {
+    console.error('Error removing user:', error)
+    showSuccessMessage('Failed to remove user')
+  }
+}
+
+const removeUserFromActivityInEditModal = async (session, activity, userId) => {
+  if (!confirm('Remove this user from activity?')) return
+  
+  try {
+    await sessionStore.removeUserFromActivity(session.id, activity.id, userId)
+    
+    // Refresh the editing session to update activities
+    if (editingSession.value && editingSession.value.id === session.id) {
+      await sessionStore.fetchSessionById(session.id)
+      editingSession.value = sessionStore.getCurrentSession || editingSession.value
+    }
+    
+    showSuccessMessage('User removed successfully!')
+  } catch (error) {
+    console.error('Error removing user:', error)
+    showSuccessMessage('Failed to remove user')
+  }
+}
+
 // Timer functionality for real-time updates
 const currentTime = ref(new Date())
 let timerInterval = null
@@ -1614,8 +2420,9 @@ const showSuccessMessage = (message) => {
 }
 
 // Lifecycle
-onMounted(() => {
+onMounted(async () => {
   console.log('SessionsSection: Component mounted, loading sessions...')
+  await loadAllUsers() // Load users for search functionality
   loadSessions(1)
   startTimer()
 })
@@ -1693,6 +2500,137 @@ defineEmits(['session-selected', 'session-created', 'session-updated'])
   50% {
     opacity: 0.5;
   }
+}
+
+/* User Management Styles */
+.activity-card-users {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.users-label {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.activity-user-card {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 0.375rem;
+  margin-bottom: 0.5rem;
+}
+
+.user-name {
+  flex: 1;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.user-duration {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.875rem;
+}
+
+.user-remove-btn {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  border-radius: 0.25rem;
+  transition: background-color 0.2s;
+}
+
+.user-remove-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+}
+
+.user-remove-btn.small {
+  padding: 0.125rem;
+}
+
+.user-remove-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.no-users-message {
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+  padding: 0.5rem;
+}
+
+.add-user-section {
+  margin-top: 0.75rem;
+  position: relative;
+}
+
+.add-user-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* User Search Input Styles (matching customer search) */
+/* User Search Input Styles - reuses customer-search-wrapper and customer-dropdown classes from components.css */
+.user-search-dropdown {
+  /* Ensure dropdown is properly positioned and visible */
+  position: absolute !important;
+  z-index: 99999 !important; /* Extremely high z-index to appear above everything */
+  /* Ensure dropdown is not clipped by parent containers */
+  isolation: isolate !important;
+}
+
+/* Ensure parent containers don't clip the dropdown */
+.add-user-section,
+.activity-card-users,
+.activity-card,
+.expanded-section {
+  overflow: visible !important;
+}
+
+.dropdown-item.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+.dropdown-item.disabled:hover {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border-left: none;
+}
+
+.user-status-badge {
+  display: block;
+  font-size: 0.7rem;
+  color: #f59e0b;
+  margin-top: 0.25rem;
+  font-style: italic;
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+
+.activity-users {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.activity-user-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 0.375rem;
+  margin-bottom: 0.5rem;
 }
 </style>
 

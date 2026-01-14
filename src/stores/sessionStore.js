@@ -580,6 +580,27 @@ export const useSessionStore = defineStore('session', {
     // ==================== Activity User Actions ====================
 
     /**
+     * Get available users for an activity
+     * @param {number} sessionId - Session ID
+     * @param {number} activityId - Activity ID
+     */
+    async getAvailableUsersForActivity(sessionId, activityId) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const response = await SessionService.getAvailableUsersForActivity(sessionId, activityId)
+        // Response is an array of users
+        return Array.isArray(response) ? response : (response.data || [])
+      } catch (error) {
+        this.error = error.message || 'Failed to fetch available users'
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    /**
      * Add user to activity
      * @param {number} sessionId - Session ID
      * @param {number} activityId - Activity ID

@@ -468,6 +468,22 @@ class SessionService {
     // ==================== Activity Users Methods ====================
 
     /**
+     * Get available users for an activity
+     * @param {number} sessionId - Session ID
+     * @param {number} activityId - Activity ID
+     * @returns {Promise}
+     */
+    static async getAvailableUsersForActivity(sessionId, activityId) {
+        try {
+            const response = await api.get(`/api/sessions/${sessionId}/activities/${activityId}/users/available`)
+            return response.data
+        } catch (error) {
+            console.error('Get Available Users Error:', error)
+            throw new Error(error.response?.data?.message || 'Failed to fetch available users')
+        }
+    }
+
+    /**
      * Add user to activity
      * @param {number} sessionId - Session ID
      * @param {number} activityId - Activity ID
