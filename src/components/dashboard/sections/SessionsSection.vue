@@ -466,14 +466,27 @@
                                   
                                   <div class="form-field">
                                     <label class="field-label">Quantity</label>
-                                    <input 
-                                      type="number"
-                                      :value="getProductQuantity(session, activity, au.user_id)"
-                                      @input="setProductQuantity(session, activity, au.user_id, $event.target.value)"
-                                      min="1"
-                                      class="quantity-counter"
-                                      placeholder="1"
-                                    />
+                                    <div class="quantity-counter-wrapper">
+                                      <button 
+                                        @click="setProductQuantity(session, activity, au.user_id, Math.max(1, getProductQuantity(session, activity, au.user_id) - 1))"
+                                        class="quantity-btn quantity-btn-minus"
+                                        type="button"
+                                      >
+                                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                          <path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                      </button>
+                                      <span class="quantity-display">{{ getProductQuantity(session, activity, au.user_id) }}</span>
+                                      <button 
+                                        @click="setProductQuantity(session, activity, au.user_id, getProductQuantity(session, activity, au.user_id) + 1)"
+                                        class="quantity-btn quantity-btn-plus"
+                                        type="button"
+                                      >
+                                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                          <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                      </button>
+                                    </div>
                                   </div>
                                   
                                   <div class="form-field">
@@ -651,12 +664,14 @@
                         <div 
                           v-if="activity.status !== 'ended' && (activity.activity_type === 'playing' || activity.device_id)"
                           class="mode-toggle-wrapper"
-                          :title="`Switch to ${(activity.mode || 'single') === 'single' ? 'Multi' : 'Single'} mode`"
+                          :class="{ 'disabled': activity.status === 'paused' }"
+                          :title="activity.status === 'paused' ? 'Mode toggle is disabled when activity is paused' : `Switch to ${(activity.mode || 'single') === 'single' ? 'Multi' : 'Single'} mode`"
                         >
                           <label class="mode-toggle-label">
                             <input 
                               type="checkbox" 
                               :checked="(activity.mode || 'single') === 'multi'"
+                              :disabled="activity.status === 'paused'"
                               @change="toggleActivityMode(session, activity)"
                               class="mode-toggle-input"
                             />
@@ -924,14 +939,27 @@
                                 
                                 <div class="form-field">
                                   <label class="field-label">Quantity</label>
-                                  <input 
-                                    type="number"
-                                    :value="getProductQuantity(editingSession, activity, au.user_id)"
-                                    @input="setProductQuantity(editingSession, activity, au.user_id, $event.target.value)"
-                                    min="1"
-                                    class="quantity-counter"
-                                    placeholder="1"
-                                  />
+                                  <div class="quantity-counter-wrapper">
+                                    <button 
+                                      @click="setProductQuantity(editingSession, activity, au.user_id, Math.max(1, getProductQuantity(editingSession, activity, au.user_id) - 1))"
+                                      class="quantity-btn quantity-btn-minus"
+                                      type="button"
+                                    >
+                                      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                      </svg>
+                                    </button>
+                                    <span class="quantity-display">{{ getProductQuantity(editingSession, activity, au.user_id) }}</span>
+                                    <button 
+                                      @click="setProductQuantity(editingSession, activity, au.user_id, getProductQuantity(editingSession, activity, au.user_id) + 1)"
+                                      class="quantity-btn quantity-btn-plus"
+                                      type="button"
+                                    >
+                                      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                      </svg>
+                                    </button>
+                                  </div>
                                 </div>
                                 
                                 <div class="form-field">
@@ -2994,6 +3022,8 @@ defineEmits(['session-selected', 'session-created', 'session-updated'])
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-left: -3px;
+  margin-right: -3px;
 }
 
 .users-label {

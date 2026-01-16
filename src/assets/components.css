@@ -2916,6 +2916,28 @@ button:disabled,
   transform: translateX(1.75rem);
 }
 
+.mode-toggle-wrapper.disabled .mode-toggle-label {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.mode-toggle-wrapper.disabled .mode-toggle-slider {
+  cursor: not-allowed;
+  background-color: #4b5563;
+  opacity: 0.6;
+}
+
+.mode-toggle-input:disabled + .mode-toggle-slider {
+  cursor: not-allowed;
+  background-color: #4b5563;
+  opacity: 0.6;
+}
+
+.mode-toggle-input:disabled:checked + .mode-toggle-slider {
+  background-color: #6366f1;
+  opacity: 0.6;
+}
+
 .mode-toggle-text {
   position: absolute;
   top: 50%;
@@ -4550,6 +4572,83 @@ select.product-dropdown-futuristic {
   box-shadow: 
     0 0 20px rgba(139, 92, 246, 0.3),
     0 0 0 2px rgba(139, 92, 246, 0.1);
+}
+
+/* Quantity Counter Wrapper (with + and - buttons) */
+.quantity-counter-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  background: rgba(15, 15, 23, 0.8);
+  border: 1.5px solid rgba(139, 92, 246, 0.3);
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.quantity-counter-wrapper:hover {
+  border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.2);
+}
+
+.quantity-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  background: rgba(139, 92, 246, 0.2);
+  border: none;
+  color: rgba(255, 255, 255, 0.95);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.quantity-btn:hover:not(:disabled) {
+  background: rgba(139, 92, 246, 0.4);
+  box-shadow: 0 0 10px rgba(139, 92, 246, 0.3);
+}
+
+.quantity-btn:active:not(:disabled) {
+  background: rgba(139, 92, 246, 0.5);
+  transform: scale(0.95);
+}
+
+.quantity-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.quantity-btn svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  stroke: currentColor;
+}
+
+.quantity-btn-minus {
+  border-radius: 8px 0 0 8px;
+  width: 60px;
+  height: -webkit-fill-available;
+}
+
+.quantity-btn-plus {
+  border-radius: 0 8px 8px 0;
+  width: 60px;
+  height: -webkit-fill-available;
+}
+
+.quantity-display {
+  flex: 1;
+  text-align: center;
+  padding: 0.75rem 1rem;
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 0.875rem;
+  font-weight: 600;
+  min-width: 3rem;
+  user-select: none;
 }
 
 /* Add Product Button */
