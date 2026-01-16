@@ -2343,7 +2343,7 @@ button:disabled,
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
-  padding: 1.5rem;
+  padding: 5px;
   transition: all 0.3s ease;
   backdrop-filter: blur(10px);
   position: relative;
@@ -2383,6 +2383,7 @@ button:disabled,
   margin-bottom: 1rem;
   cursor: pointer;
   user-select: none;
+  padding: 10px;
 }
 
 .session-card-header:hover {
@@ -2438,6 +2439,7 @@ button:disabled,
   display: flex;
   flex-direction: column;
   gap: 1rem;
+  padding: 10px;
 }
 
 .session-badges {
@@ -2530,7 +2532,7 @@ button:disabled,
 
 .expanded-section {
   margin-bottom: 2rem;
-  padding: 1.5rem;
+  padding: 5px;
   background: rgba(139, 92, 246, 0.05);
   border: 1px solid rgba(139, 92, 246, 0.2);
   border-radius: 12px;
