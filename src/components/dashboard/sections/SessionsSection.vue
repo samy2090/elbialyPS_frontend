@@ -80,6 +80,50 @@
 
     <!-- Sessions Table/Cards -->
     <div v-else-if="sessionStore.getSessions.length > 0" class="sessions-display">
+      <!-- Futuristic Stats Section -->
+      <div v-if="showStatsSection" class="sessions-stats-section">
+        <div class="stats-container">
+          <div class="stat-card active-stat" :class="{ 'stat-card-clicked': clickedCard === 'active' }" @click="triggerRipple('active')">
+            <div class="stat-ripple"></div>
+            <div class="stat-ripple stat-ripple-2"></div>
+            <div class="stat-ripple stat-ripple-3"></div>
+            <div class="stat-icon-wrapper">
+              <div class="stat-icon active-icon">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                  <path d="M8 12L11 15L16 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <div class="stat-pulse"></div>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ activeSessionsCount }}</div>
+              <div class="stat-label">Active Sessions</div>
+            </div>
+            <div class="stat-glow active-glow"></div>
+          </div>
+          <div class="stat-card paused-stat" :class="{ 'stat-card-clicked': clickedCard === 'paused' }" @click="triggerRipple('paused')">
+            <div class="stat-ripple"></div>
+            <div class="stat-ripple stat-ripple-2"></div>
+            <div class="stat-ripple stat-ripple-3"></div>
+            <div class="stat-icon-wrapper">
+              <div class="stat-icon paused-icon">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                  <rect x="9" y="9" width="2" height="6" fill="currentColor"/>
+                  <rect x="13" y="9" width="2" height="6" fill="currentColor"/>
+                </svg>
+              </div>
+              <div class="stat-pulse paused-pulse"></div>
+            </div>
+            <div class="stat-content">
+              <div class="stat-value">{{ pausedSessionsCount }}</div>
+              <div class="stat-label">Paused Sessions</div>
+            </div>
+            <div class="stat-glow paused-glow"></div>
+          </div>
+        </div>
+      </div>
       <!-- Desktop Table View -->
       <div class="sessions-table-container desktop-only">
         <div class="table-card">
@@ -1308,6 +1352,7 @@ const showSuccess = ref(false)
 const currentPage = ref(1)
 const perPage = ref(10)
 const expandedSessionId = ref(null)
+const clickedCard = ref(null)
 
 // Lock body scroll when any modal is open
 const isAnyModalOpen = computed(() => 
@@ -1448,14 +1493,65 @@ const getCurrentSessionId = computed(() => {
   return Number(sessionId)
 })
 
-// Sort sessions by started_at (newer to oldest)
+// Count active and paused sessions
+const activeSessionsCount = computed(() => {
+  return sessionStore.getSessions.filter(session => {
+    const status = (session.status || '').toLowerCase()
+    return status === 'active'
+  }).length
+})
+
+const pausedSessionsCount = computed(() => {
+  return sessionStore.getSessions.filter(session => {
+    const status = (session.status || '').toLowerCase()
+    return status === 'paused'
+  }).length
+})
+
+const showStatsSection = computed(() => {
+  return activeSessionsCount.value > 0 || pausedSessionsCount.value > 0
+})
+
+// Sort sessions: active/paused (not ended) first, then by started_at (newer to oldest)
 const sortedSessions = computed(() => {
   const sessions = [...sessionStore.getSessions]
-  return sessions.sort((a, b) => {
+  
+  // Separate sessions into active/paused and ended
+  const activePausedSessions = []
+  const endedSessions = []
+  
+  sessions.forEach(session => {
+    const status = (session.status || '').toLowerCase()
+    // A session is ended only if status is explicitly 'ended'
+    // Don't check ended_at field as it might be set even for active sessions
+    const isEnded = status === 'ended'
+    const isActiveOrPaused = status === 'active' || status === 'paused'
+    
+    if (isActiveOrPaused && !isEnded) {
+      activePausedSessions.push(session)
+    } else {
+      endedSessions.push(session)
+    }
+  })
+  
+  // Sort active/paused sessions by started_at (newer first)
+  activePausedSessions.sort((a, b) => {
     const dateA = a.started_at ? new Date(a.started_at).getTime() : 0
     const dateB = b.started_at ? new Date(b.started_at).getTime() : 0
     return dateB - dateA // Descending order (newer first)
   })
+  
+  // Sort ended sessions by started_at (newer first)
+  endedSessions.sort((a, b) => {
+    const dateA = a.started_at ? new Date(a.started_at).getTime() : 0
+    const dateB = b.started_at ? new Date(b.started_at).getTime() : 0
+    return dateB - dateA // Descending order (newer first)
+  })
+  
+  // Combine: active/paused first, then ended
+  const sorted = [...activePausedSessions, ...endedSessions]
+  
+  return sorted
 })
 
 // Toggle session expansion
@@ -1489,6 +1585,15 @@ const formatDateTime = (dateString) => {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+// Trigger ripple animation on click
+const triggerRipple = (cardType) => {
+  clickedCard.value = cardType
+  // Remove the class after animation completes to allow re-triggering
+  setTimeout(() => {
+    clickedCard.value = null
+  }, 800) // Match animation duration
 }
 
 

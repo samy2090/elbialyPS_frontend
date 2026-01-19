@@ -2537,6 +2537,651 @@ body.modal-open {
   gap: 1rem;
 }
 
+/* Futuristic Stats Section */
+.sessions-stats-section {
+  display: block;
+  width: 100%;
+  margin-bottom: 2rem;
+  animation: fadeInUp 0.6s ease-out;
+  position: relative;
+  z-index: 1;
+}
+
+.stats-container {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.stat-card {
+  position: relative;
+  background: linear-gradient(135deg, rgba(30, 30, 50, 0.8) 0%, rgba(20, 20, 40, 0.9) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.75rem;
+  padding: 1rem;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  animation: floatCard 6s ease-in-out infinite;
+  cursor: pointer;
+}
+
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  border-radius: 0.75rem;
+  opacity: 0;
+  animation: borderGlow 40s ease-in-out infinite;
+  z-index: -1;
+}
+
+.stat-card.active-stat::before {
+  background: linear-gradient(45deg, transparent, rgba(34, 197, 94, 0.3), transparent);
+}
+
+.stat-card.paused-stat::before {
+  background: linear-gradient(45deg, transparent, rgba(251, 191, 36, 0.3), transparent);
+}
+
+.stat-card:hover {
+  transform: translateY(-6px) scale(1.02);
+  box-shadow: 
+    0 16px 64px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  animation-play-state: paused;
+}
+
+.stat-card:hover::before {
+  opacity: 1;
+  animation-duration: 10s;
+}
+
+.stat-card.active-stat {
+  border-color: rgba(34, 197, 94, 0.3);
+}
+
+.stat-card.paused-stat {
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+.stat-icon-wrapper {
+  position: relative;
+  display: inline-block;
+  margin-bottom: 0.75rem;
+}
+
+.stat-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: iconPulse 3s ease-in-out infinite;
+}
+
+.stat-icon.active-icon {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(16, 185, 129, 0.3) 100%);
+  color: #22c55e;
+  box-shadow: 
+    0 0 20px rgba(34, 197, 94, 0.4),
+    0 0 40px rgba(34, 197, 94, 0.2),
+    inset 0 0 20px rgba(34, 197, 94, 0.1);
+  animation: iconPulse 2s ease-in-out infinite, iconRotate 8s linear infinite;
+}
+
+.stat-icon.paused-icon {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.2) 0%, rgba(245, 158, 11, 0.3) 100%);
+  color: #fbbf24;
+  box-shadow: 
+    0 0 20px rgba(251, 191, 36, 0.4),
+    0 0 40px rgba(251, 191, 36, 0.2),
+    inset 0 0 20px rgba(251, 191, 36, 0.1);
+  animation: iconPulsePaused 2.5s ease-in-out infinite, iconRotate 8s linear infinite;
+}
+
+.stat-card:hover .stat-icon {
+  transform: scale(1.15) rotate(5deg);
+  animation-play-state: paused;
+}
+
+.stat-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.stat-pulse {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  z-index: 1;
+  animation: pulse 2s ease-in-out infinite, pulseRing 3s ease-in-out infinite;
+  background: rgba(34, 197, 94, 0.3);
+}
+
+.stat-pulse.paused-pulse {
+  background: rgba(251, 191, 36, 0.3);
+}
+
+.stat-pulse::before,
+.stat-pulse::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  opacity: 0;
+  animation: pulseRing 3s ease-in-out infinite;
+}
+
+.stat-pulse::after {
+  animation-delay: 1.5s;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: translate(-50%, -50%) scale(1.4);
+    opacity: 0;
+  }
+}
+
+@keyframes pulseRing {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2);
+    opacity: 0;
+  }
+}
+
+.stat-content {
+  position: relative;
+  z-index: 2;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #ffffff 0%, rgba(255, 255, 255, 0.8) 100%);
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  line-height: 1;
+  margin-bottom: 0.375rem;
+  text-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+  animation: gradientShift 3s ease infinite, numberGlow 2s ease-in-out infinite;
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
+}
+
+.stat-card.active-stat .stat-value {
+  filter: drop-shadow(0 0 12px rgba(34, 197, 94, 0.5));
+}
+
+.stat-card.paused-stat .stat-value {
+  filter: drop-shadow(0 0 12px rgba(251, 191, 36, 0.5));
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 500;
+}
+
+.stat-glow {
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  filter: blur(40px);
+  animation: glowPulse 4s ease-in-out infinite;
+}
+
+.stat-card:hover .stat-glow {
+  opacity: 0.5;
+  animation-duration: 1.5s;
+}
+
+.stat-glow.active-glow {
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.6) 0%, transparent 70%);
+}
+
+.stat-glow.paused-glow {
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.6) 0%, transparent 70%);
+}
+
+/* Background animated particles effect */
+.stat-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(255, 255, 255, 0.03) 0%, transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(255, 255, 255, 0.02) 0%, transparent 50%);
+  background-size: 200% 200%;
+  animation: particleMove 20s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: 0.75rem;
+}
+
+.stat-card.active-stat::after {
+  background-image: 
+    radial-gradient(circle at 20% 30%, rgba(34, 197, 94, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(34, 197, 94, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(34, 197, 94, 0.05) 0%, transparent 50%);
+}
+
+.stat-card.paused-stat::after {
+  background-image: 
+    radial-gradient(circle at 20% 30%, rgba(251, 191, 36, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 70%, rgba(251, 191, 36, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 40% 80%, rgba(251, 191, 36, 0.05) 0%, transparent 50%);
+}
+
+/* Water ripple effect on click */
+.stat-ripple {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.2) 30%, transparent 70%);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 10;
+  box-shadow: 
+    0 0 0 0 rgba(255, 255, 255, 0.4),
+    0 0 0 0 rgba(255, 255, 255, 0.3),
+    0 0 0 0 rgba(255, 255, 255, 0.2);
+}
+
+.stat-card.active-stat .stat-ripple {
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.5) 0%, rgba(34, 197, 94, 0.3) 30%, transparent 70%);
+  box-shadow: 
+    0 0 0 0 rgba(34, 197, 94, 0.5),
+    0 0 0 0 rgba(34, 197, 94, 0.4),
+    0 0 0 0 rgba(34, 197, 94, 0.3);
+}
+
+.stat-card.paused-stat .stat-ripple {
+  background: radial-gradient(circle, rgba(251, 191, 36, 0.5) 0%, rgba(251, 191, 36, 0.3) 30%, transparent 70%);
+  box-shadow: 
+    0 0 0 0 rgba(251, 191, 36, 0.5),
+    0 0 0 0 rgba(251, 191, 36, 0.4),
+    0 0 0 0 rgba(251, 191, 36, 0.3);
+}
+
+.stat-card:active .stat-ripple,
+.stat-card-clicked .stat-ripple {
+  animation: waterRipple 0.8s ease-out;
+}
+
+.stat-card:active .stat-ripple-2,
+.stat-card-clicked .stat-ripple-2 {
+  animation: waterRipple 0.8s ease-out 0.15s;
+}
+
+.stat-card:active .stat-ripple-3,
+.stat-card-clicked .stat-ripple-3 {
+  animation: waterRipple 0.8s ease-out 0.3s;
+}
+
+.stat-card:active,
+.stat-card-clicked {
+  transform: translateY(-4px) scale(0.98);
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes floatCard {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+@keyframes borderGlow {
+  0%, 100% {
+    opacity: 0;
+    transform: rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: rotate(180deg);
+  }
+}
+
+@keyframes iconPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 
+      0 0 20px rgba(34, 197, 94, 0.4),
+      0 0 40px rgba(34, 197, 94, 0.2),
+      inset 0 0 20px rgba(34, 197, 94, 0.1);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 
+      0 0 30px rgba(34, 197, 94, 0.6),
+      0 0 60px rgba(34, 197, 94, 0.3),
+      inset 0 0 30px rgba(34, 197, 94, 0.15);
+  }
+}
+
+.stat-icon.paused-icon {
+  animation: iconPulsePaused 2.5s ease-in-out infinite, iconRotate 8s linear infinite;
+}
+
+@keyframes iconPulsePaused {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 
+      0 0 20px rgba(251, 191, 36, 0.4),
+      0 0 40px rgba(251, 191, 36, 0.2),
+      inset 0 0 20px rgba(251, 191, 36, 0.1);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 
+      0 0 30px rgba(251, 191, 36, 0.6),
+      0 0 60px rgba(251, 191, 36, 0.3),
+      inset 0 0 30px rgba(251, 191, 36, 0.15);
+  }
+}
+
+@keyframes iconRotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes numberGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3));
+  }
+  50% {
+    filter: drop-shadow(0 0 16px rgba(255, 255, 255, 0.5));
+  }
+}
+
+@keyframes glowPulse {
+  0%, 100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes particleMove {
+  0%, 100% {
+    background-position: 0% 0%, 100% 100%, 50% 50%;
+  }
+  33% {
+    background-position: 100% 0%, 0% 100%, 50% 50%;
+  }
+  66% {
+    background-position: 0% 100%, 100% 0%, 50% 50%;
+  }
+}
+
+@keyframes waterRipple {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0);
+    border: 2px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 
+      0 0 0 0 rgba(255, 255, 255, 0.4),
+      0 0 0 0 rgba(255, 255, 255, 0.3),
+      0 0 0 0 rgba(255, 255, 255, 0.2);
+  }
+  15% {
+    opacity: 0.95;
+    border-width: 1.5px;
+    box-shadow: 
+      0 0 20px 5px rgba(255, 255, 255, 0.3),
+      0 0 0 0 rgba(255, 255, 255, 0.2),
+      0 0 0 0 rgba(255, 255, 255, 0.1);
+  }
+  30% {
+    opacity: 0.8;
+    border-width: 1px;
+    box-shadow: 
+      0 0 40px 10px rgba(255, 255, 255, 0.2),
+      0 0 20px 5px rgba(255, 255, 255, 0.15),
+      0 0 0 0 rgba(255, 255, 255, 0.1);
+  }
+  50% {
+    opacity: 0.5;
+    border-width: 0.5px;
+    box-shadow: 
+      0 0 60px 15px rgba(255, 255, 255, 0.15),
+      0 0 40px 10px rgba(255, 255, 255, 0.1),
+      0 0 20px 5px rgba(255, 255, 255, 0.05);
+  }
+  100% {
+    width: 400px;
+    height: 400px;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+    border-width: 0;
+    box-shadow: 
+      0 0 100px 30px rgba(255, 255, 255, 0),
+      0 0 80px 20px rgba(255, 255, 255, 0),
+      0 0 60px 15px rgba(255, 255, 255, 0);
+  }
+}
+
+.stat-card.active-stat .stat-ripple {
+  border-color: rgba(34, 197, 94, 0.6);
+}
+
+.stat-card.active-stat .stat-ripple {
+  box-shadow: 
+    0 0 0 0 rgba(34, 197, 94, 0.5),
+    0 0 0 0 rgba(34, 197, 94, 0.4),
+    0 0 0 0 rgba(34, 197, 94, 0.3);
+}
+
+.stat-card.paused-stat .stat-ripple {
+  border-color: rgba(251, 191, 36, 0.6);
+}
+
+@keyframes waterRippleActive {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0);
+    border: 2px solid rgba(34, 197, 94, 0.6);
+    box-shadow: 
+      0 0 0 0 rgba(34, 197, 94, 0.5),
+      0 0 0 0 rgba(34, 197, 94, 0.4),
+      0 0 0 0 rgba(34, 197, 94, 0.3);
+  }
+  15% {
+    opacity: 0.95;
+    border-width: 1.5px;
+    box-shadow: 
+      0 0 20px 5px rgba(34, 197, 94, 0.3),
+      0 0 0 0 rgba(34, 197, 94, 0.2),
+      0 0 0 0 rgba(34, 197, 94, 0.1);
+  }
+  30% {
+    opacity: 0.8;
+    border-width: 1px;
+    box-shadow: 
+      0 0 40px 10px rgba(34, 197, 94, 0.2),
+      0 0 20px 5px rgba(34, 197, 94, 0.15),
+      0 0 0 0 rgba(34, 197, 94, 0.1);
+  }
+  50% {
+    opacity: 0.5;
+    border-width: 0.5px;
+    box-shadow: 
+      0 0 60px 15px rgba(34, 197, 94, 0.15),
+      0 0 40px 10px rgba(34, 197, 94, 0.1),
+      0 0 20px 5px rgba(34, 197, 94, 0.05);
+  }
+  100% {
+    width: 400px;
+    height: 400px;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+    border-width: 0;
+    box-shadow: 
+      0 0 100px 30px rgba(34, 197, 94, 0),
+      0 0 80px 20px rgba(34, 197, 94, 0),
+      0 0 60px 15px rgba(34, 197, 94, 0);
+  }
+}
+
+@keyframes waterRipplePaused {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0);
+    border: 2px solid rgba(251, 191, 36, 0.6);
+    box-shadow: 
+      0 0 0 0 rgba(251, 191, 36, 0.5),
+      0 0 0 0 rgba(251, 191, 36, 0.4),
+      0 0 0 0 rgba(251, 191, 36, 0.3);
+  }
+  15% {
+    opacity: 0.95;
+    border-width: 1.5px;
+    box-shadow: 
+      0 0 20px 5px rgba(251, 191, 36, 0.3),
+      0 0 0 0 rgba(251, 191, 36, 0.2),
+      0 0 0 0 rgba(251, 191, 36, 0.1);
+  }
+  30% {
+    opacity: 0.8;
+    border-width: 1px;
+    box-shadow: 
+      0 0 40px 10px rgba(251, 191, 36, 0.2),
+      0 0 20px 5px rgba(251, 191, 36, 0.15),
+      0 0 0 0 rgba(251, 191, 36, 0.1);
+  }
+  50% {
+    opacity: 0.5;
+    border-width: 0.5px;
+    box-shadow: 
+      0 0 60px 15px rgba(251, 191, 36, 0.15),
+      0 0 40px 10px rgba(251, 191, 36, 0.1),
+      0 0 20px 5px rgba(251, 191, 36, 0.05);
+  }
+  100% {
+    width: 400px;
+    height: 400px;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1);
+    border-width: 0;
+    box-shadow: 
+      0 0 100px 30px rgba(251, 191, 36, 0),
+      0 0 80px 20px rgba(251, 191, 36, 0),
+      0 0 60px 15px rgba(251, 191, 36, 0);
+  }
+}
+
+.stat-card.active-stat:active .stat-ripple,
+.stat-card.active-stat:active .stat-ripple,
+.stat-card.active-stat.stat-card-clicked .stat-ripple {
+  animation: waterRippleActive 0.8s ease-out;
+}
+
+.stat-card.active-stat:active .stat-ripple-2,
+.stat-card.active-stat.stat-card-clicked .stat-ripple-2 {
+  animation: waterRippleActive 0.8s ease-out 0.15s;
+}
+
+.stat-card.active-stat:active .stat-ripple-3,
+.stat-card.active-stat.stat-card-clicked .stat-ripple-3 {
+  animation: waterRippleActive 0.8s ease-out 0.3s;
+}
+
+.stat-card.paused-stat:active .stat-ripple,
+.stat-card.paused-stat.stat-card-clicked .stat-ripple {
+  animation: waterRipplePaused 0.8s ease-out;
+}
+
+.stat-card.paused-stat:active .stat-ripple-2,
+.stat-card.paused-stat.stat-card-clicked .stat-ripple-2 {
+  animation: waterRipplePaused 0.8s ease-out 0.15s;
+}
+
+.stat-card.paused-stat:active .stat-ripple-3,
+.stat-card.paused-stat.stat-card-clicked .stat-ripple-3 {
+  animation: waterRipplePaused 0.8s ease-out 0.3s;
+}
+
 /* Sessions Table */
 .sessions-table {
   width: 100%;
@@ -4295,6 +4940,42 @@ body.modal-open {
   .sessions-header {
     flex-direction: column;
     align-items: stretch;
+  }
+  
+  .stats-container {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+  }
+  
+  .stat-card {
+    padding: 0.875rem;
+  }
+  
+  .stat-value {
+    font-size: 1.75rem;
+  }
+  
+  .stat-icon {
+    width: 2rem;
+    height: 2rem;
+  }
+  
+  .stat-icon svg {
+    width: 1rem;
+    height: 1rem;
+  }
+  
+  .stat-pulse {
+    width: 2rem;
+    height: 2rem;
+  }
+  
+  .stat-icon-wrapper {
+    margin-bottom: 0.5rem;
+  }
+  
+  .stat-label {
+    font-size: 0.65rem;
   }
   
   .product-modal,
