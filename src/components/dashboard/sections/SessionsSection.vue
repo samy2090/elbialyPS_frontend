@@ -725,18 +725,16 @@
               <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
               <path d="M12 8V12M12 16H12.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
             </svg>
-            <p><strong>Warning: There are {{ activeActivitiesCount }} active activity(ies) in this session.</strong></p>
-            <p>Ending the session will also end all active activities at the same time.</p>
-            <p class="warning-text">Are you sure you want to proceed?</p>
+            <p><strong>{{ activeActivitiesCount }} active activity(ies)</strong> will also be ended.</p>
           </div>
           <div v-else>
-            <p>Are you sure you want to end Session #{{ endingSession?.id }}?</p>
+            <p>End Session #{{ endingSession?.id }}?</p>
           </div>
         </div>
         <div class="modal-actions">
           <button @click="closeEndSessionModal" class="action-btn secondary">Cancel</button>
           <button @click="confirmEndSession" :disabled="sessionStore.loading" class="action-btn danger">
-            End Session{{ activeActivitiesCount > 0 ? ' and All Activities' : '' }}
+            End Session{{ activeActivitiesCount > 0 ? ' & Activities' : '' }}
           </button>
         </div>
       </div>
@@ -755,12 +753,11 @@
           </button>
         </div>
         <div class="modal-content">
-          <p>Are you sure you want to delete Session #{{ deletingSession?.id }}?</p>
-          <p class="warning-text">This action cannot be undone.</p>
+          <p>Delete Session #{{ deletingSession?.id }}? <span class="warning-text">Cannot be undone.</span></p>
         </div>
         <div class="modal-actions">
           <button @click="closeDeleteModal" class="action-btn secondary">Cancel</button>
-          <button @click="confirmDeleteSession" :disabled="sessionStore.loading" class="action-btn danger">Delete Session</button>
+          <button @click="confirmDeleteSession" :disabled="sessionStore.loading" class="action-btn danger">Delete</button>
         </div>
       </div>
     </div>
@@ -790,6 +787,34 @@
         <div class="modal-actions">
           <button @click="closeActivityStatusModal" class="action-btn secondary">Cancel</button>
           <button @click="confirmChangeActivityStatus" :disabled="sessionStore.loading" class="action-btn primary">Change Status</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Remove User Warning Modal -->
+    <div v-if="showRemoveUserWarningModal && removingUserInfo" class="session-modal-overlay" @click="closeRemoveUserWarningModal">
+      <div class="session-modal delete-modal" @click.stop>
+        <div class="modal-header">
+          <h3>Cannot Remove User</h3>
+          <button @click="closeRemoveUserWarningModal" class="close-btn">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+              <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-content">
+          <div class="warning-message">
+            <svg class="warning-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+              <path d="M12 8V12M12 16H12.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            <p><strong>{{ removingUserInfo?.userName || 'User' }}</strong> has products assigned.</p>
+            <p>Remove all products first.</p>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button @click="closeRemoveUserWarningModal" class="action-btn primary">OK</button>
         </div>
       </div>
     </div>
@@ -1255,6 +1280,7 @@ import ActivityForm from '@/components/dashboard/sessions/ActivityForm.vue'
 import { formatDuration } from '@/utils/helpers'
 import UserService from '@/api/users'
 import SessionService from '@/api/sessions'
+import { useBodyScrollLock } from '@/composables/useBodyScrollLock'
 
 const sessionStore = useSessionStore()
 const userStore = useUserStore()
@@ -1265,9 +1291,12 @@ const sessionsLoaded = ref(false)
 const selectedSession = ref(null)
 const showDeleteModal = ref(false)
 const deletingSession = ref(null)
+const showEndSessionModal = ref(false)
 const showActivityStatusModal = ref(false)
 const changingActivity = ref(null)
 const newActivityStatus = ref('active')
+const showRemoveUserWarningModal = ref(false)
+const removingUserInfo = ref(null) // { session, activity, userId, userName }
 const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const editingSession = ref(null)
@@ -1279,6 +1308,19 @@ const showSuccess = ref(false)
 const currentPage = ref(1)
 const perPage = ref(10)
 const expandedSessionId = ref(null)
+
+// Lock body scroll when any modal is open
+const isAnyModalOpen = computed(() => 
+  showDeleteModal.value || 
+  showEndSessionModal.value ||
+  showActivityStatusModal.value || 
+  showRemoveUserWarningModal.value ||
+  showCreateModal.value || 
+  showEditModal.value || 
+  showCreateActivityModal.value || 
+  showEditActivityModal.value
+)
+useBodyScrollLock(isAnyModalOpen)
 
 // User management state - using searchable input pattern like customer input
 const userSearchQuery = ref({}) // Key: `${sessionId}-${activityId}` - search query text
@@ -1471,7 +1513,6 @@ const resumeSession = async (session) => {
 }
 
 // State for ending session confirmation
-const showEndSessionModal = ref(false)
 const endingSession = ref(null)
 const activeActivitiesCount = ref(0)
 
@@ -2505,7 +2546,63 @@ const addUserToActivityInEditModal = async (session, activity, userId = null) =>
   }
 }
 
+// Check if user has products in activity
+const checkUserHasProducts = async (session, activity, userId) => {
+  const key = getUserProductsKey(session, activity, userId)
+  if (!key) return false
+  
+  // If products are already loaded, check them
+  if (userProducts.value[key] && userProducts.value[key].length > 0) {
+    return true
+  }
+  
+  // Otherwise, load products to check
+  try {
+    loadingUserProducts.value[key] = true
+    const response = await SessionService.getActivityProductsByUser(session.id, activity.id, userId)
+    const products = response.data || response || []
+    const userProductsList = products.filter(p => p.ordered_by_user_id === userId)
+    userProducts.value[key] = userProductsList
+    return userProductsList.length > 0
+  } catch (error) {
+    console.error('Error checking user products:', error)
+    return false
+  } finally {
+    loadingUserProducts.value[key] = false
+  }
+}
+
+// Show remove user warning modal
+const showRemoveUserWarning = (session, activity, userId, userName) => {
+  removingUserInfo.value = { session, activity, userId, userName }
+  showRemoveUserWarningModal.value = true
+}
+
+// Close remove user warning modal
+const closeRemoveUserWarningModal = () => {
+  showRemoveUserWarningModal.value = false
+  removingUserInfo.value = null
+}
+
+// Get user name from activity users
+const getUserName = (activity, userId) => {
+  if (!activity.activity_users) return 'Unknown'
+  const activityUser = activity.activity_users.find(au => au.user_id === userId)
+  return activityUser?.user?.name || 'Unknown'
+}
+
 const removeUserFromActivity = async (session, activity, userId) => {
+  // Check if user has products first
+  const hasProducts = await checkUserHasProducts(session, activity, userId)
+  
+  if (hasProducts) {
+    // Show warning modal instead of removing
+    const userName = getUserName(activity, userId)
+    showRemoveUserWarning(session, activity, userId, userName)
+    return
+  }
+  
+  // If no products, proceed with normal confirmation
   if (!confirm('Remove this user from activity?')) return
   
   try {
@@ -2544,6 +2641,17 @@ const removeUserFromActivity = async (session, activity, userId) => {
 }
 
 const removeUserFromActivityInEditModal = async (session, activity, userId) => {
+  // Check if user has products first
+  const hasProducts = await checkUserHasProducts(session, activity, userId)
+  
+  if (hasProducts) {
+    // Show warning modal instead of removing
+    const userName = getUserName(activity, userId)
+    showRemoveUserWarning(session, activity, userId, userName)
+    return
+  }
+  
+  // If no products, proceed with normal confirmation
   if (!confirm('Remove this user from activity?')) return
   
   try {

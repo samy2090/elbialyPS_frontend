@@ -3,9 +3,15 @@ import { RouterLink, RouterView, useRoute } from 'vue-router'
 import AuthStatus from './components/site/auth/AuthStatus.vue'
 import { useAuthStore } from '@/stores/auth'
 import { onMounted, computed } from 'vue'
+import { useViewportDimensions } from '@/composables/useViewportDimensions'
 
 const authStore = useAuthStore()
 const route = useRoute()
+
+// Initialize viewport dimensions tracking
+// This sets CSS variables (--navbar-height, --bottom-nav-height, --available-height)
+// that modals use for proper positioning on all devices
+useViewportDimensions()
 
 // Initialize auth state when app loads
 onMounted(() => {

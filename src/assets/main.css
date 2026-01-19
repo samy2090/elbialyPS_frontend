@@ -2,6 +2,7 @@
 @import './components.css';
 @import './role-styles.css';
 @import './entertainment-theme.css';
+@import './browser-compatibility.css';
 
 #app {
   max-width: none;

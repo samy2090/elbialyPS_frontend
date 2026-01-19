@@ -638,8 +638,8 @@ button:hover {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
-  padding: 1.5rem;
+  gap: 0.5rem;
+  padding: 1rem;
   background: rgba(239, 68, 68, 0.1);
   border-radius: 8px;
   border: 1px solid rgba(239, 68, 68, 0.2);
@@ -647,8 +647,8 @@ button:hover {
 }
 
 .warning-message .warning-icon {
-  width: 48px;
-  height: 48px;
+  width: 32px;
+  height: 32px;
   color: var(--error-color);
   flex-shrink: 0;
 }
@@ -656,7 +656,8 @@ button:hover {
 .warning-message p {
   margin: 0;
   color: var(--text-primary);
-  line-height: 1.6;
+  line-height: 1.4;
+  font-size: 0.875rem;
 }
 
 .warning-message p strong {
@@ -666,23 +667,42 @@ button:hover {
 
 /* Delete Confirmation Modal */
 .delete-modal {
-  max-width: 400px;
+  max-width: 320px;
   width: 95%;
 }
 
 .delete-modal .modal-content {
   text-align: center;
+  padding: 1rem 1.5rem;
 }
 
 .delete-modal .modal-content p {
   color: var(--text-primary);
-  font-size: 1rem;
-  line-height: 1.6;
+  font-size: 0.875rem;
+  line-height: 1.5;
   margin: 0;
 }
 
 .delete-modal .modal-content p:first-child {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0;
+}
+
+.delete-modal .modal-header {
+  padding: 1rem 1.5rem;
+}
+
+.delete-modal .modal-header h3 {
+  font-size: 1rem;
+}
+
+.delete-modal .modal-actions {
+  padding: 1rem 1.5rem;
+  gap: 0.75rem;
+}
+
+.delete-modal .modal-actions .action-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
 }
 
 /* Success buttons */
@@ -1421,36 +1441,146 @@ button:disabled,
    MODAL STYLES (Shared across all sections)
    ============================================== */
 
-/* Modal Overlay */
-.user-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1100;
-  padding-top: 80px; /* Top: navbar height (80px) */
-  padding-bottom: 80px; /* Bottom: bottom nav height (80px) */
-  padding-left: 1rem;
-  padding-right: 1rem;
-  margin: 10px;
+/* ==============================================
+   MODAL SYSTEM - Modern Viewport-Based Positioning
+   ==============================================
+   
+   WHY THIS WORKS ON ALL DEVICES:
+   1. CSS Custom Properties: Set dynamically by useViewportDimensions composable
+      - --navbar-height: Actual navbar height from DOM
+      - --bottom-nav-height: Actual bottom nav height (0 on desktop)
+      - --available-height: Calculated space between navbar and bottom nav
+      - Uses window.innerHeight (not 100vh) to account for mobile browser UI
+   
+   2. Modern Viewport Units:
+      - dvh (dynamic viewport height): Accounts for mobile browser UI showing/hiding
+      - Falls back to CSS variables set by JavaScript for older browsers
+   
+   3. Safe Area Insets:
+      - env(safe-area-inset-*): Handles notches, home indicators on modern devices
+      - Uses max() to ensure minimum spacing
+   
+   4. Flexbox Layout:
+      - Modal overlay uses flexbox to center modal
+      - Modal container uses flexbox column for proper scrolling
+      - Content area scrolls independently
+   
+   5. Responsive:
+      - Works on all screen sizes and aspect ratios
+      - Handles landscape/portrait orientation changes
+      - Adapts to different navbar/bottom nav heights
+   ============================================== */
+
+/* CSS Custom Properties - Set by useViewportDimensions composable */
+:root {
+  --viewport-height: 100vh; /* Fallback - updated by JS */
+  --navbar-height: 80px; /* Fallback - updated by JS */
+  --bottom-nav-height: 80px; /* Fallback - updated by JS */
+  --available-height: calc(100vh - 160px); /* Fallback - updated by JS */
 }
 
-/* Modal Container */
+/* Prevent body scroll when modal is open */
+body.modal-open {
+  overflow: hidden !important;
+  position: fixed !important;
+  width: 100% !important;
+  height: 100% !important;
+  /* Use actual viewport height to prevent scroll issues */
+  height: var(--viewport-height, 100vh);
+}
+
+/* Modal Overlay - Positioned between navbar and bottom nav */
+.user-modal-overlay {
+  /* Position: Use inset for better control */
+  position: fixed;
+  inset: 0;
+  
+  /* Background */
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  
+  /* Layout: Flexbox to position modal correctly */
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  
+  /* Z-index: Above content, below other modals */
+  z-index: 1100;
+  
+  /* Scrolling: Overlay can scroll if needed */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  
+  /* Padding: Use CSS variables for navbar/bottom nav heights */
+  /* These are updated dynamically by useViewportDimensions */
+  padding-top: var(--navbar-height, 80px);
+  padding-bottom: var(--bottom-nav-height, 80px);
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+/* Safe area insets support (notched devices) */
+@supports (padding: max(0px)) {
+  .user-modal-overlay {
+    /* Ensure safe areas are respected */
+    padding-top: max(var(--navbar-height, 80px), env(safe-area-inset-top, 0px));
+    padding-bottom: max(var(--bottom-nav-height, 80px), env(safe-area-inset-bottom, 0px));
+    padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
+    padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
+  }
+}
+
+/* Modal Container - Uses available height CSS variable */
 .user-modal {
+  /* Styling */
   background: rgba(15, 15, 23, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 16px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  
+  /* Size */
   max-width: 500px;
   width: 100%;
-  max-height: calc(100vh - 160px); /* Account for top navbar (80px) + bottom nav (80px) */
-  overflow-y: auto;
+  margin: 0.5rem auto;
+  
+  /* Height: Use CSS variable set by JavaScript */
+  /* This ensures modal never exceeds available space */
+  max-height: var(--available-height, calc(100vh - 160px));
+  min-height: min(400px, var(--available-height, calc(100vh - 160px)));
+  
+  /* Layout: Flexbox column for proper content scrolling */
   display: flex;
   flex-direction: column;
+  position: relative;
+  
+  /* Scrolling: Container doesn't scroll, only content area */
+  overflow: hidden;
+}
+
+/* Modern viewport units (dvh = dynamic viewport height) */
+/* dvh accounts for mobile browser UI showing/hiding */
+@supports (height: 100dvh) {
+  .user-modal {
+    /* Use dvh with CSS variables for accurate height calculation */
+    max-height: min(
+      var(--available-height, calc(100dvh - var(--navbar-height, 80px) - var(--bottom-nav-height, 80px))),
+      90dvh
+    );
+    min-height: min(
+      400px,
+      var(--available-height, calc(100dvh - var(--navbar-height, 80px) - var(--bottom-nav-height, 80px)))
+    );
+  }
+}
+
+/* Fallback for browsers without dvh support */
+@supports not (height: 100dvh) {
+  .user-modal {
+    /* Use CSS variable which is updated by JavaScript using window.innerHeight */
+    max-height: var(--available-height, calc(100vh - 160px));
+    min-height: min(400px, var(--available-height, calc(100vh - 160px)));
+  }
 }
 
 /* Modal Header */
@@ -1461,6 +1591,13 @@ button:disabled,
   padding: 1.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  background: rgba(15, 15, 23, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 10;
+  border-radius: 16px 16px 0 0;
 }
 
 .modal-header h3 {
@@ -1495,7 +1632,7 @@ button:disabled,
   overflow-y: auto;
   flex: 1;
   -webkit-overflow-scrolling: touch;
-  margin: 10px;
+  min-height: 0; /* Allow flex shrinking */
 }
 
 /* Detail Modal Styles */
@@ -1507,9 +1644,17 @@ button:disabled,
 .modal-detail-content {
   padding: 1.5rem;
   padding-bottom: 2rem; /* Extra bottom padding to ensure content is visible */
-  max-height: calc(100vh - 240px); /* Account for header + navbar + bottom nav */
+  /* Use CSS variable for available height, accounting for header (~80px) */
+  max-height: calc(var(--available-height, calc(100vh - 160px)) - 80px);
   overflow-y: auto;
   flex: 1;
+  min-height: 0; /* Allow flex shrinking */
+}
+
+@supports (height: 100dvh) {
+  .modal-detail-content {
+    max-height: calc(var(--available-height, calc(100dvh - var(--navbar-height, 80px) - var(--bottom-nav-height, 80px))) - 80px);
+  }
 }
 
 .modal-user-header {
@@ -1602,8 +1747,14 @@ button:disabled,
 
 .edit-modal .modal-content {
   padding: 0;
-  max-height: calc(100vh - 160px);
+  max-height: var(--available-height, calc(100vh - 160px));
   overflow-y: auto;
+}
+
+@supports (height: 100dvh) {
+  .edit-modal .modal-content {
+    max-height: var(--available-height, calc(100dvh - var(--navbar-height, 80px) - var(--bottom-nav-height, 80px)));
+  }
 }
 
 /* Modal Actions */
@@ -1615,6 +1766,13 @@ button:disabled,
   padding-bottom: 2rem; /* Extra bottom padding to ensure buttons are visible */
   border-top: 1px solid rgba(255, 255, 255, 0.1);
   flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  background: rgba(15, 15, 23, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  z-index: 10;
+  border-radius: 0 0 16px 16px;
 }
 
 /* User Detail Card */
@@ -1646,31 +1804,73 @@ button:disabled,
   text-decoration: underline;
 }
 
-/* Responsive Modal Styles */
+/* Responsive Modal Styles - Mobile */
 @media (max-width: 768px) {
-  .user-modal-overlay {
-    padding: 80px 0 80px 0; /* Top: navbar, Bottom: bottom nav */
+  .user-modal-overlay,
+  .product-modal-overlay,
+  .session-modal-overlay {
+    /* Use CSS variables set by JavaScript */
+    padding-top: var(--navbar-height, 80px);
+    padding-bottom: var(--bottom-nav-height, 80px);
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+    align-items: flex-start;
   }
   
-  .user-modal {
+  /* Safe area insets on mobile */
+  @supports (padding: max(0px)) {
+    .user-modal-overlay,
+    .product-modal-overlay,
+    .session-modal-overlay {
+      padding-top: max(var(--navbar-height, 80px), env(safe-area-inset-top, 0px));
+      padding-bottom: max(var(--bottom-nav-height, 80px), env(safe-area-inset-bottom, 0px));
+      padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
+      padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
+    }
+  }
+  
+  .user-modal,
+  .product-modal,
+  .session-modal {
     width: 100%;
-    max-height: calc(100vh - 160px); /* Account for both bars */
-    border-radius: 16px 16px 0 0; /* Rounded top only on mobile */
-    margin: 0;
+    max-width: 100%;
+    margin: 0 auto;
+    border-radius: 16px 16px 0 0;
+    /* Use CSS variable for available height */
+    max-height: var(--available-height, calc(100vh - 160px));
+    min-height: min(300px, var(--available-height, calc(100vh - 160px)));
+  }
+  
+  /* Modern viewport units on mobile */
+  @supports (height: 100dvh) {
+    .user-modal,
+    .product-modal,
+    .session-modal {
+      max-height: var(--available-height, calc(100dvh - var(--navbar-height, 80px) - var(--bottom-nav-height, 80px)));
+      min-height: min(300px, var(--available-height, calc(100dvh - var(--navbar-height, 80px) - var(--bottom-nav-height, 80px))));
+    }
   }
   
   .user-detail-modal {
     width: 100%;
-    max-height: calc(100vh - 160px);
+    max-width: 100%;
   }
   
   .edit-modal {
     width: 100%;
-    max-height: calc(100vh - 160px);
+    max-width: 100%;
   }
   
   .modal-header {
     padding: 1.25rem 1rem;
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    background: rgba(15, 15, 23, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    z-index: 1;
+    border-radius: 16px 16px 0 0;
   }
   
   .modal-header h3 {
@@ -1680,29 +1880,120 @@ button:disabled,
   .modal-content {
     padding: 1.25rem 1rem;
     padding-bottom: 2rem; /* Extra bottom padding on mobile */
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
   }
   
   .modal-detail-content {
     padding: 1.25rem 1rem;
     padding-bottom: 2.5rem; /* Extra bottom padding on mobile */
-    max-height: calc(100vh - 240px);
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
   }
   
   .edit-modal .modal-content {
-    max-height: calc(100vh - 160px);
     padding-bottom: 0; /* Form handles its own padding */
   }
   
   .modal-actions {
     padding: 1rem;
-    padding-bottom: 2rem; /* Extra bottom padding on mobile */
+    padding-bottom: max(2rem, env(safe-area-inset-bottom, 2rem)); /* Extra bottom padding on mobile + safe area */
     flex-direction: column-reverse;
     gap: 0.75rem;
+    flex-shrink: 0;
+    position: sticky;
+    bottom: 0;
+    background: rgba(15, 15, 23, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 0 0 16px 16px;
   }
   
   .modal-actions .action-btn {
     width: 100%;
     justify-content: center;
+  }
+}
+
+/* Extra small mobile devices */
+@media (max-width: 480px) {
+  .user-modal-overlay,
+  .product-modal-overlay,
+  .session-modal-overlay {
+    padding-top: max(70px, env(safe-area-inset-top));
+    padding-bottom: max(70px, env(safe-area-inset-bottom));
+    padding-left: max(0.25rem, env(safe-area-inset-left));
+    padding-right: max(0.25rem, env(safe-area-inset-right));
+  }
+  
+  .user-modal,
+  .product-modal,
+  .session-modal {
+    margin: 0 auto;
+    border-radius: 12px 12px 0 0;
+    max-height: var(--available-height, calc(100vh - 160px));
+    min-height: min(250px, var(--available-height, calc(100vh - 160px)));
+  }
+  
+  @supports (height: 100dvh) {
+    .user-modal,
+    .product-modal,
+    .session-modal {
+      max-height: var(--available-height, calc(100dvh - var(--navbar-height, 80px) - var(--bottom-nav-height, 80px)));
+      min-height: min(250px, var(--available-height, calc(100dvh - var(--navbar-height, 80px) - var(--bottom-nav-height, 80px))));
+    }
+  }
+  
+  .modal-header {
+    padding: 1rem 0.75rem;
+  }
+  
+  .modal-content {
+    padding: 1rem 0.75rem;
+    padding-bottom: 1.5rem;
+  }
+  
+  .modal-actions {
+    padding: 0.75rem;
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom, 1.5rem));
+  }
+}
+
+/* Landscape orientation on mobile */
+@media (max-width: 768px) and (orientation: landscape) {
+  .user-modal-overlay,
+  .product-modal-overlay,
+  .session-modal-overlay {
+    padding-top: var(--navbar-height, 60px);
+    padding-bottom: var(--bottom-nav-height, 60px);
+  }
+  
+  @supports (padding: max(0px)) {
+    .user-modal-overlay,
+    .product-modal-overlay,
+    .session-modal-overlay {
+      padding-top: max(var(--navbar-height, 60px), env(safe-area-inset-top, 0px));
+      padding-bottom: max(var(--bottom-nav-height, 60px), env(safe-area-inset-bottom, 0px));
+    }
+  }
+  
+  .user-modal,
+  .product-modal,
+  .session-modal {
+    max-height: var(--available-height, calc(100vh - 120px));
+    min-height: min(300px, var(--available-height, calc(100vh - 120px)));
+  }
+  
+  @supports (height: 100dvh) {
+    .user-modal,
+    .product-modal,
+    .session-modal {
+      max-height: var(--available-height, calc(100dvh - var(--navbar-height, 60px) - var(--bottom-nav-height, 60px)));
+      min-height: min(300px, var(--available-height, calc(100dvh - var(--navbar-height, 60px) - var(--bottom-nav-height, 60px))));
+    }
   }
 }
 
@@ -2100,8 +2391,7 @@ button:disabled,
 }
 
 /* Product Modal */
-.product-modal-overlay,
-.user-modal-overlay {
+.product-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -2109,24 +2399,55 @@ button:disabled,
   bottom: 0;
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   z-index: 1000;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 2rem;
+  padding: 0;
+  margin: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  /* Account for navbar and bottom nav on mobile - with fallback */
+  padding-top: 80px;
+  padding-bottom: 80px;
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 
-.product-modal,
-.user-modal {
+@supports (padding: max(0px)) {
+  .product-modal-overlay {
+    padding-top: max(80px, env(safe-area-inset-top));
+    padding-bottom: max(80px, env(safe-area-inset-bottom));
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+.product-modal {
   background: rgba(15, 15, 23, 0.95);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-xl);
   max-width: 800px;
   width: 100%;
-  max-height: 90vh;
+  margin: 1rem auto;
+  /* Use viewport height minus navbar, bottom nav - with fallback */
+  max-height: calc(100vh - 160px - 2rem);
+  min-height: min(400px, calc(100vh - 160px - 2rem));
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+  position: relative;
+}
+
+@supports (padding: max(0px)) {
+  .product-modal {
+    max-height: calc(100vh - max(80px, env(safe-area-inset-top)) - max(80px, env(safe-area-inset-bottom)) - 2rem);
+    min-height: min(400px, calc(100vh - max(80px, env(safe-area-inset-top)) - max(80px, env(safe-area-inset-bottom)) - 2rem));
+  }
 }
 
 .modal-product-header {
@@ -3284,36 +3605,60 @@ button:disabled,
   font-size: 0.625rem;
 }
 
-/* Session Modal */
+/* Session Modal - Same modern approach */
 .session-modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  inset: 0;
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   z-index: 1100; /* Above sidebar (90) and navbar (1000) */
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 2rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-top: var(--navbar-height, 80px);
+  padding-bottom: var(--bottom-nav-height, 80px);
+  padding-left: 0.5rem;
+  padding-right: 0.5rem;
+}
+
+@supports (padding: max(0px)) {
+  .session-modal-overlay {
+    padding-top: max(var(--navbar-height, 80px), env(safe-area-inset-top, 0px));
+    padding-bottom: max(var(--bottom-nav-height, 80px), env(safe-area-inset-bottom, 0px));
+    padding-left: max(0.5rem, env(safe-area-inset-left, 0px));
+    padding-right: max(0.5rem, env(safe-area-inset-right, 0px));
+  }
 }
 
 .session-modal {
   background: rgba(15, 15, 23, 0.95);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--border-primary);
   border-radius: var(--radius-xl);
   max-width: 900px;
   width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
+  margin: 0.5rem auto;
+  max-height: var(--available-height, calc(100vh - 160px));
+  min-height: min(400px, var(--available-height, calc(100vh - 160px)));
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   position: relative;
   z-index: 1101; /* Above overlay to ensure proper stacking */
   box-shadow: 
     0 20px 60px rgba(0, 0, 0, 0.4),
     0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+}
+
+@supports (height: 100dvh) {
+  .session-modal {
+    max-height: min(var(--available-height, calc(100dvh - var(--navbar-height, 80px) - var(--bottom-nav-height, 80px))), 90dvh);
+    min-height: min(400px, var(--available-height, calc(100dvh - var(--navbar-height, 80px) - var(--bottom-nav-height, 80px))));
+  }
 }
 
 .modal-header {
@@ -3909,8 +4254,8 @@ button:disabled,
 
 .warning-text {
   color: #ef4444;
-  font-size: 0.875rem;
-  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  margin-left: 0.25rem;
 }
 
 /* Form Elements */
@@ -3957,10 +4302,12 @@ button:disabled,
   .session-modal {
     max-width: 100%;
     margin: 1rem;
+    top:7%;
   }
 
   .session-modal.edit-modal {
     max-width: 800px;
+    top:7%;
   }
 
   .session-form-container,
@@ -4630,13 +4977,13 @@ select.product-dropdown-futuristic {
 
 .quantity-btn-minus {
   border-radius: 8px 0 0 8px;
-  width: 60px;
+  width: 20%;
   height: -webkit-fill-available;
 }
 
 .quantity-btn-plus {
   border-radius: 0 8px 8px 0;
-  width: 60px;
+  width: 20%;
   height: -webkit-fill-available;
 }
 

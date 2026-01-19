@@ -324,6 +324,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/userStore'
 import { getUserRole, getRoleClass } from '@/utils/roleHelpers'
+import { useBodyScrollLock } from '@/composables/useBodyScrollLock'
 
 export default {
   name: 'UserDetailView',
@@ -333,7 +334,6 @@ export default {
     const userStore = useUserStore()
     const user = ref(null)
     const showAllFields = ref(false)
-    
     const loadUser = async () => {
       try {
         const userId = route.params.id
@@ -409,6 +409,9 @@ export default {
     })
     
     const showDeleteModal = ref(false)
+    
+    // Lock body scroll when modal is open
+    useBodyScrollLock(showDeleteModal)
 
     const deleteUser = () => {
       showDeleteModal.value = true

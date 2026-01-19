@@ -142,10 +142,10 @@ import ProductsSection from '@/components/dashboard/sections/ProductsSection.vue
 import SessionsSection from '@/components/dashboard/sections/SessionsSection.vue'
 import DevicesSection from '@/components/dashboard/sections/DevicesSection.vue'
 
-// Reactive state
-const activeSection = ref('home')
+// Reactive state - load from localStorage if available
+const activeSection = ref(localStorage.getItem('dashboard_activeSection') || 'home')
 const sidebarVisible = ref(true)
-const sidebarCollapsed = ref(false)
+const sidebarCollapsed = ref(localStorage.getItem('dashboard_sidebarCollapsed') === 'true')
 const notificationsVisible = ref(false)
 const offcanvasVisible = ref(false)
 const windowWidth = ref(window.innerWidth)
@@ -206,6 +206,8 @@ const notifications = ref([
 // Methods
 const selectSection = (section) => {
   activeSection.value = section
+  // Save to localStorage for persistence across page refreshes
+  localStorage.setItem('dashboard_activeSection', section)
   if (isMobile.value) {
     // Close offcanvas and sidebar when a section is selected on mobile
     offcanvasVisible.value = false
@@ -221,6 +223,8 @@ const toggleSidebar = () => {
     offcanvasVisible.value = !offcanvasVisible.value
   } else {
     sidebarCollapsed.value = !sidebarCollapsed.value
+    // Save to localStorage for persistence across page refreshes
+    localStorage.setItem('dashboard_sidebarCollapsed', sidebarCollapsed.value.toString())
   }
 }
 
@@ -230,6 +234,8 @@ const closeOffcanvas = () => {
 
 const toggleSidebarCollapse = () => {
   sidebarCollapsed.value = !sidebarCollapsed.value
+  // Save to localStorage for persistence across page refreshes
+  localStorage.setItem('dashboard_sidebarCollapsed', sidebarCollapsed.value.toString())
 }
 
 const toggleNotifications = () => {

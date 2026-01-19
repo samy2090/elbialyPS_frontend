@@ -400,6 +400,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useDeviceStore } from '@/stores/deviceStore'
 import DeviceForm from '@/components/dashboard/devices/DeviceForm.vue'
+import { useBodyScrollLock } from '@/composables/useBodyScrollLock'
 
 // Store
 const deviceStore = useDeviceStore()
@@ -410,6 +411,10 @@ const showCreateModal = ref(false)
 const showEditModal = ref(false)
 const showViewModal = ref(false)
 const showDeleteModal = ref(false)
+
+// Lock body scroll when any modal is open
+const isAnyModalOpen = computed(() => showCreateModal.value || showEditModal.value || showViewModal.value || showDeleteModal.value)
+useBodyScrollLock(isAnyModalOpen)
 const showSuccess = ref(false)
 const successMessage = ref('')
 const editingDevice = ref(null)

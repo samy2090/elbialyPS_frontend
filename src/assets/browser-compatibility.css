@@ -1,0 +1,601 @@
+/* ==============================================
+   BROWSER COMPATIBILITY FIXES
+   Cross-browser support for Safari, iOS, and mobile browsers
+   ============================================== */
+
+/* CSS Reset for Cross-Browser Consistency */
+*,
+*::before,
+*::after {
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: rgba(139, 92, 246, 0.2);
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* Prevent font size adjustment on iOS */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  /* Fix for iOS Safari scrolling */
+  -webkit-overflow-scrolling: touch;
+  /* Prevent pull-to-refresh on iOS */
+  overscroll-behavior-y: contain;
+}
+
+/* Fix for Safari position: fixed with transforms */
+@supports (-webkit-touch-callout: none) {
+  .user-modal-overlay,
+  .product-modal-overlay,
+  .session-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
+}
+
+/* Ensure body doesn't scroll when modal is open */
+body.modal-open {
+  overflow: hidden !important;
+  position: fixed !important;
+  width: 100% !important;
+  height: 100% !important;
+  touch-action: none;
+  -webkit-overflow-scrolling: none;
+}
+
+/* Safari-specific fixes for backdrop-filter */
+@supports (-webkit-backdrop-filter: blur(10px)) {
+  .form-card,
+  .card,
+  .dashboard-card,
+  .product-card,
+  .session-card,
+  .user-modal,
+  .product-modal,
+  .session-modal,
+  .dashboard-navbar,
+  .site-navbar,
+  .category-badge,
+  .stock-badge,
+  .notification-content {
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+  }
+  
+  .form-card,
+  .card,
+  .dashboard-card {
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+  
+  .category-badge,
+  .stock-badge,
+  .notification-content {
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+}
+
+/* Fallback for browsers that don't support backdrop-filter */
+@supports not (backdrop-filter: blur(10px)) {
+  .form-card,
+  .card,
+  .dashboard-card,
+  .product-card,
+  .session-card,
+  .user-modal,
+  .product-modal,
+  .session-modal {
+    background: rgba(15, 15, 23, 0.98) !important;
+  }
+  
+  .dashboard-navbar,
+  .site-navbar {
+    background: rgba(15, 15, 23, 0.98) !important;
+  }
+}
+
+/* Fix for background-clip text (Safari) */
+.form-title,
+.logo-text,
+.site-brand-text,
+.site-user-name,
+.text-gradient {
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+}
+
+/* Fix for appearance property (Safari, iOS) */
+select,
+.form-select,
+.product-dropdown-futuristic {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+}
+
+/* Fix for input zoom on iOS */
+@media screen and (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="month"],
+  input[type="week"],
+  input[type="time"],
+  textarea,
+  select,
+  .form-input,
+  .form-select,
+  .dashboard-form-input,
+  .site-form-input {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    border-radius: 8px;
+  }
+}
+
+/* Fix for flexbox gaps in older browsers */
+@supports not (gap: 1rem) {
+  .form-container,
+  .auth-form,
+  .user-form,
+  .product-form {
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: -moz-box;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-orient: vertical;
+    -webkit-box-direction: normal;
+    -webkit-flex-direction: column;
+    -ms-flex-direction: column;
+    flex-direction: column;
+  }
+  
+  .form-container > * + *,
+  .auth-form > * + *,
+  .user-form > * + *,
+  .product-form > * + * {
+    margin-top: 1.5rem;
+  }
+}
+
+/* Fix for CSS Grid in older browsers */
+@supports not (display: grid) {
+  .form-row,
+  .modal-details-grid,
+  .expanded-details-grid,
+  .products-cards-container,
+  .sessions-cards-container {
+    display: -webkit-box;
+    display: -webkit-flex;
+    display: -moz-box;
+    display: -ms-flexbox;
+    display: flex;
+    -webkit-box-orient: vertical;
+    -webkit-box-direction: normal;
+    -webkit-flex-direction: column;
+    -ms-flex-direction: column;
+    flex-direction: column;
+  }
+}
+
+/* Fix for transform in animations (Safari) */
+@keyframes spin {
+  0% {
+    -webkit-transform: rotate(0deg);
+    -moz-transform: rotate(0deg);
+    -ms-transform: rotate(0deg);
+    -o-transform: rotate(0deg);
+    transform: rotate(0deg);
+  }
+  100% {
+    -webkit-transform: rotate(360deg);
+    -moz-transform: rotate(360deg);
+    -ms-transform: rotate(360deg);
+    -o-transform: rotate(360deg);
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    -webkit-transform: translateY(-10px);
+    -moz-transform: translateY(-10px);
+    -ms-transform: translateY(-10px);
+    -o-transform: translateY(-10px);
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    -webkit-transform: translateY(0);
+    -moz-transform: translateY(0);
+    -ms-transform: translateY(0);
+    -o-transform: translateY(0);
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    -webkit-transform: translateX(100%);
+    -moz-transform: translateX(100%);
+    -ms-transform: translateX(100%);
+    -o-transform: translateX(100%);
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    -webkit-transform: translateX(0);
+    -moz-transform: translateX(0);
+    -ms-transform: translateX(0);
+    -o-transform: translateX(0);
+    transform: translateX(0);
+  }
+}
+
+/* Fix for touch targets on mobile (minimum 44x44px) */
+@media (max-width: 768px) {
+  .btn,
+  .button,
+  .action-btn,
+  .dashboard-btn,
+  button,
+  .nav-link,
+  .pagination-btn,
+  .close-btn,
+  .delete-product-btn,
+  .quantity-btn,
+  .add-product-btn {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 0.75rem 1.25rem;
+  }
+  
+  /* Ensure icons are touchable */
+  .btn-icon,
+  .icon {
+    min-width: 24px;
+    min-height: 24px;
+  }
+}
+
+/* Fix for sticky positioning in Safari */
+.dashboard-navbar,
+.site-navbar {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+}
+
+/* Fix for overflow scrolling in Safari */
+.modal-content,
+.modal-detail-content,
+.user-modal,
+.product-modal,
+.session-modal,
+.customer-dropdown,
+.product-dropdown-menu {
+  -webkit-overflow-scrolling: touch;
+  overflow-scrolling: touch;
+}
+
+/* Fix for border-radius in older browsers */
+.form-card,
+.card,
+.dashboard-card,
+.product-card,
+.session-card,
+.btn,
+.button,
+.action-btn {
+  -webkit-border-radius: var(--border-radius-md);
+  -moz-border-radius: var(--border-radius-md);
+  border-radius: var(--border-radius-md);
+}
+
+/* Fix for box-shadow in older browsers */
+.form-card,
+.card,
+.dashboard-card,
+.product-card,
+.session-card {
+  -webkit-box-shadow: var(--shadow-md);
+  -moz-box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-md);
+}
+
+/* Fix for transitions */
+.btn,
+.button,
+.action-btn,
+.form-input,
+.form-select,
+.card,
+.dashboard-card {
+  -webkit-transition: all var(--transition-base);
+  -moz-transition: all var(--transition-base);
+  -o-transition: all var(--transition-base);
+  transition: all var(--transition-base);
+}
+
+/* Fix for user-select */
+.user-name-clickable,
+.product-name,
+.session-name {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Fix for will-change property (performance) */
+.btn:hover,
+.button:hover,
+.action-btn:hover,
+.card:hover,
+.dashboard-card:hover,
+.product-card:hover,
+.session-card:hover {
+  -webkit-transform: translateY(-2px);
+  -moz-transform: translateY(-2px);
+  -ms-transform: translateY(-2px);
+  -o-transform: translateY(-2px);
+  transform: translateY(-2px);
+  will-change: transform;
+}
+
+/* Fix for iOS safe area (notch support) */
+@supports (padding: max(0px)) {
+  .dashboard-navbar,
+  .site-navbar {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+  
+  .main-content,
+  .dashboard-page {
+    padding-left: max(1rem, env(safe-area-inset-left));
+    padding-right: max(1rem, env(safe-area-inset-right));
+  }
+}
+
+/* Fix for scrollbar styling in Safari */
+.customer-dropdown,
+.product-dropdown-menu,
+.modal-content,
+.modal-detail-content {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 92, 246, 0.6) rgba(255, 255, 255, 0.05);
+}
+
+.customer-dropdown::-webkit-scrollbar,
+.product-dropdown-menu::-webkit-scrollbar,
+.modal-content::-webkit-scrollbar,
+.modal-detail-content::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.customer-dropdown::-webkit-scrollbar-track,
+.product-dropdown-menu::-webkit-scrollbar-track,
+.modal-content::-webkit-scrollbar-track,
+.modal-detail-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  -webkit-border-radius: 4px;
+  border-radius: 4px;
+}
+
+.customer-dropdown::-webkit-scrollbar-thumb,
+.product-dropdown-menu::-webkit-scrollbar-thumb,
+.modal-content::-webkit-scrollbar-thumb,
+.modal-detail-content::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.6);
+  -webkit-border-radius: 4px;
+  border-radius: 4px;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+
+.customer-dropdown::-webkit-scrollbar-thumb:hover,
+.product-dropdown-menu::-webkit-scrollbar-thumb:hover,
+.modal-content::-webkit-scrollbar-thumb:hover,
+.modal-detail-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.8);
+}
+
+/* Fix for focus styles in Safari */
+.form-input:focus,
+.form-select:focus,
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  -webkit-box-shadow: 
+    0 0 0 3px rgba(139, 92, 246, 0.1),
+    0 8px 25px rgba(139, 92, 246, 0.15);
+  -moz-box-shadow: 
+    0 0 0 3px rgba(139, 92, 246, 0.1),
+    0 8px 25px rgba(139, 92, 246, 0.15);
+  box-shadow: 
+    0 0 0 3px rgba(139, 92, 246, 0.1),
+    0 8px 25px rgba(139, 92, 246, 0.15);
+}
+
+/* Fix for gradient backgrounds */
+.btn-primary,
+.action-btn.primary,
+.dashboard-btn:not(.secondary):not(.outline):not(.ghost) {
+  background: -webkit-linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+  background: -moz-linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+  background: -o-linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+  background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+}
+
+/* Fix for filter property */
+.logo-icon,
+.alert-icon,
+.product-avatar,
+.session-avatar {
+  -webkit-filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.3));
+  filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.3));
+}
+
+/* Fix for backdrop-filter with fallback */
+@supports not (backdrop-filter: blur(10px)) {
+  .user-modal-overlay,
+  .product-modal-overlay,
+  .session-modal-overlay {
+    background: rgba(0, 0, 0, 0.85) !important;
+  }
+}
+
+/* Fix for CSS custom properties fallback */
+@supports not (--css: variables) {
+  :root {
+    --primary-color: #8b5cf6;
+    --primary-hover: #7c3aed;
+    --border-radius-md: 12px;
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --transition-base: 0.2s ease;
+  }
+}
+
+/* Fix for iOS input styling */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+input[type="url"],
+input[type="date"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="week"],
+input[type="time"],
+textarea,
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  -webkit-border-radius: 8px;
+  -moz-border-radius: 8px;
+  border-radius: 8px;
+}
+
+/* Fix for placeholder styling */
+input::placeholder,
+textarea::placeholder {
+  opacity: 1;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+input::-webkit-input-placeholder,
+textarea::-webkit-input-placeholder {
+  opacity: 1;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+input::-moz-placeholder,
+textarea::-moz-placeholder {
+  opacity: 1;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+input:-ms-input-placeholder,
+textarea:-ms-input-placeholder {
+  opacity: 1;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* Fix for button active states on mobile */
+@media (max-width: 768px) {
+  .btn:active,
+  .button:active,
+  .action-btn:active,
+  .dashboard-btn:active,
+  button:active {
+    -webkit-transform: scale(0.98);
+    -moz-transform: scale(0.98);
+    -ms-transform: scale(0.98);
+    -o-transform: scale(0.98);
+    transform: scale(0.98);
+  }
+}
+
+/* Fix for text rendering */
+body,
+input,
+textarea,
+select,
+button {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Fix for image rendering */
+img {
+  -webkit-user-drag: none;
+  -khtml-user-drag: none;
+  -moz-user-drag: none;
+  -o-user-drag: none;
+  user-drag: none;
+  max-width: 100%;
+  height: auto;
+}
+
+/* Fix for smooth scrolling */
+html {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  
+  *,
+  *::before,
+  *::after {
+    -webkit-animation-duration: 0.01ms !important;
+    -moz-animation-duration: 0.01ms !important;
+    -o-animation-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    -webkit-animation-iteration-count: 1 !important;
+    -moz-animation-iteration-count: 1 !important;
+    -o-animation-iteration-count: 1 !important;
+    animation-iteration-count: 1 !important;
+    -webkit-transition-duration: 0.01ms !important;
+    -moz-transition-duration: 0.01ms !important;
+    -o-transition-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -384,9 +384,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useProductStore } from '@/stores/productStore'
 import ProductForm from '@/components/dashboard/products/ProductForm.vue'
+import { useBodyScrollLock } from '@/composables/useBodyScrollLock'
 
 const productStore = useProductStore()
 
@@ -397,6 +398,10 @@ const editingProduct = ref(null)
 const showEditModal = ref(false)
 const showCreateModal = ref(false)
 const showDeleteModal = ref(false)
+
+// Lock body scroll when any modal is open
+const isAnyModalOpen = computed(() => showEditModal.value || showCreateModal.value || showDeleteModal.value || !!selectedProduct.value)
+useBodyScrollLock(isAnyModalOpen)
 const deletingProduct = ref(null)
 const successMessage = ref('')
 const showSuccess = ref(false)

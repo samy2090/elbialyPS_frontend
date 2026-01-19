@@ -228,6 +228,7 @@ import { ref, onMounted } from 'vue'
 import { useUserStore } from '@/stores/userStore'
 import { useAuthStore } from '@/stores/auth'
 import { getUserRole, getRoleClass } from '@/utils/roleHelpers'
+import { useBodyScrollLock } from '@/composables/useBodyScrollLock'
 
 export default {
   name: 'UserListView',
@@ -237,6 +238,9 @@ export default {
     const usersLoaded = ref(false)
     const showDeleteModal = ref(false)
     const deletingUser = ref(null)
+    
+    // Lock body scroll when modal is open
+    useBodyScrollLock(showDeleteModal)
     
     // Load users when component mounts
     const loadUsers = async () => {

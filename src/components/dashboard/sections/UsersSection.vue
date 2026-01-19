@@ -469,9 +469,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useUserStore } from '@/stores/userStore'
 import UserForm from '@/components/dashboard/users/UserForm.vue'
+import { useBodyScrollLock } from '@/composables/useBodyScrollLock'
 
 const userStore = useUserStore()
 
@@ -482,6 +483,10 @@ const selectedUser = ref(null)
 const editingUser = ref(null)
 const showEditModal = ref(false)
 const showCreateModal = ref(false)
+
+// Lock body scroll when any modal is open
+const isAnyModalOpen = computed(() => showEditModal.value || showCreateModal.value || !!selectedUser.value)
+useBodyScrollLock(isAnyModalOpen)
 const successMessage = ref('')
 const showSuccess = ref(false)
 

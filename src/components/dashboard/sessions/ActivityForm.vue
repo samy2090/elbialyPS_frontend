@@ -29,16 +29,23 @@
             Device
             <span class="field-hint" style="font-weight: normal;">(Optional - for chillout activities without device)</span>
           </label>
-          <select 
-            v-model="form.device_id" 
-            class="form-input"
+          <CustomDropdown
+            v-model="form.device_id"
+            :options="deviceSelectOptions"
+            option-value="id"
+            option-label="name"
+            option-suffix="type"
+            :format-display-text="formatDeviceDisplayText"
+            placeholder="No device (Chillout activity)"
+            :show-placeholder-in-menu="true"
           >
-            <option value="">No device (Chillout activity)</option>
-            <option v-for="device in availableDevices" :key="device.id" :value="device.id">
-              {{ device.name }} ({{ device.type }})
-              <span v-if="device.status === 'in_use'"> - In Use</span>
-            </option>
-          </select>
+            <template #option="{ option }">
+              <div class="option-content">
+                <span class="option-name">{{ option.name }}</span>
+                <span class="option-suffix">{{ option.type }}</span>
+              </div>
+            </template>
+          </CustomDropdown>
           <small v-if="!devices.length" class="field-hint">Loading devices...</small>
           <small v-else-if="form.device_id" class="field-hint" style="color: #10b981;">
             Playing activity - Customer will use a device
@@ -57,13 +64,14 @@
             </svg>
             Mode
           </label>
-          <select 
-            v-model="form.mode" 
-            class="form-input"
-          >
-            <option value="single">Single</option>
-            <option value="multi">Multi</option>
-          </select>
+          <CustomDropdown
+            v-model="form.mode"
+            :options="modeOptions"
+            option-value="value"
+            option-label="label"
+            placeholder="Select mode"
+            :show-placeholder-in-menu="false"
+          />
           <small class="field-hint">
             Select whether this is a single or multi-player activity
           </small>
@@ -78,15 +86,15 @@
             </svg>
             Activity Duration (Optional)
           </label>
-          <select 
-            v-model="form.duration_hours" 
-            class="form-input"
-          >
-            <option value="">No limit</option>
-            <option v-for="hours in durationOptions" :key="hours" :value="hours">
-              {{ formatDuration(hours) }}
-            </option>
-          </select>
+          <CustomDropdown
+            v-model="form.duration_hours"
+            :options="durationSelectOptions"
+            option-value="value"
+            option-label="label"
+            placeholder="No limit"
+            :show-placeholder-in-menu="true"
+            :nullify-empty="false"
+          />
           <small class="field-hint">
             Select how long the customer will use the device (0.5 to 3 hours)
           </small>
@@ -101,14 +109,14 @@
             </svg>
             Status
           </label>
-          <select 
-            v-model="form.status" 
-            class="form-input"
-          >
-            <option value="active">Active</option>
-            <option value="paused">Paused</option>
-            <option value="ended">Ended</option>
-          </select>
+          <CustomDropdown
+            v-model="form.status"
+            :options="statusOptions"
+            option-value="value"
+            option-label="label"
+            placeholder="Select status"
+            :show-placeholder-in-menu="false"
+          />
         </div>
 
         <!-- Started At Field (Auto-set for new activities) -->
@@ -165,9 +173,13 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useSessionStore } from '@/stores/sessionStore'
 import { useDeviceStore } from '@/stores/deviceStore'
+import { CustomDropdown } from '@/components/base'
 
 export default {
   name: 'ActivityForm',
+  components: {
+    CustomDropdown
+  },
   props: {
     activity: {
       type: Object,
@@ -260,6 +272,52 @@ export default {
 
       return `${finalHours}:${String(finalMinutes).padStart(2, '0')} minutes`
     }
+    
+    // Format device display text when selected
+    const formatDeviceDisplayText = (device) => {
+      if (!device) return null
+      let text = `${device.name} (${device.type || 'N/A'})`
+      if (device.status === 'in_use') {
+        text += ' - In Use'
+      }
+      return text
+    }
+    
+    // Format device label for select options (kept for compatibility)
+    const formatDeviceLabel = (device) => {
+      let label = `${device.name} (${device.type || 'N/A'})`
+      if (device.status === 'in_use') {
+        label += ' - In Use'
+      }
+      return label
+    }
+    
+    // Device select options
+    const deviceSelectOptions = computed(() => {
+      return availableDevices.value
+    })
+    
+    // Mode options
+    const modeOptions = computed(() => [
+      { value: 'single', label: 'Single' },
+      { value: 'multi', label: 'Multi' }
+    ])
+    
+    // Duration select options
+    const durationSelectOptions = computed(() => {
+      const options = durationOptions.value.map(hours => ({
+        value: hours,
+        label: formatDuration(hours)
+      }))
+      return options
+    })
+    
+    // Status options
+    const statusOptions = computed(() => [
+      { value: 'active', label: 'Active' },
+      { value: 'paused', label: 'Paused' },
+      { value: 'ended', label: 'Ended' }
+    ])
     
     const form = ref({
       device_id: '',
@@ -423,6 +481,12 @@ export default {
       availableDevices,
       durationOptions,
       formatDuration,
+      formatDeviceLabel,
+      formatDeviceDisplayText,
+      deviceSelectOptions,
+      modeOptions,
+      durationSelectOptions,
+      statusOptions,
       handleSubmit
     }
   }
