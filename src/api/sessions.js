@@ -603,6 +603,28 @@ class SessionService {
             throw new Error(error.response?.data?.message || 'Failed to fetch user products')
         }
     }
+
+    /**
+     * Get activity history
+     * @param {number} sessionId - Session ID
+     * @param {number} activityId - Activity ID
+     * @returns {Promise}
+     */
+    static async getActivityHistory(sessionId, activityId) {
+        try {
+            const response = await api.get(`/api/sessions/${sessionId}/activities/${activityId}/history`)
+            console.log('Get Activity History Response:', response.data)
+
+            // Handle different response formats
+            if (response.data?.data) {
+                return response.data.data
+            }
+            return response.data
+        } catch (error) {
+            console.error('Get Activity History Error:', error)
+            throw new Error(error.response?.data?.message || 'Failed to fetch activity history')
+        }
+    }
 }
 
 export default SessionService

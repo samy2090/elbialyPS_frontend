@@ -661,6 +661,19 @@
                           </div>
                         </div>
                       </div>
+                      <!-- History Button -->
+                      <div class="activity-history-button-wrapper">
+                        <button 
+                          @click.stop="openActivityHistory(session, activity)" 
+                          class="history-btn futuristic-btn"
+                          title="View Activity History"
+                        >
+                          <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM13 17H11V15H13V17ZM13 13H11V7H13V13Z" fill="currentColor"/>
+                          </svg>
+                          <span>History</span>
+                        </button>
+                      </div>
                       <div class="activity-card-actions">
                         <button 
                           @click.stop="editActivityFromExpanded(session, activity)" 
@@ -1311,6 +1324,15 @@
         </button>
       </div>
     </div>
+
+    <!-- Activity History Modal -->
+    <ActivityHistoryModal
+      :visible="showActivityHistoryModal"
+      :session-id="historyModalSessionId"
+      :activity-id="historyModalActivityId"
+      :activity-ended-at="historyModalActivityEndedAt"
+      @close="closeActivityHistory"
+    />
   </div>
 </template>
 
@@ -1321,6 +1343,7 @@ import { useUserStore } from '@/stores/userStore'
 import { useProductStore } from '@/stores/productStore'
 import SessionForm from '@/components/dashboard/sessions/SessionForm.vue'
 import ActivityForm from '@/components/dashboard/sessions/ActivityForm.vue'
+import ActivityHistoryModal from '@/components/dashboard/sessions/ActivityHistoryModal.vue'
 import { formatDuration } from '@/utils/helpers'
 import UserService from '@/api/users'
 import SessionService from '@/api/sessions'
@@ -1347,6 +1370,10 @@ const editingSession = ref(null)
 const showCreateActivityModal = ref(false)
 const showEditActivityModal = ref(false)
 const editingActivity = ref(null)
+const showActivityHistoryModal = ref(false)
+const historyModalSessionId = ref(null)
+const historyModalActivityId = ref(null)
+const historyModalActivityEndedAt = ref(null)
 const successMessage = ref('')
 const showSuccess = ref(false)
 const currentPage = ref(1)
@@ -2026,6 +2053,19 @@ const resumeActivityFromExpanded = async (session, activity) => {
     console.error('Failed to resume activity:', error)
     showSuccessMessage('Failed to resume activity')
   }
+}
+
+const openActivityHistory = (session, activity) => {
+  historyModalSessionId.value = session.id
+  historyModalActivityId.value = activity.id
+  historyModalActivityEndedAt.value = activity.ended_at || null
+  showActivityHistoryModal.value = true
+}
+
+const closeActivityHistory = () => {
+  showActivityHistoryModal.value = false
+  historyModalSessionId.value = null
+  historyModalActivityId.value = null
 }
 
 const endActivityFromExpanded = async (session, activity) => {

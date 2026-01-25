@@ -198,6 +198,34 @@
           <small v-if="!isEditing" class="field-hint">Session will start at the current time when created</small>
         </div>
 
+        <!-- Other Time Field (Only for new sessions with device selected) -->
+        <div class="form-field" v-if="!isEditing && form.device_id">
+          <label class="field-label checkbox-label enhanced-checkbox" :class="{ 'checkbox-checked': useCustomTime }">
+            <input 
+              type="checkbox" 
+              v-model="useCustomTime"
+              class="enhanced-checkbox-input"
+            />
+            <span class="checkbox-text">Other Time</span>
+          </label>
+          <div v-if="useCustomTime" class="custom-time-wrapper" style="margin-top: 1rem;">
+            <label class="field-label">
+              <svg class="label-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                <polyline points="12,6 12,12 16,14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Start Date & Time
+            </label>
+            <input 
+              v-model="form.custom_started_at" 
+              type="datetime-local" 
+              class="form-input"
+            />
+            <small class="field-hint">Select a custom start time for this session</small>
+          </div>
+          <small v-else class="field-hint">Session will start at the current time when created</small>
+        </div>
+
         <!-- Status Field -->
         <div class="form-field">
           <label class="field-label">
@@ -474,10 +502,14 @@ export default {
       return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`
     }
     
+    // Checkbox state for custom time (not sent to backend)
+    const useCustomTime = ref(false)
+    
     const form = ref({
       customer_id: '',
       device_id: '',
       started_at: getCurrentDateTime(),
+      custom_started_at: getCurrentDateTime(), // For custom time input
       status: 'active',
       total_price: '',
       discount: '',
@@ -658,11 +690,12 @@ export default {
       }
     }
     
-    // Watch device_id to clear duration_hours and reset mode when device is removed
+    // Watch device_id to clear duration_hours, reset mode, and reset custom time when device is removed
     watch(() => form.value.device_id, (newDeviceId) => {
       if (!newDeviceId) {
         form.value.duration_hours = ''
         form.value.mode = 'single'
+        useCustomTime.value = false // Reset custom time checkbox when device is removed
       }
     })
     
@@ -722,8 +755,13 @@ export default {
           if (form.value.started_at) {
             submitData.started_at = convertToApiFormat(form.value.started_at)
           }
+        } else {
+          // When creating new session, send started_at only if custom time is provided
+          if (useCustomTime.value && form.value.custom_started_at) {
+            submitData.started_at = convertToApiFormat(form.value.custom_started_at)
+          }
+          // Otherwise, don't send started_at - backend sets it to current time
         }
-        // When creating new session, don't send started_at - backend sets it to current time
         
         // Add device_id if selected (optional)
         if (form.value.device_id) {
@@ -740,13 +778,19 @@ export default {
         }
         
         // Add activity data for the first activity (only when creating)
-        // Note: Backend only extracts mode from activity_data, then discards it
+        // Note: Backend extracts mode and started_at from activity_data
         // The duration field above is used by backend to calculate ended_at
         if (!isEditing.value) {
           submitData.activity_data = {
             activity_type: sessionType,
             device_id: form.value.device_id ? Number(form.value.device_id) : null,
             mode: form.value.mode || 'single',
+          }
+          
+          // If custom start time is provided, also set it for the activity
+          // This ensures both session and activity have the same start time
+          if (useCustomTime.value && form.value.custom_started_at) {
+            submitData.activity_data.started_at = convertToApiFormat(form.value.custom_started_at)
           }
         }
         
@@ -807,9 +851,72 @@ export default {
       handleCustomerSearch,
       selectCustomer,
       handleCustomerBlur,
-      createAndSelectCustomer
+      createAndSelectCustomer,
+      useCustomTime
     }
   }
 }
 </script>
+
+<style scoped>
+.enhanced-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 1.25rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-bottom: 0;
+}
+
+.enhanced-checkbox:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(139, 92, 246, 0.4);
+  transform: translateY(-1px);
+}
+
+.enhanced-checkbox.checkbox-checked {
+  background: rgba(139, 92, 246, 0.1);
+  border-color: rgba(139, 92, 246, 0.6);
+}
+
+.enhanced-checkbox-input {
+  width: 1.25rem;
+  height: 1.25rem;
+  cursor: pointer;
+  accent-color: var(--primary-color, #8b5cf6);
+  flex-shrink: 0;
+  margin: 0;
+}
+
+.checkbox-text {
+  font-weight: 500;
+  color: var(--text-primary, #ffffff);
+  user-select: none;
+  font-size: 0.9375rem;
+  transition: color 0.2s ease;
+}
+
+.enhanced-checkbox.checkbox-checked .checkbox-text {
+  color: var(--primary-color, #8b5cf6);
+}
+
+.custom-time-wrapper {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
 
