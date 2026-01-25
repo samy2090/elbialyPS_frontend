@@ -89,7 +89,9 @@
                     <!-- Time Range (for mode and paused) -->
                     <div v-if="item.from && item.to" class="detail-row">
                       <span class="detail-label">Period:</span>
-                      <span class="detail-value">{{ formatTime(item.from) }} → {{ formatTime(item.to) }}</span>
+                      <span class="detail-value">
+                        {{ formatTime(item.from) }} → {{ formatTime(item.to) }}
+                      </span>
                     </div>
                     
                     <!-- Product Type -->
@@ -203,23 +205,54 @@ const getItemTypeClass = (type) => {
 
 const formatTime = (timeString) => {
   if (!timeString) return 'N/A'
-  const date = new Date(timeString)
-  return date.toLocaleString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  })
+  // Handle "now" as a special case
+  if (timeString === 'now' || timeString.toLowerCase() === 'now') {
+    return 'till now'
+  }
+  try {
+    const date = new Date(timeString)
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return 'till now'
+    }
+    return date.toLocaleString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    })
+  } catch (error) {
+    // If parsing fails, return "till now"
+    return 'till now'
+  }
 }
 
 const formatDate = (timeString) => {
   if (!timeString) return null
-  const date = new Date(timeString)
-  return date.toLocaleString('en-US', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
+  // Handle "now" as a special case - use current date
+  if (timeString === 'now' || timeString.toLowerCase() === 'now') {
+    const date = new Date()
+    return date.toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  }
+  try {
+    const date = new Date(timeString)
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return null
+    }
+    return date.toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
+  } catch (error) {
+    return null
+  }
 }
 
 const getEndTime = (item) => {
