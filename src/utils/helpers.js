@@ -69,7 +69,7 @@ export function formatDuration(hours) {
 
   const hoursInt = Math.floor(hoursNum)
   const minutes = Math.round((hoursNum - hoursInt) * 60)
-  
+
   // Handle edge case where minutes round to 60
   const finalHours = minutes >= 60 ? hoursInt + 1 : hoursInt
   const finalMinutes = minutes >= 60 ? 0 : minutes

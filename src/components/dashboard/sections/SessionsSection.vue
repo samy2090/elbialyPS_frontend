@@ -1605,13 +1605,17 @@ const toggleSessionExpand = async (session) => {
 const formatDateTime = (dateString) => {
   if (!dateString) return 'N/A'
   const date = new Date(dateString)
-  return date.toLocaleString('en-US', {
+  if (isNaN(date.getTime())) return 'N/A'
+  
+  // Format as Cairo, Egypt timezone (UTC+2/UTC+3)
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Africa/Cairo',
     year: 'numeric',
     month: 'short',
     day: 'numeric',
     hour: '2-digit',
     minute: '2-digit'
-  })
+  }).format(date)
 }
 
 // Trigger ripple animation on click
