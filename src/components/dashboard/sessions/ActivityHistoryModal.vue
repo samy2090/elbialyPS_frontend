@@ -134,7 +134,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 import SessionService from '@/api/sessions'
 
 const props = defineProps({
@@ -161,6 +161,20 @@ const emit = defineEmits(['close'])
 const loading = ref(false)
 const error = ref(null)
 const historyData = ref(null)
+
+// Lock body scroll when modal is open
+const lockBodyScroll = () => {
+  document.body.style.overflow = 'hidden'
+}
+
+const unlockBodyScroll = () => {
+  document.body.style.overflow = ''
+}
+
+// Cleanup on unmount
+onUnmounted(() => {
+  unlockBodyScroll()
+})
 
 const close = () => {
   emit('close')
@@ -293,8 +307,10 @@ const formatDuration = (minutes) => {
 
 watch(() => props.visible, (newVal) => {
   if (newVal) {
+    lockBodyScroll()
     loadHistory()
   } else {
+    unlockBodyScroll()
     // Reset state when modal closes
     historyData.value = null
     error.value = null
