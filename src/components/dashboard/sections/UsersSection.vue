@@ -151,6 +151,12 @@
                             <path d="M18.5 2.5C18.8978 2.10217 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.10217 21.5 2.5C21.8978 2.89782 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.10217 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                           </svg>
                         </button>
+                        <button @click="deleteUser(user)" :disabled="userStore.loading" class="action-btn small danger" title="Delete User">
+                          <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M3 6H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                          </svg>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -190,6 +196,9 @@
                   </button>
                   <button @click="editUser(user)" class="action-btn small primary">
                     Edit
+                  </button>
+                  <button @click="deleteUser(user)" :disabled="userStore.loading" class="action-btn small danger">
+                    Delete
                   </button>
                 </div>
               </div>
@@ -465,6 +474,29 @@
         </div>
       </div>
     </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div v-if="showDeleteModal" class="user-modal-overlay" @click="closeDeleteModal">
+      <div class="user-modal delete-modal" @click.stop>
+        <div class="modal-header">
+          <h3>Delete User</h3>
+          <button @click="closeDeleteModal" class="close-btn">
+            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+              <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </button>
+        </div>
+        <div class="modal-content">
+          <p>Are you sure you want to delete the user "{{ deletingUser?.name }}"?</p>
+          <p class="warning-text">This action cannot be undone.</p>
+        </div>
+        <div class="modal-actions">
+          <button @click="closeDeleteModal" class="action-btn secondary">Cancel</button>
+          <button @click="confirmDeleteUser" :disabled="userStore.loading" class="action-btn danger">Delete User</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -483,9 +515,11 @@ const selectedUser = ref(null)
 const editingUser = ref(null)
 const showEditModal = ref(false)
 const showCreateModal = ref(false)
+const showDeleteModal = ref(false)
+const deletingUser = ref(null)
 
 // Lock body scroll when any modal is open
-const isAnyModalOpen = computed(() => showEditModal.value || showCreateModal.value || !!selectedUser.value)
+const isAnyModalOpen = computed(() => showEditModal.value || showCreateModal.value || showDeleteModal.value || !!selectedUser.value)
 useBodyScrollLock(isAnyModalOpen)
 const successMessage = ref('')
 const showSuccess = ref(false)
@@ -584,6 +618,30 @@ const editUser = (user) => {
   // Set editing user and show edit modal
   editingUser.value = user
   showEditModal.value = true
+}
+
+const deleteUser = (user) => {
+  deletingUser.value = user
+  showDeleteModal.value = true
+}
+
+const closeDeleteModal = () => {
+  showDeleteModal.value = false
+  deletingUser.value = null
+}
+
+const confirmDeleteUser = async () => {
+  if (!deletingUser.value) return
+  try {
+    await userStore.deleteUser(deletingUser.value.id)
+    loadUsers()
+    closeDeleteModal()
+    showSuccessMessage('User deleted successfully!')
+  } catch (error) {
+    console.error('Failed to delete user:', error)
+    closeDeleteModal()
+    // Error is already set on userStore; user can see it in UI or we could add an error toast later
+  }
 }
 
 const closeUserModal = () => {

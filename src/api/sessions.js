@@ -5,6 +5,129 @@ import api from './axios'
  */
 class SessionService {
     /**
+     * Get sessions by date or date range
+     * @param {string} date - Start date in Y-m-d format (e.g., '2025-01-27')
+     * @param {Object} params - Query parameters (end_date, per_page, page, etc.)
+     * @returns {Promise}
+     */
+    static async getSessionsByDate(date, params = {}) {
+        try {
+            console.log('=== Session API Request (By Date) ===')
+            console.log('URL:', api.defaults.baseURL + `/api/sessions/date/${date}`)
+            console.log('Params:', params)
+
+            const response = await api.get(`/api/sessions/date/${date}`, { params })
+
+            console.log('=== Raw API Response (By Date) ===')
+            console.log('Response object:', response)
+            console.log('Response.data:', response.data)
+
+            // Handle different Laravel response formats (same as getAllSessions)
+            let sessionsData = null
+
+            // Format 1: Laravel Paginated Response
+            if (response.data?.data && Array.isArray(response.data.data) && response.data.current_page !== undefined) {
+                console.log('Detected format: Laravel paginated response')
+                sessionsData = {
+                    sessions: response.data.data,
+                    pagination: {
+                        current_page: response.data.current_page,
+                        last_page: response.data.last_page,
+                        per_page: response.data.per_page,
+                        total: response.data.total,
+                        from: response.data.from,
+                        to: response.data.to,
+                        links: response.data.links || null
+                    }
+                }
+            }
+            // Format 2: Laravel Resource Collection with success wrapper
+            else if (response.data?.success && Array.isArray(response.data.data)) {
+                console.log('Detected format: Success wrapper with data array')
+                sessionsData = {
+                    sessions: response.data.data,
+                    pagination: response.data.meta || response.data.pagination || null
+                }
+            }
+            // Format 3: Direct array response
+            else if (Array.isArray(response.data)) {
+                console.log('Detected format: Direct array')
+                sessionsData = {
+                    sessions: response.data,
+                    pagination: null
+                }
+            }
+            // Format 4: Nested sessions property
+            else if (response.data?.sessions && Array.isArray(response.data.sessions)) {
+                console.log('Detected format: Nested sessions property')
+                sessionsData = {
+                    sessions: response.data.sessions,
+                    pagination: response.data.pagination || response.data.meta || null
+                }
+            }
+            // Format 5: Resource Collection with meta
+            else if (response.data?.data && Array.isArray(response.data.data) && response.data.meta) {
+                console.log('Detected format: Resource Collection with meta')
+                sessionsData = {
+                    sessions: response.data.data,
+                    pagination: {
+                        ...response.data.meta,
+                        links: response.data.links || null
+                    }
+                }
+            }
+            // Fallback
+            else {
+                console.warn('=== UNEXPECTED RESPONSE FORMAT (By Date) ===')
+                console.warn('Full response.data:', JSON.stringify(response.data, null, 2))
+                console.warn('Attempting fallback extraction...')
+
+                const fallbackSessions =
+                    response.data?.data ||
+                    response.data?.sessions ||
+                    (Array.isArray(response.data) ? response.data : []) ||
+                    []
+
+                sessionsData = {
+                    sessions: Array.isArray(fallbackSessions) ? fallbackSessions : [],
+                    pagination: null
+                }
+            }
+
+            console.log('=== Processed Sessions Data (By Date) ===')
+            console.log('Sessions count:', sessionsData.sessions?.length || 0)
+            console.log('First session sample:', sessionsData.sessions?.[0] || 'No sessions')
+            console.log('Pagination:', sessionsData.pagination)
+            console.log('==================')
+
+            return sessionsData
+        } catch (error) {
+            console.error('Get Sessions By Date Error Details:', {
+                message: error.message,
+                code: error.code,
+                response: error.response,
+                request: error.request,
+                config: error.config
+            })
+
+            // Provide more specific error information
+            if (error.response?.status === 401) {
+                throw new Error('Authentication required - please login first')
+            } else if (error.response?.status === 403) {
+                throw new Error('Access denied - insufficient permissions')
+            } else if (error.response?.status === 422) {
+                throw new Error(error.response?.data?.message || 'Invalid date format. Please use Y-m-d format (e.g., 2025-01-27)')
+            } else if (error.code === 'ERR_NETWORK' || error.code === 'NETWORK_ERROR' || !error.response) {
+                throw new Error('Could not connect to server. Please check if backend is running on ' + (api.defaults.baseURL || 'http://localhost:8000'))
+            } else if (error.code === 'ERR_FAILED') {
+                throw new Error('Connection failed - possible CORS issue or server not responding')
+            } else {
+                throw new Error(error.response?.data?.message || error.message || 'Failed to fetch sessions by date')
+            }
+        }
+    }
+
+    /**
      * Get all sessions (with pagination support)
      * @param {Object} params - Query parameters (page, per_page, etc.)
      * @returns {Promise}
@@ -471,11 +594,12 @@ class SessionService {
      * Get available users for an activity
      * @param {number} sessionId - Session ID
      * @param {number} activityId - Activity ID
+     * @param {Object} params - Query parameters (paginate, per_page, page, etc.)
      * @returns {Promise}
      */
-    static async getAvailableUsersForActivity(sessionId, activityId) {
+    static async getAvailableUsersForActivity(sessionId, activityId, params = {}) {
         try {
-            const response = await api.get(`/api/sessions/${sessionId}/activities/${activityId}/users/available`)
+            const response = await api.get(`/api/sessions/${sessionId}/activities/${activityId}/users/available`, { params })
             return response.data
         } catch (error) {
             console.error('Get Available Users Error:', error)

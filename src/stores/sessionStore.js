@@ -583,13 +583,14 @@ export const useSessionStore = defineStore('session', {
      * Get available users for an activity
      * @param {number} sessionId - Session ID
      * @param {number} activityId - Activity ID
+     * @param {Object} params - Query parameters (paginate, per_page, page, etc.)
      */
-    async getAvailableUsersForActivity(sessionId, activityId) {
+    async getAvailableUsersForActivity(sessionId, activityId, params = {}) {
       this.loading = true
       this.error = null
 
       try {
-        const response = await SessionService.getAvailableUsersForActivity(sessionId, activityId)
+        const response = await SessionService.getAvailableUsersForActivity(sessionId, activityId, params)
         // Response is an array of users
         return Array.isArray(response) ? response : (response.data || [])
       } catch (error) {

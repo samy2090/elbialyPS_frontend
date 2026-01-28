@@ -14,6 +14,11 @@
           </svg>
           Add New Session
         </button>
+        <DateRangePicker 
+          v-model="dateRange" 
+          @change="handleDateRangeChange"
+          class="date-filter-picker"
+        />
       </div>
     </div>
 
@@ -142,81 +147,550 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="session in sortedSessions" :key="session.id" class="session-row">
-                <td>
-                  <div class="session-info">
-                    <div class="session-avatar">
-                      {{ getSessionInitials(session.id) }}
+              <template v-for="session in sortedSessions" :key="session.id">
+                <tr 
+                  class="session-row"
+                  :class="{ 'expanded': expandedSessionId === session.id }"
+                  @click="toggleSessionExpand(session)"
+                >
+                  <td>
+                    <div class="session-info">
+                      <div class="session-avatar">
+                        {{ getSessionInitials(session.id) }}
+                      </div>
+                      <div class="session-details">
+                        <span class="session-name">Session #{{ session.id }}</span>
+                        <span class="session-id">ID: {{ session.id }}</span>
+                      </div>
+                      <div class="expand-icon" :class="{ 'expanded': expandedSessionId === session.id }">
+                        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                      </div>
                     </div>
-                    <div class="session-details">
-                      <span class="session-name">Session #{{ session.id }}</span>
-                      <span class="session-id">ID: {{ session.id }}</span>
+                  </td>
+                  <td>
+                    <span class="session-customer">{{ session.customer?.name || 'N/A' }}</span>
+                  </td>
+                  <td>
+                    <span class="session-creator">{{ session.creator?.name || 'N/A' }}</span>
+                  </td>
+                  <td>
+                    <span :class="getStatusClass(session)" class="status-badge">
+                      {{ session.status || 'N/A' }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="session-date">{{ formatDateTime(session.started_at) }}</span>
+                  </td>
+                  <td>
+                    <span class="session-date">{{ formatDateTime(session.ended_at) }}</span>
+                  </td>
+                  <td>
+                    <span class="session-price">${{ parseFloat(session.total_price || 0).toFixed(2) }}</span>
+                    <span v-if="session.discount" class="session-discount" style="display: block; font-size: 0.75rem; color: #f59e0b;">
+                      Discount: ${{ parseFloat(session.discount || 0).toFixed(2) }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="activities-count">{{ session.activities?.length || 0 }} activity(ies)</span>
+                    <span class="session-type" style="display: block; font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">
+                      Type: {{ getSessionType(session) }}
+                    </span>
+                  </td>
+                  <td @click.stop>
+                    <div class="session-actions">
+                      <button @click="editSession(session)" class="action-btn small primary" title="Edit Session">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                          <path d="M18.5 2.50023C18.8978 2.10243 19.4374 1.87891 20 1.87891C20.5626 1.87891 21.1022 2.10243 21.5 2.50023C21.8978 2.89804 22.1213 3.43762 22.1213 4.00023C22.1213 4.56284 21.8978 5.10243 21.5 5.50023L12 15.0002L8 16.0002L9 12.0002L18.5 2.50023Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                      </button>
+                      <button v-if="session.status === 'active'" @click="pauseSession(session)" class="action-btn small warning" title="Pause Session">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <rect x="6" y="4" width="4" height="16" fill="currentColor"/>
+                          <rect x="14" y="4" width="4" height="16" fill="currentColor"/>
+                        </svg>
+                      </button>
+                      <button v-if="session.status === 'paused'" @click="resumeSession(session)" class="action-btn small success" title="Resume Session">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <polygon points="5,3 19,12 5,21" fill="currentColor"/>
+                        </svg>
+                      </button>
+                      <button v-if="session.status !== 'ended'" @click="endSession(session)" class="action-btn small danger" title="End Session">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <rect x="6" y="6" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2"/>
+                          <path d="M9 9L15 15M15 9L9 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                      </button>
+                      <button @click="deleteSession(session)" :disabled="sessionStore.loading" class="action-btn small danger" title="Delete Session">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M3 6H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                          <path d="M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                      </button>
                     </div>
-                  </div>
-                </td>
-                <td>
-                  <span class="session-customer">{{ session.customer?.name || 'N/A' }}</span>
-                </td>
-                <td>
-                  <span class="session-creator">{{ session.creator?.name || 'N/A' }}</span>
-                </td>
-                <td>
-                  <span :class="getStatusClass(session)" class="status-badge">
-                    {{ session.status || 'N/A' }}
-                  </span>
-                </td>
-                <td>
-                  <span class="session-date">{{ formatDateTime(session.started_at) }}</span>
-                </td>
-                <td>
-                  <span class="session-date">{{ formatDateTime(session.ended_at) }}</span>
-                </td>
-                <td>
-                  <span class="session-price">${{ parseFloat(session.total_price || 0).toFixed(2) }}</span>
-                  <span v-if="session.discount" class="session-discount" style="display: block; font-size: 0.75rem; color: #f59e0b;">
-                    Discount: ${{ parseFloat(session.discount || 0).toFixed(2) }}
-                  </span>
-                </td>
-                <td>
-                  <span class="activities-count">{{ session.activities?.length || 0 }} activity(ies)</span>
-                  <span class="session-type" style="display: block; font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">
-                    Type: {{ getSessionType(session) }}
-                  </span>
-                </td>
-                <td>
-                  <div class="session-actions">
-                    <button @click="editSession(session)" class="action-btn small primary" title="Edit Session">
-                      <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M18.5 2.50023C18.8978 2.10243 19.4374 1.87891 20 1.87891C20.5626 1.87891 21.1022 2.10243 21.5 2.50023C21.8978 2.89804 22.1213 3.43762 22.1213 4.00023C22.1213 4.56284 21.8978 5.10243 21.5 5.50023L12 15.0002L8 16.0002L9 12.0002L18.5 2.50023Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                      </svg>
-                    </button>
-                    <button v-if="session.status === 'active'" @click="pauseSession(session)" class="action-btn small warning" title="Pause Session">
-                      <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="6" y="4" width="4" height="16" fill="currentColor"/>
-                        <rect x="14" y="4" width="4" height="16" fill="currentColor"/>
-                      </svg>
-                    </button>
-                    <button v-if="session.status === 'paused'" @click="resumeSession(session)" class="action-btn small success" title="Resume Session">
-                      <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <polygon points="5,3 19,12 5,21" fill="currentColor"/>
-                      </svg>
-                    </button>
-                    <button v-if="session.status !== 'ended'" @click="endSession(session)" class="action-btn small danger" title="End Session">
-                      <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <rect x="6" y="6" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2"/>
-                        <path d="M9 9L15 15M15 9L9 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                      </svg>
-                    </button>
-                    <button @click="deleteSession(session)" :disabled="sessionStore.loading" class="action-btn small danger" title="Delete Session">
-                      <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M3 6H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        <path d="M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                      </svg>
-                    </button>
-                  </div>
-                </td>
-              </tr>
+                  </td>
+                </tr>
+                <!-- Expanded Row Detail -->
+                <tr v-if="expandedSessionId === session.id" class="session-expanded-row">
+                    <td colspan="9" class="expanded-cell">
+                      <div class="session-expanded-content desktop-expanded">
+                        <div class="expanded-divider"></div>
+                        
+                        <!-- Session Details Section -->
+                        <div class="expanded-section">
+                          <h4 class="expanded-section-title">
+                            <span class="title-icon">⚡</span>
+                            Session Information
+                          </h4>
+                          <div class="expanded-details-grid">
+                            <div class="expanded-detail-item">
+                              <span class="expanded-label">Session ID</span>
+                              <span class="expanded-value">{{ session.id }}</span>
+                            </div>
+                            <div class="expanded-detail-item">
+                              <span class="expanded-label">Customer</span>
+                              <span class="expanded-value">{{ session.customer?.name || 'N/A' }}</span>
+                            </div>
+                            <div class="expanded-detail-item">
+                              <span class="expanded-label">Creator</span>
+                              <span class="expanded-value">{{ session.creator?.name || 'N/A' }}</span>
+                            </div>
+                            <div class="expanded-detail-item">
+                              <span class="expanded-label">Status</span>
+                              <span :class="getStatusClass(session)" class="status-badge">
+                                {{ session.status || 'N/A' }}
+                              </span>
+                            </div>
+                            <div class="expanded-detail-item">
+                              <span class="expanded-label">Session Type</span>
+                              <span class="expanded-value">{{ getSessionType(session) }}</span>
+                            </div>
+                            <div class="expanded-detail-item">
+                              <span class="expanded-label">Started At</span>
+                              <span class="expanded-value">{{ formatDateTime(session.started_at) }}</span>
+                            </div>
+                            <div class="expanded-detail-item">
+                              <span class="expanded-label">Ended At</span>
+                              <span class="expanded-value">{{ formatDateTime(session.ended_at) || 'N/A' }}</span>
+                            </div>
+                            <div class="expanded-detail-item">
+                              <span class="expanded-label">Subtotal</span>
+                              <span class="expanded-value">${{ parseFloat((session.total_price || 0) + (session.discount || 0)).toFixed(2) }}</span>
+                            </div>
+                            <div v-if="session.discount" class="expanded-detail-item">
+                              <span class="expanded-label">Discount</span>
+                              <span class="expanded-value discount">-${{ parseFloat(session.discount || 0).toFixed(2) }}</span>
+                            </div>
+                            <div class="expanded-detail-item highlight">
+                              <span class="expanded-label">Total Price</span>
+                              <span class="expanded-value">${{ parseFloat(session.total_price || 0).toFixed(2) }}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Activities Section -->
+                        <div class="expanded-section">
+                          <h4 class="expanded-section-title">
+                            <span class="title-icon">🎮</span>
+                            Activities ({{ session.activities?.length || 0 }})
+                          </h4>
+                          <div v-if="session.activities && session.activities.length > 0" class="expanded-activities-list">
+                            <div 
+                              v-for="activity in session.activities" 
+                              :key="activity.id"
+                              class="expanded-activity-item"
+                            >
+                              <div class="activity-card-header">
+                                <div class="activity-card-info">
+                                  <h5 class="activity-card-title">
+                                    {{ activity.device?.name || activity.device_name || (activity.activity_type === 'chillout' ? 'No Device' : 'Unknown Device') }}
+                                  </h5>
+                                  <span class="activity-card-type">
+                                    {{ activity.activity_type === 'playing' ? 'Playing' : activity.activity_type === 'chillout' ? 'Chillout' : activity.activity_type }}
+                                    <span v-if="activity.mode"> • {{ activity.mode === 'single' ? 'Single' : 'Multi' }} Player</span>
+                                  </span>
+                                </div>
+                                <div class="activity-header-right">
+                                  <span :class="getActivityStatusClass(activity)" class="status-badge small">
+                                    {{ activity.status }}
+                                  </span>
+                                  <!-- Timer Display for Activities -->
+                                  <div v-if="shouldShowActivityTimer(activity) && calculateTime(activity)" class="activity-timer-wrapper">
+                                    <div class="futuristic-timer small" :class="{ 'timer-expired': calculateTime(activity)?.expired }">
+                                      <div class="timer-display">
+                                        <div class="timer-unit">
+                                          <span class="timer-value">{{ String(calculateTime(activity)?.hours || 0).padStart(2, '0') }}</span>
+                                          <span class="timer-label">H</span>
+                                        </div>
+                                        <span class="timer-separator">:</span>
+                                        <div class="timer-unit">
+                                          <span class="timer-value">{{ String(calculateTime(activity)?.minutes || 0).padStart(2, '0') }}</span>
+                                          <span class="timer-label">M</span>
+                                        </div>
+                                        <span v-if="calculateTime(activity)?.isCountdown && !calculateTime(activity)?.expired" class="timer-countdown-indicator">▼</span>
+                                        <span v-else-if="calculateTime(activity)?.expired" class="timer-expired-indicator" title="Time's up!">⏰</span>
+                                        <span v-else class="timer-countup-indicator">▲</span>
+                                      </div>
+                                      <div v-if="calculateTime(activity)?.expired" class="timer-expired-message">Time's Up!</div>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                              <div class="activity-card-details">
+                                <div class="activity-card-meta">
+                                  <div class="activity-meta-item">
+                                    <span class="meta-icon">🕐</span>
+                                    <span>Started: {{ formatDateTime(activity.started_at) }}</span>
+                                  </div>
+                                  <div v-if="activity.ended_at" class="activity-meta-item">
+                                    <span class="meta-icon">🏁</span>
+                                    <span>Ended: {{ formatDateTime(activity.ended_at) }}</span>
+                                  </div>
+                                  <div v-if="activity.duration_hours" class="activity-meta-item">
+                                    <span class="meta-icon">⏱️</span>
+                                    <span>Duration: {{ formatDuration(activity.duration_hours) || activity.duration_formatted }}</span>
+                                  </div>
+                                  <div class="activity-meta-item">
+                                    <span class="meta-icon">💰</span>
+                                    <span>Price: ${{ parseFloat(activity.total_price || 0).toFixed(2) }}</span>
+                                  </div>
+                                </div>
+                                <!-- Users Section -->
+                                <div class="activity-card-users">
+                                  <div class="users-label">Users:</div>
+                                  <div v-if="activity.activity_users && activity.activity_users.length > 0">
+                                    <template v-for="au in activity.activity_users" :key="au.id">
+                                      <div class="activity-user-card">
+                                        <span 
+                                          @click="toggleUserProducts(session, activity, au.user_id)"
+                                          class="user-name-clickable"
+                                          :class="{ 'expanded': isUserProductsExpanded(session, activity, au.user_id) }"
+                                        >
+                                          {{ au.user?.name || 'Unknown' }}
+                                        </span>
+                                        <span v-if="au.duration_hours" class="user-duration">({{ formatDuration(au.duration_hours) || au.duration_formatted }})</span>
+                                        <button 
+                                          v-if="canRemoveUserFromActivity(session, activity, au.user_id)"
+                                          @click.stop="removeUserFromActivity(session, activity, au.user_id)" 
+                                          class="user-remove-btn"
+                                          title="Remove user"
+                                        >
+                                          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+                                            <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+                                          </svg>
+                                        </button>
+                                      </div>
+                                      <!-- User Products Section -->
+                                      <div 
+                                        v-if="isUserProductsExpanded(session, activity, au.user_id)"
+                                        class="user-products-section"
+                                      >
+                                        <!-- Section Title -->
+                                        <h4 class="user-products-title">PRODUCTS FOR {{ (au.user?.name || 'User').toUpperCase() }}</h4>
+                                        
+                                        <!-- Product Selection Form -->
+                                        <div class="product-form">
+                                          <div class="form-row">
+                                            <div class="form-field">
+                                              <label class="field-label">Select Product</label>
+                                              <div class="product-dropdown-wrapper">
+                                                <div 
+                                                  class="product-dropdown-futuristic"
+                                                  :class="{ 'open': getShowProductDropdown(session, activity, au.user_id), 'has-selection': getSelectedProduct(session, activity, au.user_id) }"
+                                                  @click.stop="toggleProductDropdown(session, activity, au.user_id)"
+                                                >
+                                                  <span class="dropdown-selected-text">
+                                                    {{ getSelectedProductText(session, activity, au.user_id) || 'Choose a product...' }}
+                                                  </span>
+                                                  <svg class="dropdown-arrow" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M8 11L3 6h10z" fill="currentColor"/>
+                                                  </svg>
+                                                </div>
+                                                <div 
+                                                  v-if="getShowProductDropdown(session, activity, au.user_id)"
+                                                  class="product-dropdown-menu"
+                                                  @click.stop
+                                                >
+                                                  <div 
+                                                    class="dropdown-item"
+                                                    :class="{ 'selected': !getSelectedProduct(session, activity, au.user_id) }"
+                                                    @click="selectProduct(session, activity, au.user_id, null)"
+                                                  >
+                                                    <span>Choose a product...</span>
+                                                  </div>
+                                                  <div 
+                                                    v-for="product in productStore.getProducts" 
+                                                    :key="product.id"
+                                                    class="dropdown-item"
+                                                    :class="{ 'selected': getSelectedProduct(session, activity, au.user_id) === product.id }"
+                                                    @click="selectProduct(session, activity, au.user_id, product.id)"
+                                                  >
+                                                    <div class="product-option-info">
+                                                      <span class="product-option-name">{{ product.name }}</span>
+                                                      <span class="product-option-price">${{ parseFloat(product.price || 0).toFixed(2) }}</span>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </div>
+                                            
+                                            <div class="form-field">
+                                              <label class="field-label">Quantity</label>
+                                              <div class="quantity-counter-wrapper">
+                                                <button 
+                                                  @click="setProductQuantity(session, activity, au.user_id, Math.max(1, getProductQuantity(session, activity, au.user_id) - 1))"
+                                                  class="quantity-btn quantity-btn-minus"
+                                                  type="button"
+                                                >
+                                                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                  </svg>
+                                                </button>
+                                                <span class="quantity-display">{{ getProductQuantity(session, activity, au.user_id) }}</span>
+                                                <button 
+                                                  @click="setProductQuantity(session, activity, au.user_id, getProductQuantity(session, activity, au.user_id) + 1)"
+                                                  class="quantity-btn quantity-btn-plus"
+                                                  type="button"
+                                                >
+                                                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                                  </svg>
+                                                </button>
+                                              </div>
+                                            </div>
+                                            
+                                            <div class="form-field">
+                                              <button 
+                                                @click="addProductToUser(session, activity, au.user_id)"
+                                                :disabled="!canAddProduct(session, activity, au.user_id) || getAddingProduct(session, activity, au.user_id)"
+                                                class="add-product-btn"
+                                              >
+                                                <svg v-if="!getAddingProduct(session, activity, au.user_id)" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                  <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                                </svg>
+                                                <div v-else class="loading-spinner small"></div>
+                                                <span>{{ getAddingProduct(session, activity, au.user_id) ? 'Adding...' : 'Add' }}</span>
+                                              </button>
+                                            </div>
+                                          </div>
+                                        </div>
+                                        
+                                        <!-- User Products List -->
+                                        <div class="user-products-list">
+                                          <div v-if="getLoadingUserProducts(session, activity, au.user_id)" class="loading-state">
+                                            <div class="loading-spinner"></div>
+                                            <span>Loading products...</span>
+                                          </div>
+                                          <div v-else-if="getUserProducts(session, activity, au.user_id).length === 0" class="no-products-message">
+                                            <span>No products added yet</span>
+                                          </div>
+                                          <div v-else class="products-grid">
+                                            <div 
+                                              v-for="productOrder in getUserProducts(session, activity, au.user_id)" 
+                                              :key="productOrder.id"
+                                              class="product-order-item"
+                                            >
+                                              <div class="product-info">
+                                                <span class="product-name">{{ productOrder.product?.name || 'Unknown Product' }}</span>
+                                                <span class="product-details">
+                                                  Qty: {{ productOrder.quantity }} × ${{ parseFloat(productOrder.price || 0).toFixed(2) }} = ${{ parseFloat(productOrder.total_price || 0).toFixed(2) }}
+                                                </span>
+                                              </div>
+                                              <button 
+                                                @click="deleteProductFromUser(session, activity, au.user_id, productOrder.id)"
+                                                class="delete-product-btn"
+                                                title="Remove product"
+                                              >
+                                                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                  <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
+                                                  <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
+                                                </svg>
+                                              </button>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </template>
+                                  </div>
+                                  <div v-else class="no-users-message">
+                                    <span>No users assigned</span>
+                                  </div>
+                                  
+                                  <!-- Add User Input (only for active/paused activities) -->
+                                  <div v-if="canAddUsersToActivity(activity)" class="add-user-section">
+                                    <div class="user-search-wrapper customer-search-wrapper">
+                                      <input 
+                                        :value="getUserSearchQuery(session, activity)"
+                                        @input="handleUserSearch(session, activity, $event)"
+                                        @focus="handleUserSearchFocus(session, activity)"
+                                        @blur="handleUserSearchBlur(session, activity)"
+                                        type="text"
+                                        class="form-input user-search-input"
+                                        :class="{ 'has-selection': getSelectedUser(session, activity) }"
+                                        :data-key="getUserDropdownKey(session, activity)"
+                                        placeholder="Type to search users..."
+                                        autocomplete="off"
+                                      />
+                                      <div v-if="getUserSearchLoading(session, activity)" class="search-loading">
+                                        <div class="loading-spinner small"></div>
+                                      </div>
+                                      <Teleport to="body">
+                                        <div 
+                                          v-if="getShowUserSearchDropdown(session, activity) && (getUserSearchResults(session, activity).length > 0 || getUserSearchQuery(session, activity).length > 0)"
+                                          class="user-search-dropdown customer-dropdown fixed-dropdown"
+                                          :style="getDropdownStyle(session, activity)"
+                                        >
+                                          <div 
+                                            v-if="getUserSearchLoading(session, activity)"
+                                            class="dropdown-item loading-item"
+                                          >
+                                            <div class="loading-spinner small"></div>
+                                            <span>Searching...</span>
+                                          </div>
+                                          <div 
+                                            v-else-if="getUserSearchResults(session, activity).length === 0 && getUserSearchQuery(session, activity).length > 0 && canCreateNewUser(session, activity)"
+                                            class="dropdown-item create-new-customer"
+                                            @mousedown.prevent="createAndSelectUser(session, activity)"
+                                          >
+                                            <svg class="create-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                                              <path d="M12 8V16M8 12H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                            </svg>
+                                            <span>Create new user: <strong>{{ getUserSearchQuery(session, activity).trim() }}</strong></span>
+                                          </div>
+                                          <div 
+                                            v-else-if="getUserSearchResults(session, activity).length === 0 && getUserSearchQuery(session, activity).length > 0 && !canCreateNewUser(session, activity)"
+                                            class="dropdown-item no-results"
+                                          >
+                                            No users found
+                                          </div>
+                                          <div
+                                            v-for="user in getUserSearchResults(session, activity)"
+                                            :key="user.id"
+                                            @mousedown.prevent="user.is_available && !user.in_active_activity ? selectUserForActivity(session, activity, user) : null"
+                                            class="dropdown-item"
+                                            :class="{ 
+                                              'disabled': user.in_active_activity || !user.is_available,
+                                              'selected': getSelectedUser(session, activity)?.id === user.id
+                                            }"
+                                          >
+                                            <div class="customer-info">
+                                              <span class="customer-name">{{ user.name }}</span>
+                                              <span class="customer-email">{{ user.email }}</span>
+                                              <span v-if="user.in_active_activity" class="user-status-badge" style="font-size: 0.7rem; color: #f59e0b; margin-top: 0.25rem;">
+                                                (In active activity - cannot select)
+                                              </span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </Teleport>
+                                    </div>
+                                  </div>
+                                </div>
+                                <!-- History Button -->
+                                <div class="activity-history-button-wrapper">
+                                  <button 
+                                    @click.stop="openActivityHistory(session, activity)" 
+                                    class="history-btn futuristic-btn"
+                                    title="View Activity History"
+                                  >
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM13 17H11V15H13V17ZM13 13H11V7H13V13Z" fill="currentColor"/>
+                                    </svg>
+                                    <span>History</span>
+                                  </button>
+                                </div>
+                                <div class="activity-card-actions">
+                                  <button 
+                                    @click.stop="editActivityFromExpanded(session, activity)" 
+                                    class="action-btn icon-only primary"
+                                    title="Edit Activity"
+                                  >
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                      <path d="M18.5 2.50023C18.8978 2.10243 19.4374 1.87891 20 1.87891C20.5626 1.87891 21.1022 2.10243 21.5 2.50023C21.8978 2.89804 22.1213 3.43762 22.1213 4.00023C22.1213 4.56284 21.8978 5.10243 21.5 5.50023L12 15.0002L8 16.0002L9 12.0002L18.5 2.50023Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                    </svg>
+                                  </button>
+                                  <button 
+                                    v-if="activity.status === 'active'"
+                                    @click.stop="pauseActivityFromExpanded(session, activity)" 
+                                    class="action-btn icon-only warning"
+                                    title="Pause Activity"
+                                  >
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      <rect x="6" y="4" width="4" height="16" fill="currentColor"/>
+                                      <rect x="14" y="4" width="4" height="16" fill="currentColor"/>
+                                    </svg>
+                                  </button>
+                                  <button 
+                                    v-if="activity.status === 'paused'"
+                                    @click.stop="resumeActivityFromExpanded(session, activity)" 
+                                    class="action-btn icon-only success"
+                                    title="Resume Activity"
+                                  >
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      <polygon points="5,3 19,12 5,21" fill="currentColor"/>
+                                    </svg>
+                                  </button>
+                                  <button 
+                                    v-if="activity.status !== 'ended'"
+                                    @click.stop="endActivityFromExpanded(session, activity)" 
+                                    class="action-btn icon-only danger"
+                                    title="End Activity"
+                                  >
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                      <rect x="6" y="6" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2"/>
+                                      <path d="M9 9L15 15M15 9L9 15" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                  </button>
+                                  <!-- Mode Toggle Switch -->
+                                  <div 
+                                    v-if="activity.status !== 'ended' && (activity.activity_type === 'playing' || activity.device_id)"
+                                    class="mode-toggle-wrapper"
+                                    :class="{ 'disabled': activity.status === 'paused' }"
+                                    :title="activity.status === 'paused' ? 'Mode toggle is disabled when activity is paused' : `Switch to ${(activity.mode || 'single') === 'single' ? 'Multi' : 'Single'} mode`"
+                                  >
+                                    <label class="mode-toggle-label">
+                                      <input 
+                                        type="checkbox" 
+                                        :checked="(activity.mode || 'single') === 'multi'"
+                                        :disabled="activity.status === 'paused'"
+                                        @change="toggleActivityMode(session, activity)"
+                                        class="mode-toggle-input"
+                                      />
+                                      <span class="mode-toggle-slider">
+                                        <span class="mode-toggle-text">{{ (activity.mode || 'single') === 'single' ? 'S' : 'M' }}</span>
+                                      </span>
+                                    </label>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div v-else class="expanded-empty-activities">
+                            <p>No activities in this session.</p>
+                          </div>
+                          <!-- Create Activity Button (shown when session is active or paused) -->
+                          <div v-if="session.status === 'active' || session.status === 'paused'" class="create-activity-section">
+                            <button 
+                              @click.stop="openCreateActivityForSession(session)" 
+                              class="action-btn primary create-activity-btn"
+                            >
+                              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M12 5V19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                              </svg>
+                              Create New Activity
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                  </td>
+                </tr>
+              </template>
             </tbody>
           </table>
         </div>
@@ -1344,6 +1818,7 @@ import { useProductStore } from '@/stores/productStore'
 import SessionForm from '@/components/dashboard/sessions/SessionForm.vue'
 import ActivityForm from '@/components/dashboard/sessions/ActivityForm.vue'
 import ActivityHistoryModal from '@/components/dashboard/sessions/ActivityHistoryModal.vue'
+import DateRangePicker from '@/components/base/ui/DateRangePicker.vue'
 import { formatDuration } from '@/utils/helpers'
 import UserService from '@/api/users'
 import SessionService from '@/api/sessions'
@@ -1380,6 +1855,7 @@ const currentPage = ref(1)
 const perPage = ref(10)
 const expandedSessionId = ref(null)
 const clickedCard = ref(null)
+const dateRange = ref({ startDate: null, endDate: null })
 
 // Lock body scroll when any modal is open
 const isAnyModalOpen = computed(() => 
@@ -1418,13 +1894,44 @@ const showProductDropdown = ref({}) // Key: `${sessionId}-${activityId}-${userId
 // Methods
 const loadSessions = async (page = 1) => {
   try {
-    console.log('SessionsSection: Loading sessions...', { page, perPage: perPage.value })
+    console.log('SessionsSection: Loading sessions...', { page, perPage: perPage.value, dateRange: dateRange.value })
     sessionsLoaded.value = false
     currentPage.value = page
-    await sessionStore.fetchSessions({
-      page: page,
-      per_page: perPage.value
-    })
+
+    // Check if date filtering is active
+    if (dateRange.value.startDate) {
+      // Use date-based API endpoint
+      const params = {
+        page: page,
+        per_page: perPage.value
+      }
+      
+      // Add end_date if provided (for date range)
+      if (dateRange.value.endDate) {
+        params.end_date = dateRange.value.endDate
+      }
+
+      // Fetch sessions by date
+      const response = await SessionService.getSessionsByDate(dateRange.value.startDate, params)
+      
+      // Update store with the response
+      if (response && typeof response === 'object') {
+        if (response.sessions && Array.isArray(response.sessions)) {
+          sessionStore.sessions = response.sessions
+          sessionStore.pagination = response.pagination || null
+        } else if (Array.isArray(response)) {
+          sessionStore.sessions = response
+          sessionStore.pagination = null
+        }
+      }
+    } else {
+      // Use regular API endpoint
+      await sessionStore.fetchSessions({
+        page: page,
+        per_page: perPage.value
+      })
+    }
+    
     sessionsLoaded.value = true
     
     // Clear expired activities handled set when sessions are refreshed
@@ -1440,6 +1947,12 @@ const loadSessions = async (page = 1) => {
     console.error('SessionsSection: Error loading sessions:', error)
     sessionsLoaded.value = true
   }
+}
+
+const handleDateRangeChange = (newDateRange) => {
+  dateRange.value = newDateRange
+  // Reload sessions with new date filter
+  loadSessions(1)
 }
 
 const goToPage = (page) => {
@@ -2230,9 +2743,11 @@ const getDropdownStyle = (session, activity) => {
 }
 
 // Load all users from store (for local filtering)
+// Fetch all users without pagination to show all users in dropdowns
 const loadAllUsers = async () => {
   try {
-    await userStore.fetchUsers()
+    // Don't pass paginate=true to get all users (up to 500 limit on backend)
+    await userStore.fetchUsers({ paginate: false })
     allUsers.value = userStore.getUsers || []
   } catch (error) {
     console.error('Failed to load users:', error)
@@ -2267,6 +2782,7 @@ const canCreateNewUser = (session, activity) => {
 }
 
 // Load available users from API (called once when input is focused)
+// Fetch all available users without pagination to show all users in dropdowns
 const loadAvailableUsers = async (session, activity) => {
   const key = getUserDropdownKey(session, activity)
   
@@ -2279,7 +2795,8 @@ const loadAvailableUsers = async (session, activity) => {
   
   try {
     // Get available users from API (respects business rules, includes all users with metadata)
-    const availableUsers = await sessionStore.getAvailableUsersForActivity(session.id, activity.id)
+    // Don't pass paginate=true to get all users (up to 500 limit on backend)
+    const availableUsers = await sessionStore.getAvailableUsersForActivity(session.id, activity.id, { paginate: false })
     
     // Cache the results
     availableUsersCache.value[key] = availableUsers || []

@@ -303,27 +303,50 @@ export default {
   width: 100%;
   padding: 0.75rem 1rem;
   padding-right: 2.75rem;
-  background: rgba(15, 15, 23, 0.95);
-  border: 1.5px solid rgba(139, 92, 246, 0.4);
-  border-radius: 8px;
+  /* Premium gradient background: dark navy → charcoal */
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 14px;
   color: rgba(255, 255, 255, 0.95);
   font-size: 0.875rem;
   font-weight: 500;
-  transition: all 0.3s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
+  /* Soft inner shadow + light outer glow for depth */
   box-shadow: 
-    0 2px 8px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(139, 92, 246, 0.1),
+    inset 0 1px 1px rgba(255, 255, 255, 0.05),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.2);
   position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   min-height: 42px;
   box-sizing: border-box;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  overflow: hidden;
+}
+
+/* Glassmorphism overlay effect */
+.custom-dropdown-futuristic::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.03) 0%, rgba(168, 85, 247, 0.03) 100%);
+  opacity: 0;
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+  z-index: 0;
 }
 
 .custom-dropdown-futuristic.disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
@@ -332,49 +355,90 @@ export default {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  position: relative;
+  z-index: 1;
+  letter-spacing: 0.01em;
 }
 
 .custom-dropdown-futuristic .dropdown-arrow {
-  width: 16px;
-  height: 16px;
-  color: rgba(168, 85, 247, 0.8);
-  transition: transform 0.3s ease, filter 0.3s ease;
+  width: 14px;
+  height: 14px;
+  /* Closed state: Low contrast, soft gray with slight transparency */
+  color: rgba(160, 160, 175, 0.6);
+  transition: all 0.225s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
-  margin-left: 0.5rem;
-  filter: drop-shadow(0 0 4px rgba(168, 85, 247, 0.6));
+  margin-left: 0.75rem;
+  position: relative;
+  z-index: 1;
+  transform-origin: center;
+  /* No filter initially for low contrast */
+  filter: none;
 }
 
+/* Hover state */
 .custom-dropdown-futuristic:hover:not(.disabled) {
-  border-color: rgba(139, 92, 246, 0.6);
+  border-color: rgba(139, 92, 246, 0.4);
+  /* Enhanced shadow expansion */
   box-shadow: 
-    0 4px 20px rgba(139, 92, 246, 0.3),
-    0 0 0 1px rgba(139, 92, 246, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  background-color: rgba(15, 15, 23, 1);
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(139, 92, 246, 0.25),
+    0 0 20px rgba(139, 92, 246, 0.15),
+    inset 0 1px 1px rgba(255, 255, 255, 0.08),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.25);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 1) 0%, rgba(30, 41, 59, 1) 100%);
   transform: translateY(-1px);
 }
 
-.custom-dropdown-futuristic:hover:not(.disabled) .dropdown-arrow {
-  filter: drop-shadow(0 0 8px rgba(168, 85, 247, 0.9));
+.custom-dropdown-futuristic:hover:not(.disabled)::before {
+  opacity: 1;
 }
 
-.custom-dropdown-futuristic.open {
-  border-color: rgba(168, 85, 247, 0.8);
+.custom-dropdown-futuristic:hover:not(.disabled) .dropdown-arrow {
+  /* Hover: Arrow becomes brighter, scales up, subtle glow */
+  color: rgba(168, 85, 247, 0.9);
+  transform: scale(1.05);
+  filter: drop-shadow(0 0 6px rgba(168, 85, 247, 0.5));
+}
+
+/* Active/Click state - shadow expansion */
+.custom-dropdown-futuristic:active:not(.disabled) {
+  transform: translateY(0);
   box-shadow: 
-    0 6px 25px rgba(139, 92, 246, 0.4),
-    0 0 0 3px rgba(139, 92, 246, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-  background-color: rgba(15, 15, 23, 1);
+    0 2px 12px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(139, 92, 246, 0.3),
+    0 0 30px rgba(139, 92, 246, 0.2),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.3);
+}
+
+/* Open state */
+.custom-dropdown-futuristic.open {
+  border-color: rgba(139, 92, 246, 0.5);
+  /* Stronger shadow elevation when open */
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(139, 92, 246, 0.4),
+    0 0 30px rgba(139, 92, 246, 0.25),
+    inset 0 1px 1px rgba(255, 255, 255, 0.1),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(135deg, rgba(15, 23, 42, 1) 0%, rgba(30, 41, 59, 1) 100%);
+}
+
+.custom-dropdown-futuristic.open::before {
+  opacity: 1;
 }
 
 .custom-dropdown-futuristic.open .dropdown-arrow {
-  transform: rotate(180deg);
-  filter: drop-shadow(0 0 12px rgba(168, 85, 247, 1));
+  /* Open: Arrow rotates 180° upward, primary accent color with glow */
+  transform: rotate(180deg) scale(1.05);
+  color: rgba(139, 92, 246, 1);
+  filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.8));
+  transition: all 0.225s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .custom-dropdown-futuristic.has-selection {
   color: rgba(255, 255, 255, 1);
-  font-weight: 600;
+  font-weight: 500;
 }
 
 /* Custom Dropdown Menu */
@@ -383,30 +447,36 @@ export default {
   top: calc(100% + 0.5rem);
   left: 0;
   right: 0;
-  background: rgba(15, 15, 23, 0.98);
-  border: 1.5px solid rgba(139, 92, 246, 0.4);
-  border-radius: 8px;
+  /* Premium glassmorphism background */
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 14px;
   /* Show exactly 4 options: each item is ~42px (padding 0.875rem top + 0.875rem bottom + text + border) */
   max-height: calc(4 * 42px + 1px);
   overflow-y: auto;
   overflow-x: hidden;
   z-index: 99999;
+  /* Enhanced depth with soft shadows and glow */
   box-shadow: 
-    0 8px 30px rgba(0, 0, 0, 0.4),
+    0 12px 40px rgba(0, 0, 0, 0.5),
     0 0 0 1px rgba(139, 92, 246, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+    0 0 40px rgba(139, 92, 246, 0.15),
+    inset 0 1px 1px rgba(255, 255, 255, 0.08),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(20px);
-  animation: dropdown-appear 0.2s ease-out;
+  -webkit-backdrop-filter: blur(20px);
+  /* Smooth fade + slide down animation */
+  animation: dropdown-appear 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes dropdown-appear {
   from {
     opacity: 0;
-    transform: translateY(-10px);
+    transform: translateY(-8px) scale(0.98);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
