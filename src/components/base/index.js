@@ -6,6 +6,7 @@ export { default as LoadingSpinner } from './ui/LoadingSpinner.vue'
 export { default as CustomDropdown } from './ui/CustomDropdown.vue'
 export { default as DateRangePicker } from './ui/DateRangePicker.vue'
 export { default as FuturisticCalendar } from './ui/FuturisticCalendar.vue'
+export { default as AvatarPicker } from './ui/AvatarPicker.vue'
 
 // Icons
 export * from './ui/icons'

@@ -10,6 +10,7 @@ export const useUserStore = defineStore('user', {
     pagination: null,
     roles: [],
     statuses: [],
+    avatar_options: [],
   }),
 
   getters: {
@@ -193,16 +194,17 @@ export const useUserStore = defineStore('user', {
 
       try {
         const response = await UserService.updateUser(id, userData)
-        const updatedUser = response.data || response
+        // API returns { status, message, data: user }; extract the user
+        const updatedUser = response?.data ?? response
 
         // Update the user in the users list
         const index = this.users.findIndex(user => user.id === id)
-        if (index !== -1) {
-          this.users[index] = updatedUser
+        if (index !== -1 && updatedUser) {
+          this.users[index] = { ...this.users[index], ...updatedUser }
         }
 
         // If we're updating the current user, update that too
-        if (this.currentUser && this.currentUser.id === id) {
+        if (this.currentUser && this.currentUser.id === id && updatedUser) {
           this.currentUser = { ...this.currentUser, ...updatedUser }
         }
 
@@ -259,19 +261,20 @@ export const useUserStore = defineStore('user', {
     },
 
     /**
-     * Fetch user options (roles, statuses)
+     * Fetch user options (roles, statuses, avatar_options) from GET /api/users/options/dropdown
      */
     async fetchUserOptions() {
       try {
         const response = await UserService.getUserOptions()
-        this.roles = response.roles || []
-        this.statuses = response.statuses || []
+        this.roles = response.roles ?? []
+        this.statuses = response.statuses ?? []
+        this.avatar_options = Array.isArray(response.avatar_options) ? response.avatar_options : []
         return response
       } catch (error) {
         console.error('Failed to fetch user options:', error)
-        // Don't throw, just use empty arrays
         this.roles = []
         this.statuses = []
+        this.avatar_options = []
       }
     },
 

@@ -14,18 +14,18 @@ class UserService {
       console.log('=== API Request ===')
       console.log('URL:', api.defaults.baseURL + '/api/users')
       console.log('Params:', params)
-      
+
       const response = await api.get('/api/users', { params })
-      
+
       console.log('=== Raw API Response ===')
       console.log('Response object:', response)
       console.log('Response.data:', response.data)
       console.log('Response.data type:', typeof response.data)
       console.log('Is array?', Array.isArray(response.data))
-      
+
       // Handle different Laravel response formats
       let usersData = null
-      
+
       // Format 1: Laravel Resource Collection with success wrapper
       // { success: true, data: [...], message: "..." }
       if (response.data?.success && Array.isArray(response.data.data)) {
@@ -104,26 +104,26 @@ class UserService {
         console.warn('=== UNEXPECTED RESPONSE FORMAT ===')
         console.warn('Full response.data:', JSON.stringify(response.data, null, 2))
         console.warn('Attempting fallback extraction...')
-        
+
         // Try multiple fallback strategies
-        const fallbackUsers = 
-          response.data?.data || 
-          response.data?.users || 
+        const fallbackUsers =
+          response.data?.data ||
+          response.data?.users ||
           (Array.isArray(response.data) ? response.data : []) ||
           []
-        
+
         usersData = {
           users: Array.isArray(fallbackUsers) ? fallbackUsers : [],
           pagination: null
         }
       }
-      
+
       console.log('=== Processed Users Data ===')
       console.log('Users count:', usersData.users?.length || 0)
       console.log('First user sample:', usersData.users?.[0] || 'No users')
       console.log('Pagination:', usersData.pagination)
       console.log('==================')
-      
+
       return usersData
     } catch (error) {
       console.error('Get Users Error Details:', {
@@ -150,23 +150,35 @@ class UserService {
   }
 
   /**
-   * Get user options (roles, statuses, etc.)
+   * Get user options for dropdowns (roles, statuses, avatar_options).
+   * GET /api/users/options/dropdown
+   * @returns {Promise<{ roles: Object, statuses: Object, avatar_options: Array }>}
+   */
+  static async getUserOptionsDropdown() {
+    try {
+      const response = await api.get('/api/users/options/dropdown')
+      const data = response.data?.data ?? response.data
+      return {
+        roles: data?.roles ?? {},
+        statuses: data?.statuses ?? {},
+        avatar_options: Array.isArray(data?.avatar_options) ? data.avatar_options : []
+      }
+    } catch (error) {
+      console.error('Get User Options Dropdown Error:', error)
+      return {
+        roles: {},
+        statuses: {},
+        avatar_options: []
+      }
+    }
+  }
+
+  /**
+   * Get user options (roles, statuses, avatar_options) – uses dropdown endpoint.
    * @returns {Promise}
    */
   static async getUserOptions() {
-    try {
-      console.log('Making API request to:', api.defaults.baseURL + '/api/users/options')
-      const response = await api.get('/api/users/options')
-      console.log('User Options Response:', response.data)
-      return response.data
-    } catch (error) {
-      console.error('Get User Options Error:', error)
-      // Don't throw error for options, return empty object instead
-      return {
-        roles: [],
-        statuses: []
-      }
-    }
+    return UserService.getUserOptionsDropdown()
   }
 
   /**
@@ -178,7 +190,7 @@ class UserService {
     try {
       const response = await api.get(`/api/users/${id}`)
       console.log('Get User By ID Response:', response.data)
-      
+
       // Handle different response formats
       if (response.data?.data) {
         return response.data.data
@@ -223,14 +235,33 @@ class UserService {
   }
 
   /**
-   * Update user
+   * Update user.
+   * - Preset avatar: send JSON { avatar: "avatars/avatar2.svg", name, email, ... }.
+   * - Upload avatar: send multipart/form-data with field "avatar" (image file); other fields can be included.
    * @param {number} id - User ID
-   * @param {Object} userData - User data
-   * @returns {Promise}
+   * @param {Object} userData - User data. If userData.avatar is a File, sends multipart.
+   * @returns {Promise<{ data: object }>} API response with updated user in response.data
    */
   static async updateUser(id, userData) {
     try {
-      const response = await api.put(`/api/users/${id}`, userData)
+      const isAvatarFile = userData.avatar instanceof File
+      if (isAvatarFile) {
+        const formData = new FormData()
+        formData.append('_method', 'PATCH')
+        formData.append('avatar', userData.avatar)
+        for (const [key, value] of Object.entries(userData)) {
+          if (key === 'avatar' || value === undefined || value === null) continue
+          if (value instanceof File) continue
+          formData.append(key, typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value))
+        }
+        // Use POST for file upload so the body is sent correctly (PATCH + multipart can fail in some environments)
+        const response = await api.post(`/api/users/${id}`, formData)
+        return response.data
+      }
+      const { avatar, ...rest } = userData
+      const payload = { ...rest }
+      if (avatar != null && avatar !== '') payload.avatar = avatar
+      const response = await api.patch(`/api/users/${id}`, payload)
       return response.data
     } catch (error) {
       console.error('Update User Error:', error)
@@ -279,6 +310,24 @@ class UserService {
     } catch (error) {
       console.error('Update User Profile Error:', error)
       throw new Error(error.response?.data?.message || 'Failed to update profile')
+    }
+  }
+
+  /**
+   * Upload user avatar (current user or by id).
+   * POST multipart/form-data to /api/user/avatar or /api/users/:id/avatar.
+   * @param {File} file - Image file
+   * @param {number} [userId] - User ID (omit for current user)
+   * @returns {Promise}
+   */
+  static async uploadAvatar(file, userId = null) {
+    try {
+      const url = userId ? `/api/users/${userId}/avatar` : '/api/user/avatar'
+      const response = await api.postForm(url, { avatar: file })
+      return response.data
+    } catch (error) {
+      console.error('Upload Avatar Error:', error)
+      throw new Error(error.response?.data?.message || 'Failed to upload avatar')
     }
   }
 }

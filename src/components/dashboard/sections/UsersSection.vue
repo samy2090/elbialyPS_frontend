@@ -113,8 +113,9 @@
                   <tr v-for="user in userStore.getUsers" :key="user.id" class="user-row">
                     <td>
                       <div class="user-info">
-                        <div class="user-avatar">
-                          {{ getUserInitials(user.name) }}
+                        <div class="user-avatar" :class="{ 'has-image': getUserAvatar(user) }">
+                          <img v-if="getUserAvatar(user)" :src="getUserAvatar(user)" :alt="user.name" class="user-avatar-img" />
+                          <span v-else>{{ getUserInitials(user.name) }}</span>
                         </div>
                         <div class="user-details">
                           <button @click="viewUser(user)" class="user-name">
@@ -173,8 +174,9 @@
               class="user-card"
             >
               <div class="user-card-header">
-                <div class="user-avatar">
-                  {{ getUserInitials(user.name) }}
+                <div class="user-avatar" :class="{ 'has-image': getUserAvatar(user) }">
+                  <img v-if="getUserAvatar(user)" :src="getUserAvatar(user)" :alt="user.name" class="user-avatar-img" />
+                  <span v-else>{{ getUserInitials(user.name) }}</span>
                 </div>
                 <div class="user-info">
                   <h3 class="user-name">{{ user.name }}</h3>
@@ -272,8 +274,9 @@
         <div class="modal-content modal-detail-content">
           <!-- User Profile Header -->
           <div class="modal-user-header">
-            <div class="user-avatar large">
-              {{ getUserInitials(selectedUser.name) }}
+            <div class="user-avatar large" :class="{ 'has-image': getUserAvatar(selectedUser) }">
+              <img v-if="getUserAvatar(selectedUser)" :src="getUserAvatar(selectedUser)" :alt="selectedUser.name" class="user-avatar-img" />
+              <span v-else>{{ getUserInitials(selectedUser.name) }}</span>
             </div>
             <div class="modal-user-info">
               <h4>{{ selectedUser.name }}</h4>
@@ -505,6 +508,8 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useUserStore } from '@/stores/userStore'
 import UserForm from '@/components/dashboard/users/UserForm.vue'
 import { useBodyScrollLock } from '@/composables/useBodyScrollLock'
+import { getUserRole, getRoleClass } from '@/utils/roleHelpers'
+import { resolveBackendImageUrl } from '@/utils/helpers'
 
 const userStore = useUserStore()
 
@@ -554,6 +559,12 @@ const loadUsers = async () => {
   }
 }
 
+const getUserAvatar = (user) => {
+  if (!user) return null
+  const raw = user.avatar ?? user.profile_image ?? user.photo_url ?? user.profile_photo_url
+  return resolveBackendImageUrl(raw)
+}
+
 const getUserInitials = (name) => {
   if (!name) return 'U'
   return name
@@ -564,23 +575,14 @@ const getUserInitials = (name) => {
     .toUpperCase()
 }
 
-const getUserRole = (user) => {
-  // This should match your actual user role logic
-  return user.role || user.userType || 'User'
-}
-
 const getUserStatus = (user) => {
-  // This should match your actual user status logic
-  return user.status || user.isActive ? 'Active' : 'Inactive'
-}
-
-const getRoleClass = (user) => {
-  const role = getUserRole(user).toLowerCase()
-  return `role-${role}`
+  if (!user) return 'Inactive'
+  if (typeof user.status === 'string') return user.status
+  return user.isActive ? 'Active' : 'Inactive'
 }
 
 const getStatusClass = (user) => {
-  const status = getUserStatus(user).toLowerCase()
+  const status = String(getUserStatus(user) ?? '').toLowerCase()
   return `status-${status}`
 }
 
@@ -1015,6 +1017,21 @@ defineEmits(['user-selected', 'user-created', 'user-updated'])
     0 4px 15px rgba(139, 92, 246, 0.3),
     0 2px 10px rgba(139, 92, 246, 0.1);
   position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.user-avatar.has-image {
+  background: transparent;
+  padding: 0;
+}
+
+.user-avatar .user-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
 }
 
 .user-avatar::after {
@@ -1039,6 +1056,11 @@ defineEmits(['user-selected', 'user-created', 'user-updated'])
   width: 4rem;
   height: 4rem;
   font-size: 1.25rem;
+}
+
+.user-avatar.large .user-avatar-img {
+  width: 100%;
+  height: 100%;
 }
 
 .user-details {
@@ -1101,6 +1123,13 @@ defineEmits(['user-selected', 'user-created', 'user-updated'])
   color: #3b82f6;
   border-color: rgba(59, 130, 246, 0.3);
   box-shadow: 0 2px 10px rgba(59, 130, 246, 0.1);
+}
+
+.role-guest {
+  background: rgba(156, 163, 175, 0.15);
+  color: #9ca3af;
+  border-color: rgba(156, 163, 175, 0.3);
+  box-shadow: 0 2px 10px rgba(156, 163, 175, 0.1);
 }
 
 .status-active {

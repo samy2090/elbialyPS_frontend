@@ -77,11 +77,31 @@ export function formatDuration(hours) {
   return `${finalHours}:${String(finalMinutes).padStart(2, '0')} minutes`
 }
 
+/**
+ * Resolve backend-stored image URL to a full URL.
+ * Backend often returns relative paths (e.g. "avatars/default.png"); Laravel serves them at /storage/...
+ * Builds {base}/storage/avatars/default.png so images load from the backend.
+ * @param {string|null|undefined} url - Image path from API (relative or absolute)
+ * @returns {string|null} Full URL for <img src>, or null if no url
+ */
+export function resolveBackendImageUrl(url) {
+  if (!url || typeof url !== 'string') return null
+  const trimmed = url.trim()
+  if (!trimmed) return null
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed
+  const base = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+  let path = trimmed.startsWith('/') ? trimmed.slice(1) : trimmed
+  if (!path.startsWith('storage/')) path = `storage/${path}`
+  const pathWithSlash = path.startsWith('/') ? path : `/${path}`
+  return base ? `${base}${pathWithSlash}` : trimmed
+}
+
 export default {
   formatCurrency,
   formatDate,
   truncateText,
   isAdmin,
   isAuthenticated,
-  formatDuration
+  formatDuration,
+  resolveBackendImageUrl
 }

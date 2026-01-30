@@ -55,6 +55,56 @@
           />
         </div>
 
+        <!-- Phone Field -->
+        <div class="form-field">
+          <label class="field-label">
+            <svg class="label-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Phone
+          </label>
+          <input 
+            v-model="form.phone" 
+            type="tel" 
+            class="form-input" 
+            placeholder="Enter phone number"
+          />
+        </div>
+
+        <!-- Avatar: use url for display, path when saving (create + edit) -->
+        <div class="form-field avatar-field">
+          <label class="field-label">
+            <svg class="label-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/>
+              <path d="M4 20c0-4 4-6 8-6s8 2 8 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            Avatar
+          </label>
+          <div class="avatar-preview-row">
+            <div class="avatar-preview-wrap">
+              <img
+                v-if="displayAvatarUrl"
+                :src="displayAvatarUrl"
+                alt="Avatar"
+                class="avatar-preview-img"
+              />
+              <div v-else class="avatar-preview-placeholder">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/>
+                  <path d="M4 20c0-4 4-6 8-6s8 2 8 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </div>
+            </div>
+            <button
+              type="button"
+              class="avatar-change-btn"
+              @click="showAvatarPicker = true"
+            >
+              {{ isEditing ? 'Change avatar' : 'Choose avatar' }}
+            </button>
+          </div>
+        </div>
+
         <!-- Password Fields Row -->
         <div class="form-row">
           <div class="form-field">
@@ -105,7 +155,7 @@
             User Role
           </label>
           <select 
-            v-model="form.role" 
+            v-model.number="form.role_id" 
             class="form-select"
             @change="handleRoleChange"
           >
@@ -156,16 +206,31 @@
         </div>
       </form>
     </div>
+
+    <!-- Avatar picker: presets from GET /api/users/options/dropdown (url for img, path on save) -->
+    <AvatarPicker
+      v-model="showAvatarPicker"
+      title="Change avatar"
+      :current-avatar="form.avatar"
+      :available-avatars="userStore.avatar_options"
+      :resolve-url="resolveAvatarUrl"
+      :allow-upload="true"
+      :max-size-m-b="2"
+      @close="showAvatarPicker = false"
+      @select="onAvatarSelect"
+    />
   </div>
 </template>
 
 <script>
-import { ref, onMounted } from 'vue'
+import { ref, watch, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/userStore'
-import { getUserRoleForForm, getAvailableRoles, isAdminRole } from '@/utils/roleHelpers'
+import { getAvailableRoles, getUserRoleId, isAdminRoleById, ROLE_IDS } from '@/utils/roleHelpers'
+import AvatarPicker from '@/components/base/ui/AvatarPicker.vue'
 
 export default {
   name: 'UserForm',
+  components: { AvatarPicker },
   props: {
     user: {
       type: Object,
@@ -175,32 +240,84 @@ export default {
   emits: ['user-created', 'user-updated', 'cancel'],
   setup(props, { emit }) {
     const userStore = useUserStore()
-    
+
+    onMounted(() => {
+      if (!userStore.avatar_options?.length) {
+        userStore.fetchUserOptions().catch(() => {})
+      }
+    })
+
     const isEditing = ref(!!props.user)
+    const showAvatarPicker = ref(false)
     const availableRoles = getAvailableRoles()
+    const availableRoleIds = availableRoles.map((r) => r.value)
+
+    function roleIdForSelect(user) {
+      if (!user) return ROLE_IDS.user
+      const id = getUserRoleId(user)
+      return availableRoleIds.includes(id) ? id : ROLE_IDS.user
+    }
     
     const form = ref({
       name: '',
       email: '',
+      phone: '',
       password: '',
       password_confirmation: '',
       is_admin: false,
-      role: 'user'
+      role_id: ROLE_IDS.user,
+      avatar: '',
+      avatarFile: null
     })
     
-    // Populate form if editing existing user
-    onMounted(() => {
-      if (props.user) {
-        form.value.name = props.user.name
-        form.value.email = props.user.email
-        form.value.is_admin = props.user.is_admin || false
-        form.value.role = getUserRoleForForm(props.user)
+    // Resolve avatar path to full URL (from dropdown avatar_options)
+    function resolveAvatarUrl(path) {
+      if (!path) return ''
+      const opt = userStore.avatar_options.find((a) => a.path === path)
+      return (opt && opt.url) || path
+    }
+    
+    // Display URL: uploaded file preview or preset/current avatar URL
+    const displayAvatarUrl = computed(() => {
+      if (form.value.avatarFile) {
+        return URL.createObjectURL(form.value.avatarFile)
       }
+      if (form.value.avatar) return resolveAvatarUrl(form.value.avatar)
+      const u = props.user
+      if (u && (u.avatar_url || u.avatar)) return u.avatar_url || resolveAvatarUrl(u.avatar) || ''
+      return ''
     })
+    
+    // Populate form when editing user (sync on mount and when user prop changes)
+    watch(
+      () => props.user,
+      (user) => {
+        if (user) {
+          form.value.name = user.name ?? ''
+          form.value.email = user.email ?? ''
+          form.value.phone = user.phone ?? ''
+          form.value.role_id = roleIdForSelect(user)
+          form.value.is_admin = isAdminRoleById(form.value.role_id)
+          form.value.avatar = user.avatar ?? ''
+          form.value.avatarFile = null
+        }
+      },
+      { immediate: true }
+    )
     
     // Handle role change and update is_admin for backward compatibility
     const handleRoleChange = () => {
-      form.value.is_admin = isAdminRole(form.value.role)
+      form.value.is_admin = isAdminRoleById(form.value.role_id)
+    }
+    
+    function onAvatarSelect(payload) {
+      if (payload.type === 'preset' && payload.path) {
+        form.value.avatar = payload.path
+        form.value.avatarFile = null
+      } else if (payload.type === 'upload' && payload.file) {
+        form.value.avatarFile = payload.file
+        form.value.avatar = ''
+      }
     }
     
     const handleSubmit = async () => {
@@ -208,12 +325,41 @@ export default {
         userStore.clearError()
         
         if (isEditing.value) {
-          // Editing existing user
-          await userStore.updateUser(props.user.id, form.value)
+          const payload = {
+            name: form.value.name,
+            email: form.value.email,
+            phone: form.value.phone,
+            role_id: form.value.role_id,
+            is_admin: form.value.is_admin
+          }
+          if (form.value.password) {
+            payload.password = form.value.password
+            payload.password_confirmation = form.value.password_confirmation
+          }
+          if (form.value.avatarFile) {
+            payload.avatar = form.value.avatarFile
+          } else if (form.value.avatar) {
+            payload.avatar = form.value.avatar
+          }
+          await userStore.updateUser(props.user.id, payload)
           emit('user-updated')
         } else {
-          // Creating new user
-          await userStore.createUser(form.value)
+          const createPayload = {
+            name: form.value.name,
+            email: form.value.email,
+            phone: form.value.phone,
+            role_id: form.value.role_id,
+            is_admin: form.value.is_admin,
+            password: form.value.password,
+            password_confirmation: form.value.password_confirmation
+          }
+          if (form.value.avatar) createPayload.avatar = form.value.avatar
+          const response = await userStore.createUser(createPayload)
+          const newUser = response?.data ?? response
+          const newId = newUser?.id ?? newUser?.user?.id
+          if (newId && form.value.avatarFile) {
+            await userStore.updateUser(newId, { avatar: form.value.avatarFile })
+          }
           emit('user-created')
         }
       } catch (error) {
@@ -225,6 +371,10 @@ export default {
       form,
       isEditing,
       userStore,
+      showAvatarPicker,
+      displayAvatarUrl,
+      resolveAvatarUrl,
+      onAvatarSelect,
       handleSubmit,
       handleRoleChange,
       availableRoles
@@ -330,6 +480,61 @@ export default {
 .alert-message {
   font-size: 0.875rem;
   font-weight: 500;
+}
+
+/* Avatar field (edit only) */
+.avatar-field .avatar-preview-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.avatar-preview-wrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  flex-shrink: 0;
+}
+
+.avatar-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatar-preview-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.avatar-preview-placeholder svg {
+  width: 28px;
+  height: 28px;
+}
+
+.avatar-change-btn {
+  padding: 0.6rem 1rem;
+  background: rgba(139, 92, 246, 0.2);
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  border-radius: 10px;
+  color: #a78bfa;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.avatar-change-btn:hover {
+  background: rgba(139, 92, 246, 0.3);
+  border-color: #8b5cf6;
+  color: #c4b5fd;
 }
 
 /* Form */

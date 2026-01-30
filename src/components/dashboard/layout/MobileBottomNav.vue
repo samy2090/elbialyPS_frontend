@@ -40,15 +40,6 @@ const ExploreIcon = {
   `
 }
 
-const ProfileIcon = {
-  template: `
-    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M20 21V19C20 17.9391 19.5786 16.9217 18.8284 16.1716C18.0783 15.4214 17.0609 15 16 15H8C6.93913 15 5.92172 15.4214 5.17157 16.1716C4.42143 16.9217 4 17.9391 4 19V21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      <circle cx="12" cy="7" r="4" stroke="currentColor" stroke-width="2"/>
-    </svg>
-  `
-}
-
 const UsersIcon = {
   template: `
     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -98,8 +89,7 @@ const tabs = computed(() => [
   { id: 'sessions', label: 'Sessions', icon: SessionsIcon },
   { id: 'explore', label: 'Explore', icon: ExploreIcon },
   { id: 'users', label: 'Users', icon: UsersIcon },
-  { id: 'products', label: 'Products', icon: ProductsIcon },
-  { id: 'profile', label: 'Profile', icon: ProfileIcon }
+  { id: 'products', label: 'Products', icon: ProductsIcon }
 ])
 
 defineEmits(['tab-selected'])
@@ -125,7 +115,7 @@ defineEmits(['tab-selected'])
 
 .nav-container {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 0.25rem;
   max-width: 100%;
   margin: 0 auto;

@@ -21,6 +21,12 @@ api.interceptors.request.use(
     // Ensure X-Requested-With header is always set
     config.headers['X-Requested-With'] = 'XMLHttpRequest'
 
+    // When sending FormData (e.g. file upload), do NOT set Content-Type so the browser
+    // sets multipart/form-data with the correct boundary. Otherwise the server won't receive the file.
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type']
+    }
+
     // Add CSRF token to headers if available
     if (csrfToken) {
       config.headers['X-XSRF-TOKEN'] = csrfToken
@@ -72,23 +78,23 @@ api.interceptors.response.use(
     // Handle 401 Unauthorized errors
     if (error.response?.status === 401) {
       console.log('Unauthorized - redirecting to login')
-      
+
       // Clear auth data from localStorage
       localStorage.removeItem('auth_user_data')
       localStorage.removeItem('auth_token')
       csrfToken = null
-      
+
       // Redirect to login if not already on an auth page and not already redirecting
       if (!isRedirecting) {
         const currentPath = window.location.pathname
-        const isAuthPage = currentPath === '/login' || 
-                          currentPath === '/register' || 
-                          currentPath === '/forgot-password' ||
-                          currentPath === '/'
-        
+        const isAuthPage = currentPath === '/login' ||
+          currentPath === '/register' ||
+          currentPath === '/forgot-password' ||
+          currentPath === '/'
+
         if (!isAuthPage) {
           isRedirecting = true
-          
+
           // Use a small delay to allow the error to propagate first
           setTimeout(() => {
             window.location.href = '/login'
@@ -100,7 +106,7 @@ api.interceptors.response.use(
         }
       }
     }
-    
+
     return Promise.reject(error)
   }
 )

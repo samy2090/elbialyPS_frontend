@@ -1,302 +1,292 @@
 <template>
   <div class="profile-content">
-    <div class="profile-header">
-      <div class="profile-avatar">
-        <img :src="profileData.avatar" alt="Profile Avatar" />
-        <button class="edit-avatar-btn" @click="$emit('edit-avatar')">
-          <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            <path d="M18.5 2.5C18.8978 2.10217 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.10217 21.5 2.5C21.8978 2.89782 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.10217 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-      </div>
-      <div class="profile-info">
-        <h1 class="profile-name">{{ profileData.name }}</h1>
-        <p class="profile-email">{{ profileData.email }}</p>
-        <div class="profile-stats">
-          <div class="stat">
-            <span class="stat-value">{{ profileData.loginHours }}</span>
-            <span class="stat-label">Hours Active</span>
-          </div>
-          <div class="stat">
-            <span class="stat-value">{{ profileData.reportsCreated }}</span>
-            <span class="stat-label">Reports Created</span>
-          </div>
-          <div class="stat">
-            <span class="stat-value">{{ profileData.usersManaged }}</span>
-            <span class="stat-label">Users Managed</span>
-          </div>
-        </div>
-      </div>
+    <!-- Loading -->
+    <div v-if="authStore.loading && !authStore.user" class="profile-loading">
+      <div class="loading-spinner"></div>
+      <p>Loading profile...</p>
     </div>
 
-    <div class="profile-sections">
-      <div class="section-tabs">
-        <button 
-          v-for="tab in tabs"
-          :key="tab.id"
-          @click="activeTab = tab.id"
-          :class="['tab-btn', { active: activeTab === tab.id }]"
-        >
-          {{ tab.label }}
-        </button>
-      </div>
-
-      <div class="tab-content">
-        <!-- Watchlist Tab -->
-        <div v-if="activeTab === 'watchlist'" class="watchlist-content">
-          <div class="content-grid">
-            <div 
-              v-for="item in watchlistItems"
-              :key="item.id"
-              class="content-card"
-              @click="$emit('item-selected', item)"
-            >
-              <img :src="item.poster" :alt="item.title" class="card-image" />
-              <div class="card-overlay">
-                <h4 class="card-title">{{ item.title }}</h4>
-                <p class="card-meta">{{ item.type }} • {{ item.year }}</p>
-                <button class="remove-btn" @click.stop="removeFromWatchlist(item.id)">
-                  <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- History Tab -->
-        <div v-if="activeTab === 'history'" class="history-content">
-          <div class="history-list">
-            <div 
-              v-for="item in historyItems"
-              :key="item.id"
-              class="history-item"
-              @click="$emit('item-selected', item)"
-            >
-              <img :src="item.thumbnail" :alt="item.title" class="history-thumbnail" />
-              <div class="history-info">
-                <h4 class="history-title">{{ item.title }}</h4>
-                <p class="history-meta">{{ item.type }} • Watched {{ item.watchedAt }}</p>
-                <div class="progress-bar">
-                  <div class="progress-fill" :style="{ width: item.progress + '%' }"></div>
-                </div>
-                <p class="progress-text">{{ item.progress }}% complete</p>
-              </div>
-              <button class="continue-btn">Continue</button>
-            </div>
-          </div>
-        </div>
-
-        <!-- Reviews Tab -->
-        <div v-if="activeTab === 'reviews'" class="reviews-content">
-          <div class="reviews-list">
-            <div 
-              v-for="review in userReviews"
-              :key="review.id"
-              class="review-card"
-            >
-              <div class="review-header">
-                <img :src="review.contentPoster" :alt="review.contentTitle" class="review-poster" />
-                <div class="review-title-section">
-                  <h4 class="review-content-title">{{ review.contentTitle }}</h4>
-                  <div class="review-rating">
-                    <span v-for="star in 5" :key="star" class="star" :class="{ filled: star <= review.rating }">★</span>
-                  </div>
-                  <p class="review-date">Reviewed {{ review.date }}</p>
-                </div>
-              </div>
-              <p class="review-text">{{ review.text }}</p>
-              <div class="review-actions">
-                <button class="edit-review-btn" @click="editReview(review.id)">Edit</button>
-                <button class="delete-review-btn" @click="deleteReview(review.id)">Delete</button>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Settings Tab -->
-        <div v-if="activeTab === 'settings'" class="settings-content">
-          <div class="settings-groups">
-            <div class="settings-group">
-              <h3 class="group-title">Preferences</h3>
-              <div class="setting-item">
-                <label class="setting-label">
-                  <input type="checkbox" v-model="settings.autoplay" />
-                  <span class="checkmark"></span>
-                  Enable autoplay
-                </label>
-              </div>
-              <div class="setting-item">
-                <label class="setting-label">
-                  <input type="checkbox" v-model="settings.notifications" />
-                  <span class="checkmark"></span>
-                  Push notifications
-                </label>
-              </div>
-              <div class="setting-item">
-                <label class="setting-label">Video Quality:</label>
-                <select v-model="settings.videoQuality" class="setting-select">
-                  <option value="auto">Auto</option>
-                  <option value="720p">720p</option>
-                  <option value="1080p">1080p</option>
-                  <option value="4k">4K</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="settings-group">
-              <h3 class="group-title">Privacy</h3>
-              <div class="setting-item">
-                <label class="setting-label">
-                  <input type="checkbox" v-model="settings.publicProfile" />
-                  <span class="checkmark"></span>
-                  Public profile
-                </label>
-              </div>
-              <div class="setting-item">
-                <label class="setting-label">
-                  <input type="checkbox" v-model="settings.shareWatching" />
-                  <span class="checkmark"></span>
-                  Share what I'm watching
-                </label>
-              </div>
-            </div>
-
-            <div class="settings-group">
-              <h3 class="group-title">Account</h3>
-              <button class="settings-btn">Change Password</button>
-              <button class="settings-btn">Export Data</button>
-              <button class="settings-btn danger">Delete Account</button>
-            </div>
-          </div>
-        </div>
-      </div>
+    <!-- Not logged in -->
+    <div v-else-if="!authStore.user" class="profile-empty">
+      <p>Please log in to view your profile.</p>
     </div>
+
+    <template v-else>
+      <div class="profile-header">
+        <div class="profile-avatar-wrap">
+          <div class="profile-avatar">
+            <img :src="profileData.avatar" :alt="profileData.name" />
+          </div>
+          <button
+            type="button"
+            class="edit-avatar-btn"
+            @click="showAvatarPicker = true"
+            :disabled="avatarUpdating"
+            title="Change avatar"
+            aria-label="Change avatar"
+          >
+            <span v-if="avatarUpdating" class="avatar-updating-spinner"></span>
+            <svg v-else class="edit-avatar-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M18.5 2.5a2.12 2.12 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+        <div class="profile-info">
+          <h1 class="profile-name">{{ profileData.name }}</h1>
+          <p class="profile-email">{{ profileData.email }}</p>
+          <p v-if="profileData.role" class="profile-role">{{ profileData.role }}</p>
+          <button
+            v-if="!isEditing"
+            class="edit-profile-btn"
+            @click="startEditing"
+          >
+            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M18.5 2.5C18.8978 2.10217 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.10217 21.5 2.5C21.8978 2.89782 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.10217 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Edit profile
+          </button>
+        </div>
+      </div>
+
+      <!-- Error message -->
+      <div v-if="errorMessage" class="profile-error">
+        <span>{{ errorMessage }}</span>
+        <button type="button" class="dismiss-btn" @click="errorMessage = ''" aria-label="Dismiss">×</button>
+      </div>
+
+      <!-- Edit form -->
+      <div v-if="isEditing" class="profile-edit-card">
+        <h2 class="edit-title">Update your profile</h2>
+        <form @submit.prevent="handleSave" class="profile-edit-form">
+          <div class="form-field">
+            <label class="field-label">Full name</label>
+            <input
+              v-model="form.name"
+              type="text"
+              class="form-input"
+              placeholder="Your name"
+              required
+            />
+          </div>
+          <div class="form-field">
+            <label class="field-label">Email</label>
+            <input
+              v-model="form.email"
+              type="email"
+              class="form-input"
+              placeholder="your@email.com"
+              required
+            />
+          </div>
+          <div class="form-field">
+            <label class="field-label">Phone <span class="optional">(optional)</span></label>
+            <input
+              v-model="form.phone"
+              type="tel"
+              class="form-input"
+              placeholder="Phone number"
+            />
+          </div>
+          <div class="form-field">
+            <label class="field-label">New password <span class="optional">(leave blank to keep)</span></label>
+            <input
+              v-model="form.password"
+              type="password"
+              class="form-input"
+              placeholder="New password"
+              autocomplete="new-password"
+            />
+          </div>
+          <div v-if="form.password" class="form-field">
+            <label class="field-label">Confirm new password</label>
+            <input
+              v-model="form.password_confirmation"
+              type="password"
+              class="form-input"
+              placeholder="Confirm new password"
+              autocomplete="new-password"
+            />
+          </div>
+          <div class="form-actions">
+            <button
+              type="button"
+              class="btn-cancel"
+              @click="cancelEditing"
+              :disabled="saving"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              class="btn-save"
+              :disabled="saving"
+            >
+              <span v-if="saving">Saving...</span>
+              <span v-else>Save changes</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Avatar picker modal: list from GET /api/users/options/dropdown -->
+      <AvatarPicker
+        v-model="showAvatarPicker"
+        title="Change avatar"
+        :current-avatar="profileData.rawAvatar"
+        :resolve-url="resolveProfileAvatarUrl"
+        :available-avatars="avatarOptions"
+        :allow-upload="true"
+        :max-size-m-b="2"
+        @close="showAvatarPicker = false"
+        @select="onAvatarSelect"
+      />
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import { useAuthStore } from '@/stores/auth'
+import { useUserStore } from '@/stores/userStore'
+import UserService from '@/api/users.js'
+import { getUserRole } from '@/utils/roleHelpers'
+import { resolveBackendImageUrl } from '@/utils/helpers'
+import AvatarPicker from '@/components/base/ui/AvatarPicker.vue'
 
-const activeTab = ref('watchlist')
+const authStore = useAuthStore()
+const userStore = useUserStore()
+const isEditing = ref(false)
+const saving = ref(false)
+const errorMessage = ref('')
+const showAvatarPicker = ref(false)
+const avatarUpdating = ref(false)
 
-const profileData = computed(() => ({
-  name: 'Alex Johnson',
-  email: 'alex.johnson@example.com',
-  avatar: 'https://via.placeholder.com/120x120/8b5cf6/ffffff?text=AJ',
-  loginHours: '248',
-  reportsCreated: '42',
-  usersManaged: '18'
-}))
+const avatarOptions = computed(() => userStore.avatar_options || [])
 
-const tabs = computed(() => [
-  { id: 'activity', label: 'Activity' },
-  { id: 'reports', label: 'Reports' },
-  { id: 'users', label: 'Users' },
-  { id: 'settings', label: 'Settings' }
-])
+function resolveProfileAvatarUrl(path) {
+  if (!path) return ''
+  const opt = userStore.avatar_options?.find((a) => a.path === path)
+  return (opt && opt.url) || resolveBackendImageUrl(path) || path
+}
 
-const watchlistItems = computed(() => [
-  {
-    id: 1,
-    title: 'Quantum Realm',
-    type: 'Movie',
-    year: 2024,
-    poster: 'https://via.placeholder.com/200x300/6366f1/ffffff?text=QR'
-  },
-  {
-    id: 2,
-    title: 'Digital Horizons',
-    type: 'Series',
-    year: 2024,
-    poster: 'https://via.placeholder.com/200x300/8b5cf6/ffffff?text=DH'
-  },
-  {
-    id: 3,
-    title: 'Neon Chronicles',
-    type: 'Movie',
-    year: 2024,
-    poster: 'https://via.placeholder.com/200x300/06b6d4/ffffff?text=NC'
-  },
-  {
-    id: 4,
-    title: 'Cyber Dreams',
-    type: 'Series',
-    year: 2024,
-    poster: 'https://via.placeholder.com/200x300/10b981/ffffff?text=CD'
-  }
-])
-
-const historyItems = computed(() => [
-  {
-    id: 1,
-    title: 'Space Odyssey 2024',
-    type: 'Movie',
-    watchedAt: '2 days ago',
-    progress: 100,
-    thumbnail: 'https://via.placeholder.com/80x120/6366f1/ffffff?text=SO'
-  },
-  {
-    id: 2,
-    title: 'Tech Mysteries',
-    type: 'Series - S1E5',
-    watchedAt: '1 week ago',
-    progress: 67,
-    thumbnail: 'https://via.placeholder.com/80x120/8b5cf6/ffffff?text=TM'
-  },
-  {
-    id: 3,
-    title: 'Future World',
-    type: 'Documentary',
-    watchedAt: '2 weeks ago',
-    progress: 85,
-    thumbnail: 'https://via.placeholder.com/80x120/06b6d4/ffffff?text=FW'
-  }
-])
-
-const userReviews = computed(() => [
-  {
-    id: 1,
-    contentTitle: 'Galactic Adventures',
-    contentPoster: 'https://via.placeholder.com/60x90/6366f1/ffffff?text=GA',
-    rating: 5,
-    date: '1 week ago',
-    text: 'An absolutely amazing journey through space! The visual effects were stunning and the storyline kept me engaged throughout.'
-  },
-  {
-    id: 2,
-    contentTitle: 'Digital Reality',
-    contentPoster: 'https://via.placeholder.com/60x90/8b5cf6/ffffff?text=DR',
-    rating: 4,
-    date: '2 weeks ago',
-    text: 'Great concept and execution. Some parts felt a bit slow, but overall a solid watch.'
-  }
-])
-
-const settings = ref({
-  autoplay: true,
-  notifications: false,
-  videoQuality: '1080p',
-  publicProfile: true,
-  shareWatching: false
+const form = ref({
+  name: '',
+  email: '',
+  phone: '',
+  password: '',
+  password_confirmation: ''
 })
 
-const removeFromWatchlist = (itemId) => {
-  console.log('Removing item from watchlist:', itemId)
+const profileData = computed(() => {
+  const u = authStore.user
+  if (!u) {
+    return { name: '', email: '', avatar: '', rawAvatar: '', role: '' }
+  }
+  const name = u.name ?? u.full_name ?? ''
+  const email = u.email ?? ''
+  const initials = name
+    ? name.split(/\s+/).map(s => s[0]).slice(0, 2).join('').toUpperCase()
+    : (email ? email[0].toUpperCase() : '?')
+  const rawAvatar = u.avatar ?? u.profile_image ?? u.photo_url ?? u.profile_photo_url
+  const avatar = resolveBackendImageUrl(rawAvatar) ?? `https://via.placeholder.com/120x120/8b5cf6/ffffff?text=${encodeURIComponent(initials)}`
+  const role = getUserRole(u)
+  return { name, email, avatar, rawAvatar, role }
+})
+
+function resetForm() {
+  const u = authStore.user
+  form.value = {
+    name: u?.name ?? u?.full_name ?? '',
+    email: u?.email ?? '',
+    phone: u?.phone ?? u?.phone_number ?? '',
+    password: '',
+    password_confirmation: ''
+  }
 }
 
-const editReview = (reviewId) => {
-  console.log('Editing review:', reviewId)
+function startEditing() {
+  resetForm()
+  authStore.clearError()
+  errorMessage.value = ''
+  isEditing.value = true
 }
 
-const deleteReview = (reviewId) => {
-  console.log('Deleting review:', reviewId)
+function cancelEditing() {
+  isEditing.value = false
+  errorMessage.value = ''
 }
 
-defineEmits(['edit-avatar', 'item-selected'])
+async function handleSave() {
+  if (form.value.password && form.value.password !== form.value.password_confirmation) {
+    errorMessage.value = 'Passwords do not match.'
+    return
+  }
+  saving.value = true
+  errorMessage.value = ''
+  authStore.clearError()
+  try {
+    const payload = {
+      name: form.value.name,
+      email: form.value.email
+    }
+    if (form.value.phone !== undefined && form.value.phone !== null) {
+      payload.phone = form.value.phone
+    }
+    if (form.value.password && form.value.password.trim()) {
+      payload.password = form.value.password
+      payload.password_confirmation = form.value.password_confirmation
+    }
+    const res = await UserService.updateUser(authStore.user.id, payload)
+    const updated = res?.user ?? res?.data ?? res
+    if (updated) {
+      authStore.updateCurrentUser(updated)
+    } else {
+      await authStore.fetchUser()
+    }
+    isEditing.value = false
+  } catch (err) {
+    errorMessage.value = err.message || 'Failed to update profile.'
+  } finally {
+    saving.value = false
+  }
+}
+
+async function onAvatarSelect(payload) {
+  avatarUpdating.value = true
+  errorMessage.value = ''
+  try {
+    if (payload.type === 'preset') {
+      const res = await UserService.updateUser(authStore.user.id, { avatar: payload.path })
+      const updated = res?.user ?? res?.data ?? res
+      if (updated) authStore.updateCurrentUser(updated)
+      else await authStore.fetchUser()
+    } else if (payload.type === 'upload' && payload.file) {
+      const res = await UserService.updateUser(authStore.user.id, { avatar: payload.file })
+      const updated = res?.user ?? res?.data ?? res
+      if (updated) authStore.updateCurrentUser(updated)
+      else await authStore.fetchUser()
+    }
+  } catch (err) {
+    errorMessage.value = err.message || 'Failed to update avatar.'
+  } finally {
+    avatarUpdating.value = false
+  }
+}
+
+watch(() => authStore.user, (user) => {
+  if (user && isEditing.value) {
+    resetForm()
+  }
+}, { immediate: false })
+
+onMounted(() => {
+  if (authStore.user?.id) {
+    authStore.fetchUser()
+  }
+  userStore.fetchUserOptions().catch(() => {})
+})
 </script>
 
 <style scoped>
@@ -306,16 +296,44 @@ defineEmits(['edit-avatar', 'item-selected'])
   width: 100%;
 }
 
+.profile-loading,
+.profile-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  gap: 1rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #8b5cf6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .profile-header {
   display: flex;
   gap: 2rem;
-  margin-bottom: 3rem;
+  margin-bottom: 2rem;
   align-items: flex-start;
 }
 
-.profile-avatar {
+.profile-avatar-wrap {
   position: relative;
   flex-shrink: 0;
+}
+
+.profile-avatar {
+  display: block;
 }
 
 .profile-avatar img {
@@ -323,29 +341,53 @@ defineEmits(['edit-avatar', 'item-selected'])
   height: 120px;
   border-radius: 50%;
   border: 3px solid rgba(139, 92, 246, 0.3);
+  object-fit: cover;
 }
 
 .edit-avatar-btn {
   position: absolute;
   bottom: 0;
   right: 0;
-  padding: 0.5rem;
-  background: #8b5cf6;
-  border: 2px solid rgba(15, 15, 23, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%);
+  border: 2px solid rgba(15, 15, 23, 0.9);
   border-radius: 50%;
   color: white;
   cursor: pointer;
   transition: all 0.3s ease;
+  box-shadow: 0 4px 16px rgba(139, 92, 246, 0.4);
 }
 
-.edit-avatar-btn:hover {
-  background: #7c3aed;
+.edit-avatar-btn:hover:not(:disabled) {
   transform: scale(1.1);
+  box-shadow: 0 0 24px rgba(139, 92, 246, 0.5);
 }
 
-.icon {
+.edit-avatar-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.edit-avatar-icon {
   width: 1rem;
   height: 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.avatar-updating-spinner {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
 }
 
 .profile-info {
@@ -361,186 +403,20 @@ defineEmits(['edit-avatar', 'item-selected'])
 
 .profile-email {
   color: rgba(255, 255, 255, 0.6);
-  margin-bottom: 1.5rem;
-}
-
-.profile-stats {
-  display: flex;
-  gap: 2rem;
-}
-
-.stat {
-  text-align: center;
-}
-
-.stat-value {
-  display: block;
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #8b5cf6;
-}
-
-.stat-label {
-  font-size: 0.875rem;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.section-tabs {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 2rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.tab-btn {
-  padding: 1rem 1.5rem;
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.6);
-  cursor: pointer;
-  transition: all 0.3s ease;
-  border-bottom: 2px solid transparent;
-  font-weight: 600;
-}
-
-.tab-btn:hover {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.tab-btn.active {
-  color: #8b5cf6;
-  border-bottom-color: #8b5cf6;
-}
-
-.content-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1.5rem;
-}
-
-.content-card {
-  position: relative;
-  border-radius: 16px;
-  overflow: hidden;
-  cursor: pointer;
-  transition: transform 0.3s ease;
-}
-
-.content-card:hover {
-  transform: scale(1.05);
-}
-
-.card-image {
-  width: 100%;
-  height: 300px;
-  object-fit: cover;
-}
-
-.card-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.8));
-  padding: 2rem 1rem 1rem;
-  color: white;
-}
-
-.card-title {
-  font-weight: 700;
   margin-bottom: 0.25rem;
 }
 
-.card-meta {
+.profile-role {
+  color: rgba(255, 255, 255, 0.5);
   font-size: 0.875rem;
-  opacity: 0.8;
+  margin-bottom: 1rem;
 }
 
-.remove-btn {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  padding: 0.5rem;
-  background: rgba(239, 68, 68, 0.8);
-  border: none;
-  border-radius: 50%;
-  color: white;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.content-card:hover .remove-btn {
-  opacity: 1;
-}
-
-.history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.history-item {
-  display: flex;
+.edit-profile-btn {
+  display: inline-flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.history-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  transform: translateX(8px);
-}
-
-.history-thumbnail {
-  width: 60px;
-  height: 90px;
-  border-radius: 8px;
-  object-fit: cover;
-}
-
-.history-info {
-  flex: 1;
-}
-
-.history-title {
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
-  margin-bottom: 0.25rem;
-}
-
-.history-meta {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.875rem;
-  margin-bottom: 0.5rem;
-}
-
-.progress-bar {
-  width: 100%;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-  overflow: hidden;
-  margin-bottom: 0.25rem;
-}
-
-.progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #8b5cf6, #06b6d4);
-  transition: width 0.3s ease;
-}
-
-.progress-text {
-  font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.continue-btn {
-  padding: 0.75rem 1.5rem;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
   background: #8b5cf6;
   border: none;
   border-radius: 12px;
@@ -550,229 +426,161 @@ defineEmits(['edit-avatar', 'item-selected'])
   transition: all 0.3s ease;
 }
 
-.continue-btn:hover {
+.edit-profile-btn:hover {
   background: #7c3aed;
-  transform: translateY(-2px);
+  transform: translateY(-1px);
 }
 
-.reviews-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+.btn-icon {
+  width: 1.125rem;
+  height: 1.125rem;
 }
 
-.review-card {
-  padding: 1.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.review-header {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.review-poster {
-  width: 60px;
-  height: 90px;
-  border-radius: 8px;
-  object-fit: cover;
-}
-
-.review-title-section {
-  flex: 1;
-}
-
-.review-content-title {
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
-  margin-bottom: 0.5rem;
-}
-
-.review-rating {
-  margin-bottom: 0.5rem;
-}
-
-.star {
-  color: rgba(255, 255, 255, 0.3);
-  font-size: 1.125rem;
-}
-
-.star.filled {
-  color: #fbbf24;
-}
-
-.review-date {
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 0.875rem;
-}
-
-.review-text {
-  color: rgba(255, 255, 255, 0.8);
-  line-height: 1.6;
-  margin-bottom: 1rem;
-}
-
-.review-actions {
-  display: flex;
-  gap: 1rem;
-}
-
-.edit-review-btn,
-.delete-review-btn {
-  padding: 0.5rem 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.8);
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.edit-review-btn:hover {
-  border-color: #8b5cf6;
-  color: #8b5cf6;
-}
-
-.delete-review-btn:hover {
-  border-color: #ef4444;
-  color: #ef4444;
-}
-
-.settings-groups {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-.settings-group {
-  padding: 1.5rem;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.group-title {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.9);
-  margin-bottom: 1rem;
-}
-
-.setting-item {
-  margin-bottom: 1rem;
+.profile-error {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.5rem;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 12px;
+  color: #fca5a5;
 }
 
-.setting-label {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: rgba(255, 255, 255, 0.8);
+.profile-error .dismiss-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 1.25rem;
   cursor: pointer;
+  padding: 0 0.25rem;
+  line-height: 1;
 }
 
-.setting-label input[type="checkbox"] {
-  display: none;
-}
-
-.checkmark {
-  width: 1.25rem;
-  height: 1.25rem;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 4px;
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.setting-label input[type="checkbox"]:checked + .checkmark {
-  background: #8b5cf6;
-  border-color: #8b5cf6;
-}
-
-.setting-label input[type="checkbox"]:checked + .checkmark::after {
-  content: '✓';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  color: white;
-  font-size: 0.875rem;
-  font-weight: bold;
-}
-
-.setting-select {
-  padding: 0.5rem 1rem;
+.profile-edit-card {
+  padding: 2rem;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  margin-top: 1rem;
+}
+
+.edit-title {
+  font-size: 1.25rem;
+  font-weight: 700;
   color: rgba(255, 255, 255, 0.9);
-  cursor: pointer;
+  margin: 0 0 1.5rem 0;
 }
 
-.settings-btn {
-  display: block;
-  width: 100%;
+.profile-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  max-width: 420px;
+}
+
+.profile-edit-form .form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.profile-edit-form .field-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.profile-edit-form .optional {
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.profile-edit-form .form-input {
   padding: 0.75rem 1rem;
-  margin-bottom: 0.5rem;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  color: rgba(255, 255, 255, 0.8);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+}
+
+.profile-edit-form .form-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.profile-edit-form .form-input:focus {
+  outline: none;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.2);
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.btn-cancel,
+.btn-save {
+  padding: 0.75rem 1.5rem;
+  border-radius: 10px;
+  font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
-  text-align: left;
 }
 
-.settings-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+.btn-cancel {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.8);
 }
 
-.settings-btn.danger {
-  border-color: rgba(239, 68, 68, 0.5);
-  color: #ef4444;
+.btn-cancel:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.12);
 }
 
-.settings-btn.danger:hover {
-  background: rgba(239, 68, 68, 0.1);
+.btn-save {
+  background: #8b5cf6;
+  border: none;
+  color: white;
 }
 
-/* Mobile optimizations */
+.btn-save:hover:not(:disabled) {
+  background: #7c3aed;
+  transform: translateY(-1px);
+}
+
+.btn-cancel:disabled,
+.btn-save:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
 @media (max-width: 768px) {
   .profile-content {
-    padding: 1rem;
+    padding: 0 0.5rem;
   }
-  
+
   .profile-header {
     flex-direction: column;
+    align-items: center;
     text-align: center;
   }
-  
-  .profile-stats {
-    justify-content: center;
+
+  .profile-edit-card {
+    padding: 1.25rem;
   }
-  
-  .section-tabs {
-    overflow-x: auto;
-    white-space: nowrap;
-  }
-  
-  .content-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .history-item {
+
+  .form-actions {
     flex-direction: column;
-    text-align: center;
   }
-  
-  .review-header {
-    flex-direction: column;
-    text-align: center;
+
+  .btn-cancel,
+  .btn-save {
+    width: 100%;
   }
 }
 </style>

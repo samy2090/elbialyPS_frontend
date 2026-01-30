@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import AuthService from '@/api/auth.js'
 import UserService from '@/api/users.js'
 import router from '@/router'
+import { getUserRoleForForm, isAdminRole, canAccessDashboard as canAccessDashboardRole } from '@/utils/roleHelpers'
 
 // Helper functions for localStorage
 const STORAGE_KEY = 'auth_user_data'
@@ -33,6 +34,23 @@ const loadAuthData = () => {
   }
 }
 
+/**
+ * Extract user object from login/API response (handles common Laravel shapes).
+ * Ensures we get the user with role (user.role = { id, name, permissions }).
+ */
+function extractUserFromResponse(response) {
+  if (!response || typeof response !== 'object') return null
+  // { data: { user: {...}, token } }
+  if (response.data?.user && response.data.user.id != null) return response.data.user
+  // { data: {...user with role...}, token } - data is the user
+  if (response.data?.id != null && (response.data.role != null || response.data.role_id != null)) return response.data
+  // { user: {...}, token }
+  if (response.user && response.user.id != null) return response.user
+  // response is the user (e.g. { id, name, role, ... })
+  if (response.id != null) return response
+  return null
+}
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: loadAuthData(), // Load user data from localStorage on init
@@ -43,10 +61,20 @@ export const useAuthStore = defineStore('auth', {
   }),
 
   getters: {
+    /** Normalized role of the current user (e.g. 'admin', 'user', 'editor') */
+    currentUserRole: (state) => {
+      if (!state.user || !state.isAuthenticated) return 'user'
+      return getUserRoleForForm(state.user)
+    },
+    /** True if the current user has admin role */
     isAdmin: (state) => {
-      // For now, we'll allow any authenticated user to access admin features
-      // In a real app, you might want to check specific permissions
-      return state.isAuthenticated;
+      if (!state.user || !state.isAuthenticated) return false
+      return isAdminRole(getUserRoleForForm(state.user))
+    },
+    /** True if the current user can access dashboard (admin or staff) */
+    canAccessDashboard: (state) => {
+      if (!state.user || !state.isAuthenticated) return false
+      return canAccessDashboardRole(getUserRoleForForm(state.user))
     },
     isUser: (state) => state.isAuthenticated,
   },
@@ -100,11 +128,17 @@ export const useAuthStore = defineStore('auth', {
 
       try {
         const response = await AuthService.adminLogin(credentials)
-        this.user = response.user || response.data?.user || response
+        const user = extractUserFromResponse(response)
+        const token = response.token ?? response.data?.token
+        if (!user || !user.id) {
+          throw new Error('Invalid login response: user data missing')
+        }
+        this.user = user
+        this.token = token || this.token
         this.isAuthenticated = true
 
-        // Save user data to localStorage
-        saveAuthData(this.user)
+        // Save user data (with role) to localStorage
+        saveAuthData({ ...user, token: this.token })
 
         // Redirect to dashboard
         router.push('/dashboard')
@@ -156,22 +190,19 @@ export const useAuthStore = defineStore('auth', {
         const response = await AuthService.login(credentials)
         console.log('Login response:', response)
 
-        // Handle the response structure based on your backend
-        if (response.data && response.data.user) {
-          this.user = response.data.user
-          this.token = response.data.token
-        } else if (response.user) {
-          this.user = response.user
-          this.token = response.token
-        } else {
-          this.user = response
-          this.token = response.token
+        // Extract user from common Laravel/API response shapes
+        const user = extractUserFromResponse(response)
+        const token = response.token ?? response.data?.token ?? (response.user && response.user.token) ?? (response.data?.user && response.data.user.token)
+        if (!user || !user.id) {
+          throw new Error('Invalid login response: user data missing')
         }
+        this.user = user
+        this.token = token || this.token
 
         this.isAuthenticated = true
 
-        // Save user data and token to localStorage
-        saveAuthData({ ...this.user, token: this.token })
+        // Save user data (with role) and token to localStorage
+        saveAuthData({ ...user, token: this.token })
 
         // Redirect to dashboard
         router.push('/dashboard')
@@ -279,6 +310,16 @@ export const useAuthStore = defineStore('auth', {
       } finally {
         this.loading = false
       }
+    },
+
+    /**
+     * Update current user in state (e.g. after profile update)
+     * @param {Object} userData - Updated user object
+     */
+    updateCurrentUser(userData) {
+      if (!userData || !this.user) return
+      this.user = { ...this.user, ...userData }
+      saveAuthData(this.user)
     },
 
     /**

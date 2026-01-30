@@ -37,31 +37,31 @@ const router = createRouter({
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('../views/dashboard/DashboardView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresDashboardAccess: true }
     },
     {
       path: '/users',
       name: 'users',
       component: () => import('../views/dashboard/Users/UserListView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresDashboardAccess: true }
     },
     {
       path: '/users/create',
       name: 'userCreate',
       component: () => import('../views/dashboard/Users/UserCreateView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresDashboardAccess: true }
     },
     {
       path: '/users/:id',
       name: 'userDetail',
       component: () => import('../views/dashboard/Users/UserDetailView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresDashboardAccess: true }
     },
     {
       path: '/users/:id/edit',
       name: 'userEdit',
       component: () => import('../views/dashboard/Users/UserEditView.vue'),
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true, requiresDashboardAccess: true }
     },
   ],
 })
@@ -74,13 +74,18 @@ router.beforeEach(async (to, from, next) => {
   // Try to restore auth state from localStorage
   authStore.initAuth()
 
-  // Check if route requires authentication
+  // Check if route requires authentication or dashboard access (admin/staff only)
   const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+  const requiresDashboardAccess = to.matched.some(record => record.meta.requiresDashboardAccess)
   const requiresGuest = to.matched.some(record => record.meta.requiresGuest)
 
   // If route requires auth but user is not authenticated
   if (requiresAuth && !authStore.isAuthenticated) {
     next('/login')
+  }
+  // If route requires dashboard (admin/staff) but user is not allowed
+  else if (requiresDashboardAccess && !authStore.canAccessDashboard) {
+    next({ path: '/', query: { error: 'unauthorized' } })
   }
   // If route requires guest but user is authenticated
   else if (requiresGuest && authStore.isAuthenticated) {
