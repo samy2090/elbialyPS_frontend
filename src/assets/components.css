@@ -2192,6 +2192,7 @@ body.modal-open {
   backdrop-filter: blur(10px);
   position: relative;
   overflow: hidden;
+  margin-bottom: 10px;
 }
 
 .product-card::before {
@@ -4419,6 +4420,41 @@ body.modal-open {
   font-size: 0.625rem;
 }
 
+/* Session Form Modal Overlay - Above navbar and bottom nav (like Activity History modal) */
+.session-form-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 1rem;
+}
+
+.session-form-modal-overlay .session-modal {
+  max-height: 90vh;
+  min-height: min(400px, 90vh);
+}
+
+/* Session form modal fade transition (above navbar/bottom nav) */
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+}
+
 /* Session Modal - Same modern approach */
 .session-modal-overlay {
   position: fixed;
@@ -5157,7 +5193,7 @@ body.modal-open {
 
   .session-modal.edit-modal {
     max-width: 800px;
-    top:7%;
+    top:2%;
   }
 
   .session-form-container,

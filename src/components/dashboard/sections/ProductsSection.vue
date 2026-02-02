@@ -17,6 +17,16 @@
       </div>
     </div>
 
+    <!-- Search -->
+    <div class="products-search-row">
+      <SearchInput
+        v-model="searchQuery"
+        placeholder="Search by name or SKU..."
+        :debounce="300"
+        @search="onSearch"
+      />
+    </div>
+
     <!-- Success Notification -->
     <div v-if="showSuccess" class="success-notification">
       <div class="notification-content">
@@ -48,7 +58,7 @@
         </div>
         <h3 class="error-title">Error Loading Products</h3>
         <p class="error-message">{{ productStore.error }}</p>
-        <button @click="loadProducts" class="action-btn secondary">
+        <button @click="loadProducts(searchQuery ? { search: searchQuery } : {})" class="action-btn secondary">
           <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M1 4V10H7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             <path d="M23 20V14H17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -118,7 +128,7 @@
                   </span>
                 </td>
                 <td>
-                  <span class="product-price">${{ parseFloat(product.price || 0).toFixed(2) }}</span>
+                  <span class="product-price">{{ parseFloat(product.price || 0).toFixed(2) }}</span>
                 </td>
                 <td>
                   <span :class="getStockClass(product)" class="stock-badge">
@@ -186,7 +196,7 @@
             <div class="product-meta">
               <div class="meta-item">
                 <span class="meta-label">Price:</span>
-                <span class="meta-value">${{ parseFloat(product.price || 0).toFixed(2) }}</span>
+                <span class="meta-value">{{ parseFloat(product.price || 0).toFixed(2) }}</span>
               </div>
               <div class="meta-item">
                 <span class="meta-label">Stock:</span>
@@ -291,11 +301,11 @@
                 </div>
                 <div class="modal-detail-item">
                   <span class="modal-detail-label">Price</span>
-                  <span class="modal-detail-value">${{ parseFloat(selectedProduct.price || 0).toFixed(2) }}</span>
+                  <span class="modal-detail-value">{{ parseFloat(selectedProduct.price || 0).toFixed(2) }}</span>
                 </div>
                 <div class="modal-detail-item">
                   <span class="modal-detail-label">Cost</span>
-                  <span class="modal-detail-value">${{ parseFloat(selectedProduct.cost || 0).toFixed(2) }}</span>
+                  <span class="modal-detail-value">{{ parseFloat(selectedProduct.cost || 0).toFixed(2) }}</span>
                 </div>
                 <div class="modal-detail-item">
                   <span class="modal-detail-label">Stock</span>
@@ -339,59 +349,34 @@
     </div>
 
     <!-- Edit Product Modal -->
-    <div v-if="showEditModal && editingProduct" class="product-modal-overlay" @click="closeEditModal">
-      <div class="product-modal edit-modal" @click.stop>
-        <div class="modal-header">
-          <h3>Edit Product</h3>
-          <button @click="closeEditModal" class="close-btn">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
-              <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-content">
-          <ProductForm 
-            :product="editingProduct"
-            @product-updated="onProductUpdated"
-            @cancel="closeEditModal"
-          />
-        </div>
-      </div>
-    </div>
+    <ProductFormModal
+      :visible="showEditModal && !!editingProduct"
+      :product="editingProduct"
+      @close="closeEditModal"
+      @product-updated="onProductUpdated"
+    />
 
     <!-- Create Product Modal -->
-    <div v-if="showCreateModal" class="product-modal-overlay" @click="closeCreateModal">
-      <div class="product-modal edit-modal" @click.stop>
-        <div class="modal-header">
-          <h3>Create New Product</h3>
-          <button @click="closeCreateModal" class="close-btn">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
-              <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
-            </svg>
-          </button>
-        </div>
-        <div class="modal-content">
-          <ProductForm 
-            @product-created="onProductCreated"
-            @cancel="closeCreateModal"
-          />
-        </div>
-      </div>
-    </div>
+    <ProductFormModal
+      :visible="showCreateModal"
+      :product="null"
+      @close="closeCreateModal"
+      @product-created="onProductCreated"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useProductStore } from '@/stores/productStore'
-import ProductForm from '@/components/dashboard/products/ProductForm.vue'
+import { SearchInput } from '@/components/base'
+import ProductFormModal from '@/components/dashboard/products/ProductFormModal.vue'
 import { useBodyScrollLock } from '@/composables/useBodyScrollLock'
 
 const productStore = useProductStore()
 
 // Reactive state
+const searchQuery = ref('')
 const productsLoaded = ref(false)
 const selectedProduct = ref(null)
 const editingProduct = ref(null)
@@ -407,11 +392,11 @@ const successMessage = ref('')
 const showSuccess = ref(false)
 
 // Methods
-const loadProducts = async () => {
+const loadProducts = async (params = {}) => {
   try {
-    console.log('ProductsSection: Loading products...')
+    console.log('ProductsSection: Loading products...', params)
     productsLoaded.value = false
-    await productStore.fetchProducts()
+    await productStore.fetchProducts(params)
     productsLoaded.value = true
     console.log('ProductsSection: Products loaded. Count:', productStore.getProducts.length)
     
@@ -422,6 +407,11 @@ const loadProducts = async () => {
     console.error('ProductsSection: Error loading products:', error)
     productsLoaded.value = true
   }
+}
+
+const onSearch = (query) => {
+  const search = (query || '').trim()
+  loadProducts(search ? { search } : {})
 }
 
 const getProductInitials = (name) => {
@@ -494,13 +484,13 @@ const showSuccessMessage = (message) => {
 
 const onProductCreated = () => {
   closeCreateModal()
-  loadProducts()
+  loadProducts(searchQuery.value ? { search: searchQuery.value } : {})
   showSuccessMessage('Product created successfully!')
 }
 
 const onProductUpdated = () => {
   closeEditModal()
-  loadProducts()
+  loadProducts(searchQuery.value ? { search: searchQuery.value } : {})
   showSuccessMessage('Product updated successfully!')
 }
 
@@ -518,7 +508,7 @@ const confirmDeleteProduct = async () => {
   if (deletingProduct.value) {
     try {
       await productStore.deleteProduct(deletingProduct.value.id)
-      loadProducts() // Refresh the list
+      loadProducts(searchQuery.value ? { search: searchQuery.value } : {})
       showSuccessMessage('Product deleted successfully!')
       closeDeleteModal()
     } catch (error) {
@@ -540,6 +530,11 @@ defineEmits(['product-selected', 'product-created', 'product-updated'])
 </script>
 
 <style scoped>
+.products-search-row {
+  margin-bottom: 1.25rem;
+  max-width: 24rem;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .desktop-only {

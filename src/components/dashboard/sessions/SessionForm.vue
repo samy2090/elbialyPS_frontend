@@ -123,7 +123,6 @@
             <template #option="{ option }">
               <div class="option-content">
                 <span class="option-name">{{ option.name }}</span>
-                <span class="option-suffix">{{ option.type || 'N/A' }}</span>
               </div>
             </template>
           </CustomDropdown>
@@ -397,7 +396,7 @@ export default {
     // Format device display text when selected
     const formatDeviceDisplayText = (device) => {
       if (!device) return null
-      return `${device.name} (${device.type || 'N/A'})`
+      return `${device.name}`
     }
     
     // Format device label for select options (kept for compatibility)

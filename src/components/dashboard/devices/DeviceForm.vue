@@ -99,12 +99,12 @@
 
       <!-- Form Actions -->
       <div class="form-actions">
-        <button type="button" @click="$emit('close')" class="action-btn secondary">
-          Cancel
-        </button>
         <button type="submit" :disabled="loading" class="action-btn primary">
           <span v-if="loading" class="loading-spinner"></span>
           {{ isEditing ? 'Update Device' : 'Create Device' }}
+        </button>
+        <button type="button" @click="$emit('close')" class="action-btn secondary">
+          Cancel
         </button>
       </div>
     </form>

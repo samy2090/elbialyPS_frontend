@@ -265,28 +265,47 @@
       </div>
     </div>
 
-    <!-- Device Form Modal -->
-    <div v-if="showCreateModal || showEditModal" class="user-modal-overlay" @click="closeModals">
-      <div class="user-modal edit-modal" @click.stop>
-        <div class="modal-header">
-          <h3>{{ showEditModal ? 'Edit Device' : 'Create New Device' }}</h3>
-          <button @click="closeModals" class="close-btn">
-            <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2"/>
-              <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2"/>
-            </svg>
-          </button>
+    <!-- Device Form Modal (Create / Edit) - styled like Activity History modal -->
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="showCreateModal || showEditModal" class="device-form-modal-overlay" @click="handleDeviceFormOverlayClick">
+          <div class="device-form-modal" @click.stop>
+            <div class="device-form-modal-header">
+              <div class="header-content">
+                <div class="header-icon">
+                  <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="4" width="20" height="16" rx="2" stroke="currentColor" stroke-width="2"/>
+                    <path d="M6 8H18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M6 12H14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    <path d="M6 16H10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  </svg>
+                </div>
+                <div class="header-text">
+                  <h2 class="modal-title">{{ showEditModal ? 'Edit Device' : 'Create New Device' }}</h2>
+                  <p class="modal-subtitle">
+                    {{ showEditModal ? (editingDevice?.name ? editingDevice.name : 'Update device details') : 'Add a new device to your platform' }}
+                  </p>
+                </div>
+              </div>
+              <button @click="closeModals" class="device-form-close-btn" type="button" aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <div class="device-form-modal-body">
+              <DeviceForm
+                :device="editingDevice"
+                :is-editing="showEditModal"
+                @close="closeModals"
+                @success="onDeviceSuccess"
+              />
+            </div>
+          </div>
         </div>
-        <div class="modal-content">
-          <DeviceForm
-            :device="editingDevice"
-            :is-editing="showEditModal"
-            @close="closeModals"
-            @success="onDeviceSuccess"
-          />
-        </div>
-      </div>
-    </div>
+      </Transition>
+    </Teleport>
 
     <!-- Device View Modal -->
     <div v-if="showViewModal" class="user-modal-overlay" @click="closeViewModal">
@@ -452,6 +471,12 @@ const closeModals = () => {
   editingDevice.value = null
 }
 
+const handleDeviceFormOverlayClick = (e) => {
+  if (e.target === e.currentTarget) {
+    closeModals()
+  }
+}
+
 const closeViewModal = () => {
   showViewModal.value = false
   viewingDevice.value = null
@@ -557,9 +582,9 @@ const formatDate = (date) => {
 
 const formatPrice = (price) => {
   if (price === null || price === undefined) return 'N/A'
-  // Prices are in cents, so divide by 100
-  const priceInDollars = parseFloat(price) / 100
-  return `$${priceInDollars.toFixed(2)}`
+  // Prices are in dollars from the API
+  const priceInDollars = parseFloat(price)
+  return `${priceInDollars.toFixed(2)}`
 }
 
 const formatDeviceType = (type) => {
@@ -891,7 +916,210 @@ defineEmits(['device-selected', 'device-created', 'device-updated'])
   flex-wrap: wrap;
 }
 
-/* Modal styles are now in components.css - using shared styles */
+/* Device Form Modal - same style as Activity History modal (sessions) */
+.device-form-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  animation: deviceModalOverlayFadeIn 0.3s ease;
+}
+
+@keyframes deviceModalOverlayFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.device-form-modal {
+  background: linear-gradient(135deg, rgba(15, 15, 23, 0.98) 0%, rgba(30, 30, 45, 0.98) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 24px;
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(139, 92, 246, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  animation: deviceModalSlideIn 0.3s ease;
+  overflow: hidden;
+}
+
+@keyframes deviceModalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.device-form-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 2rem;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.2);
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.1) 0%, rgba(15, 15, 23, 0.5) 100%);
+  flex-shrink: 0;
+}
+
+.device-form-modal-header .header-content {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.device-form-modal-header .header-icon {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.3) 0%, rgba(168, 85, 247, 0.3) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #a855f7;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+}
+
+.device-form-modal-header .header-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.device-form-modal-header .header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.device-form-modal-header .modal-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0;
+  background: linear-gradient(135deg, #ffffff 0%, rgba(255, 255, 255, 0.8) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.device-form-modal-header .modal-subtitle {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.6);
+  margin: 0;
+}
+
+.device-form-close-btn {
+  width: 40px;
+  height: 40px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.device-form-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(139, 92, 246, 0.5);
+  color: #a855f7;
+  transform: rotate(90deg);
+}
+
+.device-form-close-btn svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+  flex-shrink: 0;
+  stroke: currentColor;
+}
+
+.device-form-modal-body {
+  padding: 2rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+}
+
+.device-form-modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.device-form-modal-body::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.device-form-modal-body::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.5);
+  border-radius: 4px;
+}
+
+.device-form-modal-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.7);
+}
+
+.modal-fade-enter-active,
+.modal-fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.modal-fade-enter-from,
+.modal-fade-leave-to {
+  opacity: 0;
+}
+
+@media (max-width: 768px) {
+  .device-form-modal {
+    max-width: 100%;
+    max-height: 95vh;
+    border-radius: 16px;
+  }
+
+  .device-form-modal-header {
+    padding: 1rem 1.5rem;
+  }
+
+  .device-form-modal-header .header-icon {
+    width: 40px;
+    height: 40px;
+  }
+
+  .device-form-modal-header .header-icon svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .device-form-modal-header .modal-title {
+    font-size: 1.25rem;
+  }
+
+  .device-form-modal-body {
+    padding: 1.5rem;
+  }
+}
 
 .warning-text {
   color: #ef4444;

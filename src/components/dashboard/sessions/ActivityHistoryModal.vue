@@ -127,6 +127,17 @@
               </div>
             </div>
           </div>
+
+          <!-- Empty state when no data (fallback) -->
+          <div v-else class="modal-body empty-state">
+            <div class="empty-icon">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 8V16M8 12H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <p class="empty-message">No history data available</p>
+            <button @click="loadHistory" class="retry-btn">Retry</button>
+          </div>
         </div>
       </div>
     </Transition>
@@ -315,7 +326,7 @@ watch(() => props.visible, (newVal) => {
     historyData.value = null
     error.value = null
   }
-})
+}, { immediate: true })
 </script>
 
 <style scoped>
@@ -461,13 +472,31 @@ watch(() => props.visible, (newVal) => {
 }
 
 .loading-state,
-.error-state {
+.error-state,
+.empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 4rem 2rem;
   gap: 1.5rem;
+}
+
+.empty-icon {
+  width: 64px;
+  height: 64px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.empty-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.empty-message {
+  color: rgba(255, 255, 255, 0.7);
+  text-align: center;
+  margin: 0;
 }
 
 .loading-spinner {

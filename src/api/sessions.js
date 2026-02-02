@@ -592,15 +592,33 @@ class SessionService {
 
     /**
      * Get available users for an activity
+     * Handles various Laravel response formats (same as UserService.getAllUsers)
      * @param {number} sessionId - Session ID
      * @param {number} activityId - Activity ID
      * @param {Object} params - Query parameters (paginate, per_page, page, etc.)
-     * @returns {Promise}
+     * @returns {Promise<Array>} Array of user objects
      */
     static async getAvailableUsersForActivity(sessionId, activityId, params = {}) {
         try {
             const response = await api.get(`/api/sessions/${sessionId}/activities/${activityId}/users/available`, { params })
-            return response.data
+            const data = response.data
+
+            // Handle different Laravel response formats (same as users API)
+            if (Array.isArray(data)) {
+                return data
+            }
+            if (data?.users && Array.isArray(data.users)) {
+                return data.users
+            }
+            if (data?.data && Array.isArray(data.data)) {
+                return data.data
+            }
+            if (data?.success && Array.isArray(data.data)) {
+                return data.data
+            }
+            // Fallback: try common property names
+            const fallback = data?.users ?? data?.data ?? (Array.isArray(data) ? data : [])
+            return Array.isArray(fallback) ? fallback : []
         } catch (error) {
             console.error('Get Available Users Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to fetch available users')
@@ -737,13 +755,20 @@ class SessionService {
     static async getActivityHistory(sessionId, activityId) {
         try {
             const response = await api.get(`/api/sessions/${sessionId}/activities/${activityId}/history`)
-            console.log('Get Activity History Response:', response.data)
+            const data = response.data
 
-            // Handle different response formats
-            if (response.data?.data) {
-                return response.data.data
+            // Handle different response formats: { status, data }, { data }, or direct object
+            let historyData = data?.data ?? data
+            if (!historyData || typeof historyData !== 'object') {
+                return { total_price: 0, history: [] }
             }
-            return response.data
+            // Ensure we have the expected structure (handle snake_case and camelCase)
+            const history = historyData.history ?? historyData.activity_history ?? []
+            const totalPrice = historyData.total_price ?? historyData.totalPrice ?? 0
+            return {
+                total_price: totalPrice,
+                history: Array.isArray(history) ? history : []
+            }
         } catch (error) {
             console.error('Get Activity History Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to fetch activity history')

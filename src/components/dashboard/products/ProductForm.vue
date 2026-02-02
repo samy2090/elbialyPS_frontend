@@ -1,7 +1,7 @@
 <template>
-  <div class="product-form-container">
+  <div class="product-form-container" :class="{ 'embedded': embedded }">
     <div class="form-card large">
-      <div class="form-header large">
+      <div v-if="!embedded" class="form-header large">
         <h2 class="form-title large">{{ isEditing ? 'Edit Product' : 'Add New Product' }}</h2>
         <p class="form-subtitle large">{{ isEditing ? 'Update product information' : 'Create a new product with details' }}</p>
       </div>
@@ -48,8 +48,7 @@
             v-model="form.sku" 
             type="text" 
             class="form-input" 
-            placeholder="Enter SKU"
-            required 
+            placeholder="Enter SKU (optional)"
           />
         </div>
 
@@ -68,8 +67,8 @@
           >
             <option value="drink">Drink</option>
             <option value="snack">Snack</option>
-            <option value="food">Food</option>
-            <option value="other">Other</option>
+            <!-- <option value="food">Food</option>
+            <option value="other">Other</option> -->
           </select>
         </div>
 
@@ -111,7 +110,7 @@
         </div>
 
         <!-- Stock Field -->
-        <div class="form-field">
+        <!-- <div class="form-field">
           <label class="field-label">
             <svg class="label-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -126,7 +125,7 @@
             placeholder="0"
             required 
           />
-        </div>
+        </div> -->
 
         <!-- Note Field -->
         <div class="form-field">
@@ -202,6 +201,10 @@ export default {
     product: {
       type: Object,
       default: null
+    },
+    embedded: {
+      type: Boolean,
+      default: false
     }
   },
   emits: ['product-created', 'product-updated', 'cancel'],
@@ -271,3 +274,15 @@ export default {
 }
 </script>
 
+<style scoped>
+.product-form-container.embedded :deep(.form-card) {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+}
+
+.product-form-container.embedded :deep(.form-card::before) {
+  display: none;
+}
+</style>

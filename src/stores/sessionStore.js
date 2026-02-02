@@ -584,6 +584,7 @@ export const useSessionStore = defineStore('session', {
      * @param {number} sessionId - Session ID
      * @param {number} activityId - Activity ID
      * @param {Object} params - Query parameters (paginate, per_page, page, etc.)
+     * @returns {Promise<Array>} Array of user objects with is_available, in_active_activity, etc.
      */
     async getAvailableUsersForActivity(sessionId, activityId, params = {}) {
       this.loading = true
@@ -591,8 +592,11 @@ export const useSessionStore = defineStore('session', {
 
       try {
         const response = await SessionService.getAvailableUsersForActivity(sessionId, activityId, params)
-        // Response is an array of users
-        return Array.isArray(response) ? response : (response.data || [])
+        // API now returns array directly; fallback for legacy response formats
+        if (Array.isArray(response)) return response
+        if (response?.users && Array.isArray(response.users)) return response.users
+        if (response?.data && Array.isArray(response.data)) return response.data
+        return []
       } catch (error) {
         this.error = error.message || 'Failed to fetch available users'
         throw error

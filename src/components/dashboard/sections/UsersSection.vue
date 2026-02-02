@@ -44,6 +44,16 @@
     <div class="tab-content">
       <!-- Users List Tab -->
       <div v-if="activeTab === 'list'" class="users-list-content">
+        <!-- Search -->
+        <div class="users-search-row">
+          <SearchInput
+            v-model="searchQuery"
+            placeholder="Search by name, email, username, or phone..."
+            :debounce="300"
+            @search="onSearch"
+          />
+        </div>
+
         <!-- Loading State -->
         <div v-if="userStore.loading && !usersLoaded" class="loading-state">
           <div class="loading-spinner">
@@ -507,11 +517,13 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useUserStore } from '@/stores/userStore'
 import UserForm from '@/components/dashboard/users/UserForm.vue'
+import { SearchInput } from '@/components/base'
 import { useBodyScrollLock } from '@/composables/useBodyScrollLock'
 import { getUserRole, getRoleClass } from '@/utils/roleHelpers'
 import { resolveBackendImageUrl } from '@/utils/helpers'
 
 const userStore = useUserStore()
+const searchQuery = ref('')
 
 // Reactive state
 const activeTab = ref('list')
@@ -541,22 +553,26 @@ const activeUsers = computed(() => userStore.getUsers?.filter(user => getUserSta
 const adminUsers = computed(() => userStore.getUsers?.filter(user => getUserRole(user) === 'Admin').length || 0)
 
 // Methods
-const loadUsers = async () => {
+const loadUsers = async (params = {}) => {
   try {
-    console.log('UsersSection: Loading users...')
+    console.log('UsersSection: Loading users...', params)
     usersLoaded.value = false
-    await userStore.fetchUsers()
+    await userStore.fetchUsers(params)
     usersLoaded.value = true
     console.log('UsersSection: Users loaded. Count:', userStore.getUsers.length)
     
-    // Log if users array is empty
     if (userStore.getUsers.length === 0) {
       console.warn('UsersSection: Users array is empty after fetch')
     }
   } catch (error) {
     console.error('UsersSection: Error loading users:', error)
-    usersLoaded.value = true // Set to true even on error to show error state
+    usersLoaded.value = true
   }
+}
+
+const onSearch = (query) => {
+  const search = typeof query === 'string' ? query.trim() : ''
+  loadUsers(search ? { search } : {})
 }
 
 const getUserAvatar = (user) => {
@@ -684,9 +700,8 @@ const onUserUpdated = () => {
 // Lifecycle
 onMounted(() => {
   console.log('UsersSection: Component mounted, loading users...')
-  loadUsers()
+  loadUsers(searchQuery.value ? { search: searchQuery.value } : {})
   
-  // Also fetch user options if available
   if (userStore.fetchUserOptions) {
     userStore.fetchUserOptions().catch(err => {
       console.warn('UsersSection: Failed to fetch user options:', err)
@@ -870,6 +885,11 @@ defineEmits(['user-selected', 'user-created', 'user-updated'])
 
 .tab-content {
   min-height: 400px;
+}
+
+.users-search-row {
+  margin-bottom: 1.25rem;
+  max-width: 24rem;
 }
 
 /* Loading and Error States */

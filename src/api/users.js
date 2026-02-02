@@ -27,8 +27,8 @@ class UserService {
       let usersData = null
 
       // Format 1: Laravel Resource Collection with success wrapper
-      // { success: true, data: [...], message: "..." }
-      if (response.data?.success && Array.isArray(response.data.data)) {
+      // { success: true, data: [...], message: "..." } OR { status: "success", data: [...] }
+      if ((response.data?.success || response.data?.status === 'success') && Array.isArray(response.data.data)) {
         console.log('Detected format: Success wrapper with data array')
         usersData = {
           users: response.data.data,

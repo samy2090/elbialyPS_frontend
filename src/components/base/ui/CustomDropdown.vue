@@ -304,7 +304,7 @@ export default {
   padding: 0.75rem 1rem;
   padding-right: 2.75rem;
   /* Premium gradient background: dark navy → charcoal */
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 100%);
+  background: linear-gradient(135deg, rgb(15 15 23) 0%, rgb(27 14 42) 100%);
   border: 1px solid rgba(139, 92, 246, 0.2);
   border-radius: 14px;
   color: rgba(255, 255, 255, 0.95);
@@ -338,7 +338,7 @@ export default {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.03) 0%, rgba(168, 85, 247, 0.03) 100%);
+  background: linear-gradient(135deg, rgb(15 15 23) 0%, rgb(27 14 42) 100%);
   opacity: 0;
   transition: opacity 0.25s ease;
   pointer-events: none;
@@ -346,7 +346,7 @@ export default {
 }
 
 .custom-dropdown-futuristic.disabled {
-  opacity: 0.5;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 

@@ -537,12 +537,10 @@
                                       <div v-if="getUserSearchLoading(session, activity)" class="search-loading">
                                         <div class="loading-spinner small"></div>
                                       </div>
-                                      <Teleport to="body">
-                                        <div 
-                                          v-if="getShowUserSearchDropdown(session, activity) && (getUserSearchResults(session, activity).length > 0 || getUserSearchQuery(session, activity).length > 0)"
-                                          class="user-search-dropdown customer-dropdown fixed-dropdown"
-                                          :style="getDropdownStyle(session, activity)"
-                                        >
+                                      <div 
+                                        v-if="getShowUserSearchDropdown(session, activity) && (getUserSearchResults(session, activity).length > 0 || getUserSearchQuery(session, activity).length > 0)"
+                                        class="user-search-dropdown customer-dropdown"
+                                      >
                                           <div 
                                             v-if="getUserSearchLoading(session, activity)"
                                             class="dropdown-item loading-item"
@@ -570,10 +568,10 @@
                                           <div
                                             v-for="user in getUserSearchResults(session, activity)"
                                             :key="user.id"
-                                            @mousedown.prevent="user.is_available && !user.in_active_activity ? selectUserForActivity(session, activity, user) : null"
+                                            @mousedown.prevent="isUserSelectable(user) ? selectUserForActivity(session, activity, user) : null"
                                             class="dropdown-item"
                                             :class="{ 
-                                              'disabled': user.in_active_activity || !user.is_available,
+                                              'disabled': !isUserSelectable(user),
                                               'selected': getSelectedUser(session, activity)?.id === user.id
                                             }"
                                           >
@@ -586,7 +584,6 @@
                                             </div>
                                           </div>
                                         </div>
-                                      </Teleport>
                                     </div>
                                   </div>
                                 </div>
@@ -1082,12 +1079,10 @@
                             <div v-if="getUserSearchLoading(session, activity)" class="search-loading">
                               <div class="loading-spinner small"></div>
                             </div>
-                            <Teleport to="body">
-                              <div 
-                                v-if="getShowUserSearchDropdown(session, activity) && (getUserSearchResults(session, activity).length > 0 || getUserSearchQuery(session, activity).length > 0)"
-                                class="user-search-dropdown customer-dropdown fixed-dropdown"
-                                :style="getDropdownStyle(session, activity)"
-                              >
+                            <div 
+                              v-if="getShowUserSearchDropdown(session, activity) && (getUserSearchResults(session, activity).length > 0 || getUserSearchQuery(session, activity).length > 0)"
+                              class="user-search-dropdown customer-dropdown"
+                            >
                               <div 
                                 v-if="getUserSearchLoading(session, activity)"
                                 class="dropdown-item loading-item"
@@ -1115,13 +1110,13 @@
                               <div
                                 v-for="user in getUserSearchResults(session, activity)"
                                 :key="user.id"
-                                @mousedown.prevent="user.is_available && !user.in_active_activity ? selectUserForActivity(session, activity, user) : null"
+                                @mousedown.prevent="isUserSelectable(user) ? selectUserForActivity(session, activity, user) : null"
                                 class="dropdown-item"
                                 :class="{ 
-                                  'disabled': user.in_active_activity || !user.is_available,
+                                  'disabled': !isUserSelectable(user),
                                   'selected': getSelectedUser(session, activity)?.id === user.id
                                 }"
-              >
+                              >
                                 <div class="customer-info">
                                   <span class="customer-name">{{ user.name }}</span>
                                   <span class="customer-email">{{ user.email }}</span>
@@ -1131,7 +1126,6 @@
                                 </div>
                               </div>
                               </div>
-                            </Teleport>
                           </div>
                         </div>
                       </div>
@@ -1350,9 +1344,11 @@
       </div>
     </div>
 
-    <!-- Create/Edit Session Modal -->
-    <div v-if="showCreateModal || (showEditModal && editingSession)" class="session-modal-overlay" @click="closeSessionFormModal">
-      <div class="session-modal edit-modal" @click.stop>
+    <!-- Create/Edit Session Modal - Teleport to body so it appears above navbar and bottom nav (like Activity History modal) -->
+    <Teleport to="body">
+      <Transition name="modal-fade">
+        <div v-if="showCreateModal || (showEditModal && editingSession)" class="session-form-modal-overlay" @click="closeSessionFormModal">
+          <div class="session-modal edit-modal" @click.stop>
         <div class="modal-header">
           <h3>{{ editingSession ? 'Edit Session' : 'Create New Session' }}</h3>
           <button @click="closeSessionFormModal" class="close-btn">
@@ -1593,11 +1589,9 @@
                           <div v-if="getUserSearchLoading(editingSession, activity)" class="search-loading">
                             <div class="loading-spinner small"></div>
                           </div>
-                          <Teleport to="body">
                             <div 
                               v-if="getShowUserSearchDropdown(editingSession, activity) && (getUserSearchResults(editingSession, activity).length > 0 || getUserSearchQuery(editingSession, activity).length > 0)"
-                              class="user-search-dropdown customer-dropdown fixed-dropdown"
-                              :style="getDropdownStyle(editingSession, activity)"
+                              class="user-search-dropdown customer-dropdown"
                             >
                             <div 
                               v-if="getUserSearchLoading(editingSession, activity)"
@@ -1626,10 +1620,10 @@
                             <div
                               v-for="user in getUserSearchResults(editingSession, activity)"
                               :key="user.id"
-                              @mousedown.prevent="user.is_available && !user.in_active_activity ? selectUserForActivityInEdit(editingSession, activity, user) : null"
+                              @mousedown.prevent="isUserSelectable(user) ? selectUserForActivityInEdit(editingSession, activity, user) : null"
                               class="dropdown-item"
                               :class="{ 
-                                'disabled': user.in_active_activity || !user.is_available,
+                                'disabled': !isUserSelectable(user),
                                 'selected': getSelectedUser(editingSession, activity)?.id === user.id
                               }"
                             >
@@ -1642,7 +1636,6 @@
                               </div>
                             </div>
                             </div>
-                          </Teleport>
                         </div>
                       </div>
                     </div>
@@ -1678,7 +1671,9 @@
           </div>
         </div>
       </div>
-    </div>
+      </div>
+        </Transition>
+    </Teleport>
 
     <!-- Create/Edit Activity Modal -->
     <div v-if="(showCreateActivityModal && getCurrentSessionId) || (showEditActivityModal && editingActivity)" class="session-modal-overlay" @click="closeActivityFormModal">
@@ -1799,8 +1794,9 @@
       </div>
     </div>
 
-    <!-- Activity History Modal -->
+    <!-- Activity History Modal - only mount when we have valid ids to avoid prop warnings -->
     <ActivityHistoryModal
+      v-if="historyModalSessionId != null && historyModalActivityId != null"
       :visible="showActivityHistoryModal"
       :session-id="historyModalSessionId"
       :activity-id="historyModalActivityId"
@@ -1879,7 +1875,6 @@ const selectedUser = ref({}) // Key: `${sessionId}-${activityId}` - selected use
 const allUsers = ref([]) // All users loaded from store
 const availableUsersCache = ref({}) // Key: `${sessionId}-${activityId}` - cached available users from API
 const creatingUser = ref({}) // Key: `${sessionId}-${activityId}` - creating user state
-const dropdownPosition = ref({}) // Key: `${sessionId}-${activityId}` - { top, left, width } for fixed positioning
 let userSearchDebounceTimer = null // Debounce timer for user search
 
 // Activity Products state management
@@ -2691,6 +2686,15 @@ const getUserDropdownKey = (session, activity) => {
   return `${session.id}-${activity.id}`
 }
 
+// Check if user can be selected for activity - treats users from userStore (without is_available/in_active_activity) as selectable
+const isUserSelectable = (user) => {
+  if (!user) return false
+  // Users from userStore don't have is_available/in_active_activity - treat undefined as selectable
+  const inActive = !!user.in_active_activity
+  const unavailable = user.is_available === false
+  return !inActive && !unavailable
+}
+
 // Get user search query for an activity
 const getUserSearchQuery = (session, activity) => {
   if (!session || !activity || !session.id || !activity.id) return ''
@@ -2724,22 +2728,6 @@ const getSelectedUser = (session, activity) => {
   if (!session || !activity || !session.id || !activity.id) return null
   const key = getUserDropdownKey(session, activity)
   return selectedUser.value[key] || null
-}
-
-// Get dropdown style for fixed positioning
-const getDropdownStyle = (session, activity) => {
-  const key = getUserDropdownKey(session, activity)
-  const pos = dropdownPosition.value[key]
-  if (pos) {
-    return {
-      position: 'fixed',
-      top: `${pos.top}px`,
-      left: `${pos.left}px`,
-      width: `${pos.width}px`,
-      zIndex: '99999'
-    }
-  }
-  return {}
 }
 
 // Load all users from store (for local filtering)
@@ -2781,8 +2769,8 @@ const canCreateNewUser = (session, activity) => {
   return !userNameExists(query)
 }
 
-// Load available users from API (called once when input is focused)
-// Fetch all available users without pagination to show all users in dropdowns
+// Load available users (called when input is focused)
+// Same approach as customer input in SessionForm - fetch all users from userStore
 const loadAvailableUsers = async (session, activity) => {
   const key = getUserDropdownKey(session, activity)
   
@@ -2791,47 +2779,42 @@ const loadAvailableUsers = async (session, activity) => {
     return availableUsersCache.value[key]
   }
   
-  userSearchLoading.value[key] = true
+  userSearchLoading.value = { ...userSearchLoading.value, [key]: true }
   
   try {
-    // Get available users from API (respects business rules, includes all users with metadata)
-    // Don't pass paginate=true to get all users (up to 500 limit on backend)
-    const availableUsers = await sessionStore.getAvailableUsersForActivity(session.id, activity.id, { paginate: false })
+    // Same as SessionForm customer input - fetchUsers() with no params
+    await userStore.fetchUsers()
+    const users = userStore.getUsers || []
+    allUsers.value = users
     
-    // Cache the results
-    availableUsersCache.value[key] = availableUsers || []
+    // Cache the results - use object spread for reactivity
+    availableUsersCache.value = { ...availableUsersCache.value, [key]: users }
     
     return availableUsersCache.value[key]
   } catch (error) {
     console.error('Failed to load available users:', error)
-    availableUsersCache.value[key] = []
+    availableUsersCache.value = { ...availableUsersCache.value, [key]: [] }
     return []
   } finally {
-    userSearchLoading.value[key] = false
+    userSearchLoading.value = { ...userSearchLoading.value, [key]: false }
   }
 }
 
-// Search users with debouncing (local filtering from cached available users)
-// This is synchronous like the customer search - filters from cached data
+// Search users with debouncing (local filtering - same approach as customer search in SessionForm)
 const searchUsers = (session, activity, query) => {
   const key = getUserDropdownKey(session, activity)
   
   if (!query || query.trim().length === 0) {
-    userSearchResults.value[key] = []
+    userSearchResults.value = { ...userSearchResults.value, [key]: [] }
     return
   }
   
-  // Get cached available users (should already be loaded when input was focused)
-  const availableUsers = availableUsersCache.value[key] || []
+  // Get users - same fallback chain as customer input: cache -> allUsers -> userStore.getUsers
+  const availableUsers = availableUsersCache.value[key]?.length > 0
+    ? availableUsersCache.value[key]
+    : (allUsers.value.length > 0 ? allUsers.value : (userStore.getUsers || []))
   
-  // If cache is empty, don't search (cache should be loaded by handleUserSearch or handleUserSearchFocus)
-  if (availableUsers.length === 0) {
-    console.warn('User search: Cache is empty for', key, '- users may still be loading')
-    userSearchResults.value[key] = []
-    return
-  }
-  
-  userSearchLoading.value[key] = true
+  userSearchLoading.value = { ...userSearchLoading.value, [key]: true }
   
   // Use setTimeout to allow UI to update before filtering (same as customer search)
   setTimeout(() => {
@@ -2846,7 +2829,7 @@ const searchUsers = (session, activity, query) => {
       })
       
       // Sort: available users first, then unavailable users (in active activities) at the end
-      const sorted = filtered.sort((a, b) => {
+      const sorted = [...filtered].sort((a, b) => {
         const aAvailable = a.is_available && !a.in_active_activity
         const bAvailable = b.is_available && !b.in_active_activity
         
@@ -2859,12 +2842,13 @@ const searchUsers = (session, activity, query) => {
         return aAvailable ? -1 : 1
       })
       
-      userSearchResults.value[key] = sorted
+      // Use full object replacement for Vue reactivity
+      userSearchResults.value = { ...userSearchResults.value, [key]: sorted }
     } catch (error) {
       console.error('Failed to search users:', error)
-      userSearchResults.value[key] = []
+      userSearchResults.value = { ...userSearchResults.value, [key]: [] }
     } finally {
-      userSearchLoading.value[key] = false
+      userSearchLoading.value = { ...userSearchLoading.value, [key]: false }
     }
   }, 50) // Small delay to show loading state
 }
@@ -2891,9 +2875,7 @@ const handleUserSearch = async (session, activity, event) => {
   // Show dropdown when user starts typing
   showUserSearchDropdown.value[key] = true
   
-  // Recalculate position
   await nextTick()
-  calculateDropdownPosition(session, activity)
   
   // Ensure cache is loaded before searching (loadAvailableUsers handles loading state)
   if (!availableUsersCache.value[key] || availableUsersCache.value[key].length === 0) {
@@ -2906,31 +2888,12 @@ const handleUserSearch = async (session, activity, event) => {
   }, 300) // 300ms debounce delay
 }
 
-// Calculate dropdown position for fixed positioning
-const calculateDropdownPosition = (session, activity) => {
-  const key = getUserDropdownKey(session, activity)
-  // Find the input element
-  const inputSelector = `.user-search-input[data-key="${key}"]`
-  const inputElement = document.querySelector(inputSelector)
-  
-  if (inputElement) {
-    const rect = inputElement.getBoundingClientRect()
-    dropdownPosition.value[key] = {
-      top: rect.bottom + window.scrollY + 8, // 8px gap
-      left: rect.left + window.scrollX,
-      width: rect.width
-    }
-  }
-}
-
 // Handle focus event - load available users when input is focused
 const handleUserSearchFocus = async (session, activity) => {
   const key = getUserDropdownKey(session, activity)
   showUserSearchDropdown.value[key] = true
   
-  // Calculate dropdown position
   await nextTick()
-  calculateDropdownPosition(session, activity)
   
   // Load available users if not already cached (loadAvailableUsers handles loading state)
   if (!availableUsersCache.value[key] || availableUsersCache.value[key].length === 0) {
@@ -2955,10 +2918,7 @@ const handleUserSearchBlur = (session, activity) => {
 
 // Select user from dropdown and add to activity
 const selectUserForActivity = async (session, activity, user) => {
-  // Don't allow selection if user is in active activity
-  if (user.in_active_activity || !user.is_available) {
-    return
-  }
+  if (!isUserSelectable(user)) return
   
   const key = getUserDropdownKey(session, activity)
   selectedUser.value[key] = user
@@ -2981,10 +2941,7 @@ const selectUserForActivity = async (session, activity, user) => {
 
 // Select user from dropdown and add to activity (edit modal)
 const selectUserForActivityInEdit = async (session, activity, user) => {
-  // Don't allow selection if user is in active activity
-  if (user.in_active_activity || !user.is_available) {
-    return
-  }
+  if (!isUserSelectable(user)) return
   
   const key = getUserDropdownKey(session, activity)
   selectedUser.value[key] = user
@@ -3868,14 +3825,12 @@ defineEmits(['session-selected', 'session-created', 'session-updated'])
   gap: 0.5rem;
 }
 
-/* User Search Input Styles (matching customer search) */
-/* User Search Input Styles - reuses customer-search-wrapper and customer-dropdown classes from components.css */
+/* User Search Input Styles - same as customer dropdown in SessionForm */
+/* Uses position: absolute from .customer-dropdown, positioned below input via .customer-search-wrapper */
 .user-search-dropdown {
-  /* Ensure dropdown is properly positioned and visible */
-  position: absolute !important;
-  z-index: 99999 !important; /* Extremely high z-index to appear above everything */
-  /* Ensure dropdown is not clipped by parent containers */
-  isolation: isolate !important;
+  /* Inherits from customer-dropdown - ensure visible above mobile nav */
+  z-index: 99999 !important;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Ensure parent containers don't clip the dropdown */

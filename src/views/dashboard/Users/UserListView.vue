@@ -63,6 +63,16 @@
 
     <!-- Users Table/List -->
     <div v-else class="dashboard-section">
+      <!-- Search -->
+      <div class="users-search-row">
+        <SearchInput
+          v-model="searchQuery"
+          placeholder="Search by name, email, username, or phone..."
+          :debounce="300"
+          @search="onSearch"
+        />
+      </div>
+
       <!-- Desktop Table View -->
       <div class="dashboard-table-container desktop-only">
         <div class="table-card">
@@ -229,25 +239,28 @@ import { useUserStore } from '@/stores/userStore'
 import { useAuthStore } from '@/stores/auth'
 import { getUserRole, getRoleClass } from '@/utils/roleHelpers'
 import { useBodyScrollLock } from '@/composables/useBodyScrollLock'
+import { SearchInput } from '@/components/base'
 
 export default {
   name: 'UserListView',
+  components: { SearchInput },
   setup() {
     const userStore = useUserStore()
     const authStore = useAuthStore()
     const usersLoaded = ref(false)
     const showDeleteModal = ref(false)
     const deletingUser = ref(null)
+    const searchQuery = ref('')
     
     // Lock body scroll when modal is open
     useBodyScrollLock(showDeleteModal)
     
-    // Load users when component mounts
-    const loadUsers = async () => {
+    // Load users (supports GET /api/users?search=... for name, email, username, phone)
+    const loadUsers = async (params = {}) => {
       try {
-        console.log('UserListView: Loading users...')
+        console.log('UserListView: Loading users...', params)
         usersLoaded.value = false
-        await userStore.fetchUsers()
+        await userStore.fetchUsers(params)
         usersLoaded.value = true
         console.log('UserListView: Users loaded. Count:', userStore.getUsers.length)
       } catch (error) {
@@ -256,8 +269,13 @@ export default {
       }
     }
     
+    const onSearch = (query) => {
+      const search = typeof query === 'string' ? query.trim() : ''
+      loadUsers(search ? { search } : {})
+    }
+    
     onMounted(() => {
-      loadUsers()
+      loadUsers(searchQuery.value ? { search: searchQuery.value } : {})
     })
     
     const deleteUser = (user) => {
@@ -297,7 +315,9 @@ export default {
       userStore,
       authStore,
       usersLoaded,
+      searchQuery,
       loadUsers,
+      onSearch,
       deleteUser,
       confirmDeleteUser,
       closeDeleteModal,
@@ -310,3 +330,10 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.users-search-row {
+  margin-bottom: 1.25rem;
+  max-width: 24rem;
+}
+</style>
