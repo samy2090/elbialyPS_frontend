@@ -363,8 +363,8 @@ onUnmounted(() => {
 }
 
 .main-content {
-  padding-top: 80px; /* Account for navbar height */
-  min-height: calc(100vh - 80px);
+  padding-top: 72px; /* Account for navbar height */
+  min-height: calc(100vh - 72px);
   transition: all 0.3s ease;
   flex: 1;
   position: relative;
@@ -398,7 +398,7 @@ onUnmounted(() => {
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
-  padding: 80px 20px 20px;
+  padding: 72px 20px 20px;
 }
 
 .notifications-panel {
@@ -506,7 +506,7 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .main-content {
     margin-left: 0 !important;
-    padding-top: 80px;
+    padding-top: 72px;
   }
   
   .main-content.with-sidebar {
@@ -523,7 +523,7 @@ onUnmounted(() => {
   }
   
   .notifications-overlay {
-    padding: 80px 10px 10px;
+    padding: 72px 10px 10px;
   }
   
   .notifications-panel {

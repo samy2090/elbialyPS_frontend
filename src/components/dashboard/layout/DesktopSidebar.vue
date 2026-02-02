@@ -2,23 +2,6 @@
   <aside class="desktop-sidebar" :class="{ collapsed: isCollapsed, 'sidebar-hidden': !visible }">
     <div class="sidebar-content">
 
-      <!-- User section at bottom -->
-      <div class="user-section" v-if="!isCollapsed">
-        <div class="user-avatar">
-          <img src="https://via.placeholder.com/40x40/8b5cf6/ffffff?text=U" alt="User Avatar" />
-        </div>
-        <div class="user-info">
-          <div class="user-name">Entertainment User</div>
-          <div class="user-status">Online</div>
-        </div>
-      </div>
-
-      <div v-else class="user-section-collapsed">
-        <div class="user-avatar">
-          <img src="https://via.placeholder.com/32x32/8b5cf6/ffffff?text=U" alt="User Avatar" />
-        </div>
-      </div>
-
       <!-- Collapse toggle button -->
       <button 
         class="collapse-btn"
@@ -35,7 +18,7 @@
         <div 
           v-for="item in navigationItems"
           :key="item.id"
-          :class="['nav-item', { active: activeItem === item.id || (item.subItems && item.subItems.some(sub => activeItem === sub.id)) }]"
+          :class="['nav-item', { active: isItemActive(item) }]"
           :title="isCollapsed ? item.label : ''"
         >
           <div 
@@ -51,7 +34,7 @@
                 <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </div>
-            <div v-if="activeItem === item.id && !item.subItems" class="active-indicator"></div>
+            <div v-if="isItemActive(item) && !item.subItems" class="active-indicator"></div>
           </div>
           
           <!-- Submenu -->
@@ -72,17 +55,108 @@
         </div>
       </nav>
 
-
-      
+      <!-- Bottom: user + logout (real data, profile on click) -->
+      <div class="sidebar-footer">
+        <button
+          v-if="!isCollapsed"
+          class="user-section"
+          type="button"
+          @click="goToProfile"
+          :aria-label="'Open profile for ' + (displayName || 'User')"
+        >
+          <div class="user-avatar-wrap">
+            <img
+              v-if="avatarUrl"
+              :src="avatarUrl"
+              :alt="displayName"
+              class="user-avatar-img"
+            />
+            <span v-else class="user-avatar-initials">{{ initials }}</span>
+          </div>
+          <div class="user-info">
+            <span class="user-name">{{ displayName }}</span>
+            <span class="user-role">{{ displayRole }}</span>
+          </div>
+          <svg class="user-chevron" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button
+          v-else
+          class="user-section-collapsed"
+          type="button"
+          @click="goToProfile"
+          :aria-label="'Open profile'"
+        >
+          <div class="user-avatar-wrap">
+            <img
+              v-if="avatarUrl"
+              :src="avatarUrl"
+              :alt="displayName"
+              class="user-avatar-img"
+            />
+            <span v-else class="user-avatar-initials">{{ initials }}</span>
+          </div>
+        </button>
+        <button
+          class="logout-btn"
+          type="button"
+          @click="handleLogout"
+          :aria-label="'Log out'"
+          :title="isCollapsed ? 'Log out' : ''"
+        >
+          <svg class="logout-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M16 17L21 12L16 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span v-if="!isCollapsed" class="logout-label">Log out</span>
+        </button>
+      </div>
     </div>
   </aside>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { getUserRole } from '@/utils/roleHelpers'
+
+const router = useRouter()
+const route = useRoute()
+const authStore = useAuthStore()
 
 // Track expanded menu items
 const expandedMenus = ref([])
+
+// Real user data from auth store
+const user = computed(() => authStore.user)
+const displayName = computed(() => {
+  const u = user.value
+  if (!u) return 'Guest'
+  return u.name || u.username || (u.email && u.email.split('@')[0]) || 'User'
+})
+const displayRole = computed(() => getUserRole(user.value))
+const avatarUrl = computed(() => {
+  const u = user.value
+  return u?.avatar_url || u?.avatar || u?.profile_image || u?.picture || null
+})
+const initials = computed(() => {
+  const name = displayName.value
+  if (!name || name === 'Guest' || name === 'User') return '?'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase().slice(0, 2)
+  return name.slice(0, 2).toUpperCase()
+})
+
+function goToProfile() {
+  emit('item-selected', 'profile')
+}
+
+async function handleLogout() {
+  await authStore.logout()
+}
 
 // Same icons as mobile navigation
 const HomeIcon = {
@@ -90,6 +164,17 @@ const HomeIcon = {
     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       <path d="M9 22V12H15V22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  `
+}
+
+const DashboardIcon = {
+  template: `
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
+      <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
+      <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
+      <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
     </svg>
   `
 }
@@ -176,7 +261,7 @@ const DevicesIcon = {
   `
 }
 
-defineProps({
+const props = defineProps({
   isCollapsed: {
     type: Boolean,
     default: false
@@ -191,8 +276,11 @@ defineProps({
   }
 })
 
+const emit = defineEmits(['toggle-collapse', 'item-selected'])
+
 const navigationItems = computed(() => [
-  { id: 'home', label: 'Home', icon: HomeIcon },
+  { id: 'site-home', label: 'Home', icon: HomeIcon, href: '/' },
+  { id: 'home', label: 'Dashboard', icon: DashboardIcon, href: '/dashboard' },
   { id: 'sessions', label: 'Sessions', icon: SessionsIcon },
   { id: 'explore', label: 'Explore', icon: ExploreIcon },
   { id: 'users', label: 'Users', icon: UsersIcon },
@@ -209,9 +297,22 @@ const navigationItems = computed(() => [
   }
 ])
 
+function isItemActive(item) {
+  if (item.id === 'site-home') return route.path === '/'
+  return props.activeItem === item.id || (item.subItems && item.subItems.some(sub => props.activeItem === sub.id))
+}
+
 const handleItemClick = (item) => {
+  if (item.href) {
+    // Dashboard: if already on dashboard, switch to home section; else navigate
+    if (item.id === 'home' && route.path === '/dashboard') {
+      emit('item-selected', 'home')
+      return
+    }
+    router.push(item.href)
+    return
+  }
   if (item.subItems) {
-    // Toggle submenu
     const index = expandedMenus.value.indexOf(item.id)
     if (index > -1) {
       expandedMenus.value.splice(index, 1)
@@ -219,19 +320,16 @@ const handleItemClick = (item) => {
       expandedMenus.value.push(item.id)
     }
   } else {
-    // Navigate to item
     emit('item-selected', item.id)
   }
 }
-
-const emit = defineEmits(['toggle-collapse', 'item-selected'])
 </script>
 
 <style scoped>
 .desktop-sidebar {
   position: fixed !important;
   left: 0;
-  top: 80px;
+  top: 72px;
   bottom: 0;
   width: 280px;
   background: linear-gradient(180deg, rgba(15, 15, 23, 0.98) 0%, rgba(20, 20, 28, 0.95) 100%);
@@ -244,8 +342,8 @@ const emit = defineEmits(['toggle-collapse', 'item-selected'])
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 90;
   display: none;
-  height: calc(100vh - 80px);
-  max-height: calc(100vh - 80px);
+  height: calc(100vh - 72px);
+  max-height: calc(100vh - 72px);
   overflow-y: auto;
   overflow-x: hidden;
   will-change: transform;
@@ -353,11 +451,10 @@ const emit = defineEmits(['toggle-collapse', 'item-selected'])
   overflow-y: auto;
   padding-right: 0.5rem;
   padding-top: 0.25rem;
-  width:80%;
-  overflow-y: scroll;
+  min-width: 0;
   /* Hide scrollbar for Chrome, Edge, Safari */
-  scrollbar-width: none;      /* Firefox */
-  -ms-overflow-style: none; 
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .nav-item {
@@ -397,6 +494,7 @@ const emit = defineEmits(['toggle-collapse', 'item-selected'])
   transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   z-index: 1;
+  min-width: 0;
 }
 
 .nav-item:hover .nav-item-main {
@@ -560,8 +658,11 @@ const emit = defineEmits(['toggle-collapse', 'item-selected'])
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 0.9375rem;
   letter-spacing: 0.01em;
+  flex: 1;
+  min-width: 0;
 }
 
 .active-indicator {
@@ -586,156 +687,219 @@ const emit = defineEmits(['toggle-collapse', 'item-selected'])
   }
 }
 
+/* ---- Sidebar footer: user + logout (futuristic) ---- */
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
+  border-top: 1px solid rgba(139, 92, 246, 0.15);
+}
+
+.user-section,
+.user-section-collapsed {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  padding: 0;
+  margin: 0;
+}
+
 .user-section {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1.125rem 1.25rem;
+  gap: 0.875rem;
+  flex-wrap: nowrap;
+  padding: 0.875rem 1rem;
+  min-width: 0;
   background: linear-gradient(
-    135deg, 
-    rgba(139, 92, 246, 0.12) 0%, 
-    rgba(168, 85, 247, 0.08) 50%,
-    rgba(139, 92, 246, 0.06) 100%
+    145deg,
+    rgba(139, 92, 246, 0.08) 0%,
+    rgba(139, 92, 246, 0.04) 50%,
+    rgba(20, 20, 28, 0.6) 100%
   );
-  border-radius: 16px;
-  border: 1px solid rgba(139, 92, 246, 0.25);
-  margin-top: auto;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 12px;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
-  box-shadow: 
-    0 4px 20px rgba(139, 92, 246, 0.15),
-    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
-    0 1px 0 rgba(255, 255, 255, 0.1) inset;
-
-  width:80%;
+  box-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .user-section::before {
   content: '';
   position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
-  transition: left 0.6s ease;
-}
-
-.user-section:hover::before {
-  left: 100%;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.04), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.5s ease;
+  pointer-events: none;
 }
 
 .user-section:hover {
-  background: linear-gradient(
-    135deg, 
-    rgba(139, 92, 246, 0.18) 0%, 
-    rgba(168, 85, 247, 0.12) 50%,
-    rgba(139, 92, 246, 0.1) 100%
-  );
   border-color: rgba(139, 92, 246, 0.4);
-  transform: translateY(-3px);
-  box-shadow: 
-    0 8px 24px rgba(139, 92, 246, 0.25),
-    0 0 40px rgba(139, 92, 246, 0.15),
-    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
-    0 1px 0 rgba(255, 255, 255, 0.15) inset;
+  box-shadow:
+    0 4px 20px rgba(139, 92, 246, 0.2),
+    0 0 24px rgba(139, 92, 246, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transform: translateY(-2px);
 }
 
-.user-section-collapsed {
-  display: flex;
-  justify-content: center;
-  padding: 1rem 0;
-  margin-top: auto;
+.user-section:hover::before {
+  transform: translateX(100%);
 }
 
-.user-avatar {
+.user-section:active {
+  transform: translateY(0);
+}
+
+.user-avatar-wrap {
   position: relative;
   flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(145deg, rgba(139, 92, 246, 0.35), rgba(139, 92, 246, 0.15));
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.user-avatar::before {
-  content: '';
-  position: absolute;
-  top: -4px;
-  left: -4px;
-  right: -4px;
-  bottom: -4px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #8b5cf6, #a855f7, #ec4899);
-  opacity: 0.3;
-  filter: blur(8px);
-  transition: all 0.4s ease;
-  z-index: -1;
+.user-section:hover .user-avatar-wrap {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  border-color: rgba(139, 92, 246, 0.6);
 }
 
-.user-section:hover .user-avatar::before {
-  opacity: 0.5;
-  filter: blur(12px);
-}
-
-.user-avatar img {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 2.5px solid rgba(139, 92, 246, 0.5);
-  box-shadow: 
-    0 4px 16px rgba(139, 92, 246, 0.4),
-    0 0 24px rgba(139, 92, 246, 0.2),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.1);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+.user-avatar-img {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
 }
 
-.user-section:hover .user-avatar img {
-  border-color: rgba(139, 92, 246, 0.7);
-  box-shadow: 
-    0 6px 20px rgba(139, 92, 246, 0.5),
-    0 0 32px rgba(139, 92, 246, 0.3),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.15);
-  transform: scale(1.08);
-}
-
-.collapsed .user-avatar img {
-  width: 36px;
-  height: 36px;
+.user-avatar-initials {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 12px rgba(139, 92, 246, 0.5);
 }
 
 .user-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
 }
 
 .user-name {
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.98);
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.95);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-bottom: 0.375rem;
-  letter-spacing: 0.01em;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-}
-
-.user-status {
-  font-size: 0.8125rem;
-  color: #10b981;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 500;
   letter-spacing: 0.02em;
 }
 
-.user-status::before {
-  content: '';
-  width: 8px;
-  height: 8px;
-  background: #10b981;
-  border-radius: 50%;
-  box-shadow: 0 0 6px #10b981, 0 0 12px rgba(16, 185, 129, 0.4);
-  animation: pulse 2s infinite;
+.user-role {
+  font-size: 0.75rem;
+  color: rgba(139, 92, 246, 0.9);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.user-chevron {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.5);
+  transition: transform 0.25s ease;
+}
+
+.user-section:hover .user-chevron {
+  color: rgba(139, 92, 246, 0.9);
+  transform: translateX(2px);
+}
+
+.user-section-collapsed {
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem 0;
+}
+
+.user-section-collapsed .user-avatar-wrap {
+  width: 36px;
+  height: 36px;
+}
+
+.user-section-collapsed .user-avatar-initials {
+  font-size: 0.75rem;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0.04));
+  color: rgba(239, 68, 68, 0.9);
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.logout-btn:hover {
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.18), rgba(239, 68, 68, 0.1));
+  border-color: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transform: translateY(-1px);
+}
+
+.logout-btn:active {
+  transform: translateY(0);
+}
+
+.logout-icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
+  stroke: currentColor;
+}
+
+.collapsed .logout-btn {
+  padding: 0.625rem;
+}
+
+.logout-label {
+  white-space: nowrap;
+}
+
+.collapsed .logout-label {
+  display: none;
+}
+
+.collapsed .sidebar-footer {
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .icon {

@@ -23,7 +23,7 @@
         <div v-for="item in navigationItems" :key="item.id" class="nav-item-container">
           <button
             @click="handleItemClick(item)"
-            :class="['nav-item', { active: activeTab === item.id || (item.subItems && item.subItems.some(sub => activeTab === sub.id)) }]"
+            :class="['nav-item', { active: isItemActive(item) }]"
             :aria-label="item.label"
           >
             <div class="nav-icon">
@@ -64,17 +64,44 @@
         </div>
       </nav>
 
-      <!-- Footer -->
+      <!-- Footer: user (real data, profile on click) + logout -->
       <div class="offcanvas-footer">
-        <div class="user-info">
-          <div class="user-avatar">
-            <img src="https://via.placeholder.com/40x40" alt="User Avatar" />
+        <button
+          type="button"
+          class="offcanvas-user-card"
+          @click="goToProfile"
+          :aria-label="'Open profile for ' + (displayName || 'User')"
+        >
+          <div class="offcanvas-user-avatar-wrap">
+            <img
+              v-if="avatarUrl"
+              :src="avatarUrl"
+              :alt="displayName"
+              class="offcanvas-user-avatar-img"
+            />
+            <span v-else class="offcanvas-user-initials">{{ initials }}</span>
           </div>
-          <div class="user-details">
-            <span class="user-name">John Doe</span>
-            <span class="user-role">Administrator</span>
+          <div class="offcanvas-user-details">
+            <span class="offcanvas-user-name">{{ displayName }}</span>
+            <span class="offcanvas-user-role">{{ displayRole }}</span>
           </div>
-        </div>
+          <svg class="offcanvas-user-chevron" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button
+          type="button"
+          class="offcanvas-logout-btn"
+          @click="handleLogout"
+          aria-label="Log out"
+        >
+          <svg class="offcanvas-logout-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M16 17L21 12L16 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span class="offcanvas-logout-label">Log out</span>
+        </button>
       </div>
     </div>
   </div>
@@ -82,9 +109,45 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { getUserRole } from '@/utils/roleHelpers'
+
+const router = useRouter()
+const route = useRoute()
+const authStore = useAuthStore()
 
 // Track expanded menu items
 const expandedMenus = ref([])
+
+// Real user data (same pattern as DesktopSidebar)
+const user = computed(() => authStore.user)
+const displayName = computed(() => {
+  const u = user.value
+  if (!u) return 'Guest'
+  return u.name || u.username || (u.email && u.email.split('@')[0]) || 'User'
+})
+const displayRole = computed(() => getUserRole(user.value))
+const avatarUrl = computed(() => {
+  const u = user.value
+  return u?.avatar_url || u?.avatar || u?.profile_image || u?.picture || null
+})
+const initials = computed(() => {
+  const name = displayName.value
+  if (!name || name === 'Guest' || name === 'User') return '?'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase().slice(0, 2)
+  return name.slice(0, 2).toUpperCase()
+})
+
+function goToProfile() {
+  emit('item-selected', 'profile')
+  emit('close')
+}
+
+async function handleLogout() {
+  await authStore.logout()
+}
 
 // Icon components (same as MobileBottomNav)
 const HomeIcon = {
@@ -92,6 +155,17 @@ const HomeIcon = {
     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
       <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       <path d="M9 22V12H15V22" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  `
+}
+
+const DashboardIcon = {
+  template: `
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
+      <rect x="14" y="3" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
+      <rect x="3" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
+      <rect x="14" y="14" width="7" height="7" rx="1" stroke="currentColor" stroke-width="2"/>
     </svg>
   `
 }
@@ -164,7 +238,7 @@ const DevicesIcon = {
   `
 }
 
-defineProps({
+const props = defineProps({
   visible: {
     type: Boolean,
     default: false
@@ -177,8 +251,29 @@ defineProps({
 
 const emit = defineEmits(['close', 'item-selected'])
 
+const SessionsIcon = {
+  template: `
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="4" width="18" height="16" rx="2" stroke="currentColor" stroke-width="2"/>
+      <path d="M3 10H21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M7 4V8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M17 4V8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="9" cy="14" r="1" fill="currentColor"/>
+      <circle cx="15" cy="14" r="1" fill="currentColor"/>
+      <path d="M12 14V18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  `
+}
+
+function isItemActive(item) {
+  if (item.id === 'site-home') return route.path === '/'
+  return props.activeTab === item.id || (item.subItems && item.subItems.some(sub => props.activeTab === sub.id))
+}
+
 const navigationItems = computed(() => [
-  { id: 'home', label: 'Home', icon: HomeIcon },
+  { id: 'site-home', label: 'Home', icon: HomeIcon, href: '/' },
+  { id: 'home', label: 'Dashboard', icon: DashboardIcon, href: '/dashboard' },
+  { id: 'sessions', label: 'Sessions', icon: SessionsIcon },
   { id: 'explore', label: 'Explore', icon: ExploreIcon },
   { id: 'users', label: 'Users', icon: UsersIcon },
   { id: 'products', label: 'Products', icon: ProductsIcon },
@@ -195,6 +290,17 @@ const navigationItems = computed(() => [
 ])
 
 const handleItemClick = (item) => {
+  if (item.href) {
+    // Dashboard: if already on dashboard, switch to home section; else navigate
+    if (item.id === 'home' && route.path === '/dashboard') {
+      emit('item-selected', 'home')
+      emit('close')
+      return
+    }
+    router.push(item.href)
+    emit('close')
+    return
+  }
   if (item.subItems) {
     // Toggle submenu
     const index = expandedMenus.value.indexOf(item.id)
@@ -412,46 +518,179 @@ const handleSubItemClick = (itemId) => {
   opacity: 1;
 }
 
+/* ---- Offcanvas footer: user (beside text) + logout, futuristic ---- */
 .offcanvas-footer {
-  padding: 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 16px 20px 20px;
+  border-top: 1px solid rgba(139, 92, 246, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: linear-gradient(180deg, transparent 0%, rgba(10, 10, 18, 0.4) 100%);
 }
 
-.user-info {
+.offcanvas-user-card {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-.user-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
+  flex-wrap: nowrap;
+  width: 100%;
+  padding: 12px 14px;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(
+    145deg,
+    rgba(139, 92, 246, 0.1) 0%,
+    rgba(139, 92, 246, 0.05) 50%,
+    rgba(20, 20, 28, 0.6) 100%
+  );
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow:
+    0 2px 12px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  min-width: 0;
+  position: relative;
   overflow: hidden;
-  border: 2px solid rgba(139, 92, 246, 0.2);
 }
 
-.user-avatar img {
+.offcanvas-user-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.04), transparent);
+  transform: translateX(-100%);
+  transition: transform 0.5s ease;
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+.offcanvas-user-card:hover {
+  border-color: rgba(139, 92, 246, 0.45);
+  box-shadow:
+    0 4px 20px rgba(139, 92, 246, 0.2),
+    0 0 24px rgba(139, 92, 246, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transform: translateY(-2px);
+}
+
+.offcanvas-user-card:hover::before {
+  transform: translateX(100%);
+}
+
+.offcanvas-user-avatar-wrap {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(145deg, rgba(139, 92, 246, 0.35), rgba(139, 92, 246, 0.15));
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  box-shadow: 0 0 16px rgba(139, 92, 246, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.offcanvas-user-card:hover .offcanvas-user-avatar-wrap {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  border-color: rgba(139, 92, 246, 0.6);
+}
+
+.offcanvas-user-avatar-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.user-details {
+.offcanvas-user-initials {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 12px rgba(139, 92, 246, 0.5);
+}
+
+.offcanvas-user-details {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.user-name {
-  font-size: 14px;
+.offcanvas-user-name {
+  font-size: 15px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.95);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.02em;
 }
 
-.user-role {
+.offcanvas-user-role {
   font-size: 12px;
+  color: rgba(139, 92, 246, 0.95);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.offcanvas-user-chevron {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
   color: rgba(255, 255, 255, 0.5);
+  transition: transform 0.25s ease;
+}
+
+.offcanvas-user-card:hover .offcanvas-user-chevron {
+  color: rgba(139, 92, 246, 0.9);
+  transform: translateX(2px);
+}
+
+.offcanvas-logout-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.05));
+  color: rgba(239, 68, 68, 0.95);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.offcanvas-logout-btn:hover {
+  background: linear-gradient(180deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.12));
+  border-color: rgba(239, 68, 68, 0.5);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  transform: translateY(-1px);
+}
+
+.offcanvas-logout-btn:active {
+  transform: translateY(0);
+}
+
+.offcanvas-logout-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  stroke: currentColor;
+}
+
+.offcanvas-logout-label {
+  white-space: nowrap;
 }
 
 @keyframes fadeIn {
