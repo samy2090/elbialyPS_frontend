@@ -225,6 +225,14 @@ const ProductsIcon = {
   `
 }
 
+const ExpensesIcon = {
+  template: `
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2v20M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  `
+}
+
 const SessionsIcon = {
   template: `
     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -285,6 +293,7 @@ const navigationItems = computed(() => [
   { id: 'explore', label: 'Explore', icon: ExploreIcon },
   { id: 'users', label: 'Users', icon: UsersIcon },
   { id: 'products', label: 'Products', icon: ProductsIcon },
+  { id: 'expenses', label: 'Expenses', icon: ExpensesIcon },
   { id: 'profile', label: 'Profile', icon: ProfileIcon },
   { 
     id: 'settings', 

@@ -63,6 +63,12 @@ const router = createRouter({
       component: () => import('../views/dashboard/Users/UserEditView.vue'),
       meta: { requiresAuth: true, requiresDashboardAccess: true }
     },
+    {
+      path: '/expenses',
+      name: 'expenses',
+      redirect: () => ({ path: '/dashboard', query: { section: 'expenses' } }),
+      meta: { requiresAuth: true, requiresDashboardAccess: true }
+    },
   ],
 })
 

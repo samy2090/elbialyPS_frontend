@@ -81,6 +81,9 @@
           @device-created="onDeviceCreated"
           @device-updated="onDeviceUpdated"
         />
+
+        <!-- Expenses Section (admin/staff only) -->
+        <ExpensesSection v-if="activeSection === 'expenses'" />
       </div>
     </main>
 
@@ -128,7 +131,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import DashboardNavbar from '@/components/dashboard/layout/DashboardNavbar.vue'
 import DesktopSidebar from '@/components/dashboard/layout/DesktopSidebar.vue'
 import MobileBottomNav from '@/components/dashboard/layout/MobileBottomNav.vue'
@@ -141,9 +145,17 @@ import UsersSection from '@/components/dashboard/sections/UsersSection.vue'
 import ProductsSection from '@/components/dashboard/sections/ProductsSection.vue'
 import SessionsSection from '@/components/dashboard/sections/SessionsSection.vue'
 import DevicesSection from '@/components/dashboard/sections/DevicesSection.vue'
+import ExpensesSection from '@/components/dashboard/sections/ExpensesSection.vue'
 
-// Reactive state - load from localStorage if available
-const activeSection = ref(localStorage.getItem('dashboard_activeSection') || 'home')
+const route = useRoute()
+// Reactive state - load from localStorage or route query (e.g. /dashboard?section=expenses)
+const activeSection = ref(route.query.section || localStorage.getItem('dashboard_activeSection') || 'home')
+watch(() => route.query.section, (section) => {
+  if (section) {
+    activeSection.value = section
+    localStorage.setItem('dashboard_activeSection', section)
+  }
+})
 const sidebarVisible = ref(true)
 const sidebarCollapsed = ref(localStorage.getItem('dashboard_sidebarCollapsed') === 'true')
 const notificationsVisible = ref(false)

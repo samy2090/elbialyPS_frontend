@@ -59,6 +59,8 @@ const ProductsIcon = {
   `
 }
 
+
+
 const SessionsIcon = {
   template: `
     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -89,7 +91,7 @@ const tabs = computed(() => [
   { id: 'sessions', label: 'Sessions', icon: SessionsIcon },
   { id: 'explore', label: 'Explore', icon: ExploreIcon },
   { id: 'users', label: 'Users', icon: UsersIcon },
-  { id: 'products', label: 'Products', icon: ProductsIcon }
+  { id: 'products', label: 'Products', icon: ProductsIcon },
 ])
 
 defineEmits(['tab-selected'])
