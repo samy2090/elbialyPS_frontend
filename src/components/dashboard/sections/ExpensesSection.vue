@@ -123,7 +123,7 @@
                   <td>{{ row.expense_number }}</td>
                   <td>
                     <span>{{ row.title }}</span>
-                    <span v-if="row.product_id" class="expense-badge product-stock">Product (stock-in)</span>
+                    <span v-if="row.product_id" class="expense-badge product-stock">Product</span>
                     <span v-if="row.product_id && (row.product?.name || row.quantity)" class="expense-product-info">
                       {{ row.product?.name || 'Product' }}{{ row.quantity != null ? ` × ${row.quantity}` : '' }}
                     </span>
@@ -158,7 +158,7 @@
               <div class="expense-card__header">
                 <span class="expense-card__number">{{ row.expense_number }}</span>
                 <ExpenseStatusBadge :status="row.status" />
-                <span v-if="row.product_id" class="expense-badge product-stock">Product (stock-in)</span>
+                <span v-if="row.product_id" class="expense-badge product-stock">Product</span>
               </div>
               <h3 class="expense-card__title">{{ row.title }}</h3>
               <p v-if="row.product_id && (row.product?.name || row.quantity)" class="expense-card__product-info">
@@ -499,8 +499,8 @@
           <div class="expense-detail-grid">
             <p><strong>Title:</strong> {{ viewingExpense.title }}</p>
             <p v-if="viewingExpense.product_id" class="expense-detail-product">
-              <strong>Product (stock-in):</strong>
-              <span class="expense-badge product-stock">Product (stock-in)</span>
+              <strong>Product:</strong>
+              <span class="expense-badge product-stock">Product</span>
               {{ viewingExpense.product?.name || 'Product' }}{{ viewingExpense.quantity != null ? ` × ${viewingExpense.quantity}` : '' }} — affected stock
             </p>
             <p><strong>Description:</strong> {{ viewingExpense.description || '—' }}</p>
@@ -1714,6 +1714,7 @@ async function deleteRecurrenceConfirm() {
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(139, 92, 246, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   position: relative;
   overflow: hidden;
+  margin-bottom:10px
 }
 
 .expense-card::before {
@@ -2179,45 +2180,69 @@ async function deleteRecurrenceConfirm() {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-/* ========== Mobile & Futuristic Enhancements ========== */
+/* ========== Mobile – New structure, original purple/dark colors ========== */
 @media (max-width: 768px) {
   .expenses-section::before {
-    width: 100%;
-    height: 30%;
-    top: -5%;
+    display: none;
   }
 
   .expenses-section__header {
     padding: 1.25rem 1rem;
     margin-bottom: 1.25rem;
-    border-radius: 18px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), 0 0 40px rgba(139, 92, 246, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.06) 0%, rgba(139, 92, 246, 0.02) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.15);
+    border-radius: 8px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
   }
 
   .expenses-section__title {
     font-size: 1.5rem;
-    filter: drop-shadow(0 0 24px rgba(139, 92, 246, 0.4));
+    color: rgba(255, 255, 255, 0.95);
+    background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.85) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 0 20px rgba(139, 92, 246, 0.3));
   }
 
+  .expenses-section__subtitle {
+    color: rgba(255, 255, 255, 0.6);
+  }
 
+  /* Tabs – pill-style, original purple */
   .expenses-section__tabs {
-    padding: 0.6rem;
+    padding: 0.375rem;
     margin-bottom: 1rem;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.6rem;
-    border-radius: 18px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(139, 92, 246, 0.15);
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.375rem;
+    background: linear-gradient(180deg, rgba(15, 15, 23, 0.95) 0%, rgba(20, 20, 28, 0.9) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    border-radius: 8px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   }
 
   .expenses-section__tab {
-    padding: 1rem 0.75rem;
+    padding: 0.875rem 0.5rem;
     font-size: 0.8125rem;
-    border-radius: 14px;
-    min-height: 48px;
+    border-radius: 6px;
+    min-height: 44px;
+    color: rgba(255, 255, 255, 0.7);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .expenses-section__tab:hover {
+    color: rgba(255, 255, 255, 0.95);
+    background: rgba(139, 92, 246, 0.12);
+    border-color: rgba(139, 92, 246, 0.25);
   }
 
   .expenses-section__tab.active {
-    box-shadow: 0 6px 24px rgba(139, 92, 246, 0.4), 0 0 40px rgba(139, 92, 246, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.35), rgba(124, 58, 237, 0.25));
+    color: #e9d5ff;
+    font-weight: 700;
+    border-color: rgba(139, 92, 246, 0.5);
+    box-shadow: 0 4px 20px rgba(139, 92, 246, 0.35);
   }
 
   .expenses-section__add-row {
@@ -2225,15 +2250,27 @@ async function deleteRecurrenceConfirm() {
   }
 
   .expenses-section__add-row .expenses-section__action-btn {
-    padding: 1.1rem 1.5rem;
+    padding: 1rem 1.5rem;
     min-height: 52px;
+    background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+    border: 1px solid rgba(139, 92, 246, 0.5);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(139, 92, 246, 0.35);
   }
 
+  .expenses-section__add-row .expenses-section__action-btn:hover {
+    box-shadow: 0 8px 28px rgba(139, 92, 246, 0.45);
+  }
+
+  /* Filters – dark inputs */
   .expenses-section__filters {
     flex-direction: column;
     align-items: stretch;
     gap: 0.75rem;
     padding: 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(139, 92, 246, 0.12);
+    border-radius: 8px;
   }
 
   .expenses-section__filters .expenses-section__date-picker,
@@ -2243,6 +2280,19 @@ async function deleteRecurrenceConfirm() {
     min-width: 0;
   }
 
+  /* Date picker & dropdown – dark theme */
+  .expenses-section__date-picker :deep(.date-picker-trigger) {
+    background: rgba(15, 15, 23, 0.8);
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    color: rgba(255, 255, 255, 0.95);
+  }
+
+  .expenses-section__status-dropdown :deep(.custom-dropdown-futuristic) {
+    background: rgba(15, 15, 23, 0.8);
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    color: rgba(255, 255, 255, 0.95);
+  }
+
   .expenses-section__filter-btn {
     width: 100%;
     padding: 0.9rem;
@@ -2250,9 +2300,11 @@ async function deleteRecurrenceConfirm() {
   }
 
   .expenses-section__table-wrap {
-    border-radius: 16px;
+    border-radius: 8px;
     margin: 0 -0.5rem;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(139, 92, 246, 0.1);
+    border: 1px solid rgba(139, 92, 246, 0.15);
+    background: linear-gradient(180deg, rgba(15, 15, 23, 0.95) 0%, rgba(20, 20, 28, 0.9) 100%);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   }
 
   .expenses-section__table th,
@@ -2271,36 +2323,41 @@ async function deleteRecurrenceConfirm() {
     min-height: 40px;
   }
 
+  /* Categories – dark cards */
   .category-row {
     padding: 1.25rem 1rem;
-    border-radius: 16px;
+    border-radius: 8px;
     margin-bottom: 0.75rem;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.06);
   }
 
   .category-row--main {
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(139, 92, 246, 0.1);
+    background: linear-gradient(135deg, rgba(139, 92, 246, 0.12) 0%, rgba(139, 92, 246, 0.06) 100%);
+    border-color: rgba(139, 92, 246, 0.2);
   }
 
   .category-row--main.has-children:hover {
-    box-shadow: 0 8px 28px rgba(139, 92, 246, 0.25), 0 0 40px rgba(139, 92, 246, 0.15);
+    box-shadow: 0 8px 24px rgba(139, 92, 246, 0.15);
   }
 
   .category-row--sub {
     margin-left: 1rem;
     padding: 1rem;
+    background: rgba(255, 255, 255, 0.02);
   }
 
   .category-row__icon {
     width: 2.5rem;
     height: 2.5rem;
-    border-radius: 12px;
+    border-radius: 6px;
   }
 
   .category-row__expand-icon {
     width: 2.25rem;
     height: 2.25rem;
     min-width: 2.25rem;
-    border-radius: 12px;
+    border-radius: 6px;
     min-height: 44px;
   }
 
@@ -2327,20 +2384,44 @@ async function deleteRecurrenceConfirm() {
     flex: 1 1 100%;
   }
 
+  .category-row__name {
+    color: rgba(255, 255, 255, 0.95);
+  }
+
+  .category-row__path {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  /* Report summary cards – original purple/dark */
+  .expenses-section__reports :deep(.summary-card) {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  }
+
+  .expenses-section__reports :deep(.summary-card__value) {
+    text-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+  }
+
+  .expenses-section__reports :deep(.summary-card__label) {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
   .expenses-section__toast {
     left: 1rem;
     right: 1rem;
     top: 90px;
     margin: 0 auto;
     max-width: 100%;
-    border-radius: 14px;
+    border-radius: 8px;
     text-align: center;
   }
 
   .expenses-section__modal {
     max-width: 100%;
     margin: 0.5rem;
-    border-radius: 20px;
+    border-radius: 12px;
     max-height: calc(100vh - 2rem);
   }
 
@@ -2352,42 +2433,106 @@ async function deleteRecurrenceConfirm() {
   .expenses-section__error,
   .expenses-section__empty {
     padding: 2.5rem 1.5rem;
+    color: rgba(255, 255, 255, 0.7);
   }
 
-  /* Expense cards – mobile enhancements */
+  /* Expense cards – dark theme, original purple */
   .expense-card {
-    padding: 1.5rem 1.25rem;
+    padding: 1.25rem 1rem;
+    background: linear-gradient(135deg, rgba(20, 20, 28, 0.98) 0%, rgba(15, 15, 23, 0.98) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  }
+
+  .expense-card::before {
+    background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.6), transparent);
+  }
+
+  .expense-card:hover,
+  .expense-card:active {
+    transform: translateY(-2px);
+    border-color: rgba(139, 92, 246, 0.5);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35), 0 0 40px rgba(139, 92, 246, 0.2);
+  }
+
+  .expense-card__number {
+    color: rgba(139, 92, 246, 0.9);
   }
 
   .expense-card__title {
-    font-size: 1.0625rem;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.95);
+  }
+
+  .expense-card__category,
+  .expense-card__date {
+    color: rgba(255, 255, 255, 0.6);
   }
 
   .expense-card__amount {
-    font-size: 1.375rem;
+    font-size: 1.25rem;
+    color: #a78bfa;
+    text-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
   }
 
   .expense-card__btn {
-    min-height: 48px;
+    min-height: 44px;
+    border-radius: 6px;
   }
 
-  /* Recurrence cards – mobile enhancements (match expense cards) */
+  .expense-card__btn.view { background: rgba(6, 182, 212, 0.2); color: #67e8f9; border-color: rgba(6, 182, 212, 0.4); }
+  .expense-card__btn.edit { background: rgba(139, 92, 246, 0.2); color: #c4b5fd; border-color: rgba(139, 92, 246, 0.4); }
+  .expense-card__btn.status { background: rgba(52, 211, 153, 0.2); color: #6ee7b7; border-color: rgba(52, 211, 153, 0.4); }
+  .expense-card__btn.danger { background: rgba(239, 68, 68, 0.2); color: #f87171; border-color: rgba(239, 68, 68, 0.4); }
+
+  /* Recurrence cards – dark theme, original purple */
   .recurrence-card {
-    padding: 1.5rem 1.25rem;
+    padding: 1.25rem 1rem;
+    background: linear-gradient(135deg, rgba(20, 20, 28, 0.98) 0%, rgba(15, 15, 23, 0.98) 100%);
+    border: 1px solid rgba(139, 92, 246, 0.25);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  }
+
+  .recurrence-card::before {
+    background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.6), transparent);
+  }
+
+  .recurrence-card:hover,
+  .recurrence-card:active {
+    transform: translateY(-2px);
+    border-color: rgba(139, 92, 246, 0.5);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35), 0 0 40px rgba(139, 92, 246, 0.2);
+  }
+
+  .recurrence-card__frequency {
+    color: rgba(139, 92, 246, 0.9);
   }
 
   .recurrence-card__title {
-    font-size: 1.0625rem;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.95);
   }
 
   .recurrence-card__amount {
-    font-size: 1.375rem;
+    font-size: 1.25rem;
+    color: #a78bfa;
+    text-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
   }
 
   .recurrence-card__actions .confirm-payment-btn,
   .recurrence-card__btn {
-    min-height: 48px;
+    min-height: 44px;
+    border-radius: 6px;
   }
+
+  .recurrence-card__btn.confirm,
+  .recurrence-card__actions .confirm-payment-btn { background: rgba(52, 211, 153, 0.2); color: #6ee7b7; border-color: rgba(52, 211, 153, 0.4); }
+  .recurrence-card__btn.edit { background: rgba(139, 92, 246, 0.2); color: #c4b5fd; border-color: rgba(139, 92, 246, 0.4); }
+  .recurrence-card__btn.warning { background: rgba(251, 191, 36, 0.2); color: #fcd34d; border-color: rgba(251, 191, 36, 0.4); }
+  .recurrence-card__btn.success { background: rgba(52, 211, 153, 0.2); color: #6ee7b7; border-color: rgba(52, 211, 153, 0.4); }
+  .recurrence-card__btn.danger { background: rgba(239, 68, 68, 0.2); color: #f87171; border-color: rgba(239, 68, 68, 0.4); }
 
   .desktop-only {
     display: none !important;

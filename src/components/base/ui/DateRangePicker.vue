@@ -39,10 +39,14 @@
           <div 
             v-if="isOpen" 
             class="date-picker-dropdown" 
+            :class="{ 
+              'date-picker-dropdown--mobile': isMobileView, 
+              'date-picker-dropdown--desktop': !isMobileView,
+              'positioned': !isMobileView && dropdownStyle.top 
+            }"
             :style="dropdownStyle"
             @click.stop
             ref="dropdownRef"
-            :class="{ 'positioned': dropdownStyle.top }"
           >
             <div class="dropdown-header">
               <h3 class="dropdown-title">{{ title }}</h3>
@@ -87,6 +91,7 @@
               <!-- Custom Calendar Component -->
               <FuturisticCalendar
                 v-if="showCalendar"
+                :compact="isMobileView"
                 :model-value="singleDateInput || startDateInput"
                 :range-start="mode === 'range' ? startDateInput : null"
                 :range-end="mode === 'range' ? endDateInput : null"
@@ -271,6 +276,7 @@ const showCalendar = ref(true)
 const dropdownRef = ref(null)
 const triggerRef = ref(null)
 const dropdownStyle = ref({})
+const isMobileView = ref(false)
 
 // Computed
 const hasValue = computed(() => {
@@ -300,7 +306,8 @@ const togglePicker = () => {
   if (props.disabled) return
   isOpen.value = !isOpen.value
   if (isOpen.value) {
-    nextTick(() => calculateDropdownPosition())
+    /* Run synchronously so dropdown mounts with correct position (avoids jump on mobile) */
+    calculateDropdownPosition()
   }
 }
 
@@ -339,21 +346,36 @@ const calculateDropdownPosition = () => {
   if (left < margin) left = margin
 
   const isMobile = vw < 768
-  const width = isMobile ? `calc(100vw - ${margin * 2}px)` : undefined
+
+  isMobileView.value = isMobile
+
   if (isMobile) {
-    left = margin
-  }
-  dropdownStyle.value = {
-    position: 'fixed',
-    top: `${top}px`,
-    left: `${left}px`,
-    width,
-    maxWidth: isMobile ? undefined : `${maxW}px`,
-    maxHeight: `${maxH}px`,
-    zIndex: 10000,
-    /* Ensure dropdown can scroll */
-    overflowY: 'auto',
-    overflowX: 'hidden'
+    /* Mobile: centered modal – vertically and horizontally centered on screen */
+    const modalMaxH = Math.min(560, Math.floor(vh * 0.9))
+    const modalMaxW = Math.min(400, vw - margin * 2)
+    dropdownStyle.value = {
+      position: 'fixed',
+      top: '50%',
+      left: '50%',
+      width: `calc(100vw - ${margin * 2}px)`,
+      maxWidth: `${modalMaxW}px`,
+      maxHeight: `${modalMaxH}px`,
+      zIndex: 10000,
+      overflowY: 'auto',
+      overflowX: 'hidden'
+    }
+  } else {
+    dropdownStyle.value = {
+      position: 'fixed',
+      top: `${top}px`,
+      left: `${left}px`,
+      width: undefined,
+      maxWidth: `${maxW}px`,
+      maxHeight: `${maxH}px`,
+      zIndex: 10000,
+      overflowY: 'auto',
+      overflowX: 'hidden'
+    }
   }
 }
 
@@ -655,16 +677,20 @@ onUnmounted(() => {
   }
 }
 
-/* Dropdown – scrollable container; max-height set via inline style */
+/* Dropdown – scrollable container; layout controlled via inline style */
 .date-picker-dropdown {
+  --date-picker-padding: 18px;
+  --date-picker-gap: 14px;
+  --date-picker-radius: 16px;
   position: fixed;
   z-index: 10000;
-  min-width: 360px;
+  min-width: 280px;
   width: max-content;
+  max-width: 100%;
   background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%);
   border: 2px solid rgba(139, 92, 246, 0.3);
-  border-radius: 16px;
-  padding: 18px;
+  border-radius: var(--date-picker-radius);
+  padding: var(--date-picker-padding);
   backdrop-filter: blur(20px);
   box-shadow: 
     0 25px 70px rgba(0, 0, 0, 0.6),
@@ -701,6 +727,18 @@ onUnmounted(() => {
 
 .date-picker-dropdown.positioned {
   animation: dropdownSlidePositioned 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Mobile: centered modal – vertically aligned in middle of screen */
+.date-picker-dropdown--mobile {
+  transform: translate(-50%, -50%);
+  border-radius: var(--date-picker-radius);
+  transform-origin: center center;
+  animation: none; /* Disable base dropdownSlide – it conflicts with centering */
+  box-shadow: 
+    0 25px 70px rgba(0, 0, 0, 0.6),
+    0 0 50px rgba(139, 92, 246, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 @keyframes dropdownSlide {
@@ -1033,6 +1071,27 @@ onUnmounted(() => {
   transform: translateY(-20px) scale(0.95);
 }
 
+/* Mobile: scale + fade centered animation */
+.date-picker-dropdown--mobile.date-picker-fade-enter-from {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.92);
+}
+
+.date-picker-dropdown--mobile.date-picker-fade-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.92);
+}
+
+.date-picker-dropdown--mobile.date-picker-fade-enter-to,
+.date-picker-dropdown--mobile.date-picker-fade-leave-from {
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.date-picker-dropdown--mobile.date-picker-fade-enter-active,
+.date-picker-dropdown--mobile.date-picker-fade-leave-active {
+  transition: opacity 0.3s cubic-bezier(0.32, 0.72, 0, 1), transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
 .backdrop-fade-enter-active,
 .backdrop-fade-leave-active {
   transition: opacity 0.3s ease;
@@ -1043,15 +1102,48 @@ onUnmounted(() => {
   opacity: 0;
 }
 
-/* Responsive */
-@media (max-width: 768px) {
-  .date-picker-dropdown {
-    min-width: calc(100vw - 40px) !important;
-    max-width: calc(100vw - 40px) !important;
-    width: calc(100vw - 40px) !important;
-    padding: 20px;
-  }
+/* Mobile overrides – applied when .date-picker-dropdown--mobile is set by JS */
+.date-picker-dropdown--mobile {
+  min-width: 100%;
+  width: 100%;
+  --date-picker-padding: 20px;
+  --date-picker-gap: 16px;
+  --date-picker-radius: 20px;
+}
 
+.date-picker-dropdown--mobile .dropdown-header {
+  margin-bottom: var(--date-picker-gap);
+  padding-bottom: 14px;
+}
+
+.date-picker-dropdown--mobile .mode-toggle {
+  margin-bottom: var(--date-picker-gap);
+}
+
+.date-picker-dropdown--mobile .date-picker-content {
+  gap: var(--date-picker-gap);
+}
+
+.date-picker-dropdown--mobile .date-picker-actions {
+  margin-top: 12px;
+  padding-top: 16px;
+}
+
+.date-picker-dropdown--mobile .mode-btn {
+  padding: 12px 14px;
+  font-size: 13px;
+  min-height: 44px;
+}
+
+.date-picker-dropdown--mobile .apply-btn,
+.date-picker-dropdown--mobile .cancel-btn {
+  padding: 14px 18px;
+  font-size: 14px;
+  min-height: 48px;
+}
+
+/* Responsive trigger */
+@media (max-width: 768px) {
   .date-picker-trigger {
     min-width: 100%;
   }

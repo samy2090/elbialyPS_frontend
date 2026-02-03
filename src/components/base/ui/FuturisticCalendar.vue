@@ -1,5 +1,5 @@
 <template>
-  <div class="futuristic-calendar">
+  <div class="futuristic-calendar" :class="{ 'futuristic-calendar--compact': compact }">
     <div class="calendar-header">
       <button @click="previousMonth" class="nav-btn prev" type="button" aria-label="Previous month">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="nav-icon" style="display: block; width: 22px; height: 22px; color: #8b5cf6;">
@@ -29,7 +29,7 @@
       <div v-for="day in weekDays" :key="day" class="weekday">{{ day }}</div>
     </div>
 
-    <div class="calendar-days" :style="{ gridTemplateRows: `repeat(${Math.ceil(calendarDays.length / 7)}, 36px)` }">
+    <div class="calendar-days">
       <button
         v-for="(day, index) in calendarDays"
         :key="`day-${index}-${day.date.getTime()}`"
@@ -76,6 +76,10 @@
 import { ref, computed, watch } from 'vue'
 
 const props = defineProps({
+  compact: {
+    type: Boolean,
+    default: false
+  },
   modelValue: {
     type: String,
     default: null
@@ -333,10 +337,14 @@ watch(() => props.rangeStart, (newValue) => {
 
 <style scoped>
 .futuristic-calendar {
+  --calendar-padding: 20px;
+  --calendar-gap: 12px;
+  --calendar-day-size: 36px;
+  --calendar-nav-size: 40px;
   background: linear-gradient(135deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%);
   border: 2px solid rgba(139, 92, 246, 0.4);
   border-radius: 16px;
-  padding: 20px;
+  padding: var(--calendar-padding);
   box-shadow: 
     0 25px 70px rgba(0, 0, 0, 0.6),
     0 0 50px rgba(139, 92, 246, 0.25),
@@ -346,17 +354,14 @@ watch(() => props.rangeStart, (newValue) => {
   position: relative;
   overflow: visible;
   width: 100%;
-  min-width: 360px; /* Increased minimum width for proper header layout */
+  min-width: 0;
   max-width: 100%;
   min-height: fit-content;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  /* Ensure calendar can grow to show all content */
   box-sizing: border-box;
-  /* Enhanced glow effect */
   animation: calendarPulse 4s ease-in-out infinite;
-  left: -16px;
 }
 
 @keyframes calendarPulse {
@@ -1129,5 +1134,77 @@ watch(() => props.rangeStart, (newValue) => {
     0 6px 16px rgba(239, 68, 68, 0.4),
     0 0 25px rgba(239, 68, 68, 0.2),
     inset 0 1px 2px rgba(255, 255, 255, 0.1);
+}
+
+/* Compact (mobile) variant – reusable when embedded in bottom-sheet or narrow containers */
+.futuristic-calendar--compact {
+  --calendar-padding: 16px;
+  --calendar-gap: 10px;
+  --calendar-day-size: 38px;
+  --calendar-nav-size: 44px;
+  padding: var(--calendar-padding);
+  border-width: 1px;
+}
+
+.futuristic-calendar--compact .calendar-header {
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+}
+
+.futuristic-calendar--compact .nav-btn,
+.futuristic-calendar--compact .nav-btn.prev,
+.futuristic-calendar--compact .nav-btn.next {
+  width: var(--calendar-nav-size) !important;
+  height: var(--calendar-nav-size) !important;
+  min-width: var(--calendar-nav-size) !important;
+  max-width: var(--calendar-nav-size) !important;
+}
+
+.futuristic-calendar--compact .month-select,
+.futuristic-calendar--compact .year-select {
+  min-width: 90px;
+  max-width: 130px;
+  padding: 12px 36px 12px 14px;
+  font-size: 14px;
+}
+
+.futuristic-calendar--compact .year-select {
+  min-width: 72px;
+  max-width: 88px;
+}
+
+.futuristic-calendar--compact .calendar-weekdays {
+  margin-bottom: 4px;
+}
+
+.futuristic-calendar--compact .weekday {
+  font-size: 11px;
+  padding: 8px 2px;
+}
+
+.futuristic-calendar--compact .calendar-days {
+  gap: 4px;
+  min-height: auto;
+  grid-auto-rows: var(--calendar-day-size);
+}
+
+.futuristic-calendar--compact .calendar-day {
+  height: var(--calendar-day-size);
+  min-height: var(--calendar-day-size);
+  max-height: var(--calendar-day-size);
+  font-size: 14px;
+}
+
+.futuristic-calendar--compact .calendar-footer {
+  margin-top: 12px;
+  padding-top: 12px;
+}
+
+.futuristic-calendar--compact .today-btn,
+.futuristic-calendar--compact .clear-btn {
+  padding: 12px 16px;
+  font-size: 14px;
+  min-height: 44px;
 }
 </style>

@@ -86,7 +86,7 @@
         >
           <button type="button" class="attachment-lightbox__close" aria-label="Close" @click="closeLightbox">
             <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
             </svg>
           </button>
           <img :src="lightboxImageUrl" alt="Preview" class="attachment-lightbox__img" @click.self="closeLightbox" />
@@ -412,30 +412,60 @@ function onFileSelect(e) {
 }
 
 .attachment-lightbox__close {
+  --close-glow: #00e5ff;
+  --close-glow-dim: rgba(0, 229, 255, 0.4);
   position: absolute;
   top: 1.5rem;
   right: 1.5rem;
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 3rem;
+  height: 3rem;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  color: #fff;
+  background: linear-gradient(160deg, rgba(10, 25, 47, 0.85), rgba(15, 35, 60, 0.75));
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--close-glow-dim);
+  border-radius: 50%;
+  color: var(--close-glow);
   cursor: pointer;
-  transition: all 0.2s;
-  z-index: 1;
+  transition: transform 0.2s ease, box-shadow 0.25s ease, border-color 0.2s ease, color 0.2s ease;
+  z-index: 10;
+  box-shadow:
+    0 0 20px var(--close-glow-dim),
+    0 0 40px rgba(0, 229, 255, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
 }
 
 .attachment-lightbox__close:hover {
-  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.06);
+  border-color: var(--close-glow);
+  color: #fff;
+  box-shadow:
+    0 0 28px rgba(0, 229, 255, 0.5),
+    0 0 56px rgba(0, 229, 255, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.attachment-lightbox__close:active {
+  transform: scale(0.97);
+  box-shadow:
+    0 0 12px var(--close-glow-dim),
+    inset 0 0 12px rgba(0, 0, 0, 0.3);
+}
+
+.attachment-lightbox__close:focus-visible {
+  outline: none;
+  border-color: var(--close-glow);
+  box-shadow:
+    0 0 24px var(--close-glow-dim),
+    0 0 0 2px rgba(0, 229, 255, 0.4);
 }
 
 .attachment-lightbox__close svg {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.375rem;
+  height: 1.375rem;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 6px var(--close-glow-dim));
 }
 
 .attachment-lightbox__img {

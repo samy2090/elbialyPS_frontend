@@ -457,11 +457,11 @@ async function onProductChange() {
   try {
     const product = await ProductService.getProductById(id)
     if (product) {
-      form.value.price = product.price != null ? Number(product.price) : form.value.price
+      // Price is never auto-filled; user must enter it. Only pre-fill title.
       form.value.title = form.value.title || `Stock-in: ${product.name || product.sku || 'Product'}`
     }
   } catch {
-    // keep current title/price
+    // keep current title
   }
 }
 
