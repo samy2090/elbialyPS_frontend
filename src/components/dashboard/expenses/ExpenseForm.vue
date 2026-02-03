@@ -56,7 +56,7 @@
         />
         <p v-if="errors.category_id" class="form-error">{{ errors.category_id }}</p>
       </div>
-      <div v-if="subCategoryOptions.length" class="form-field">
+      <div v-if="subCategoryOptions.length && !isProductExpense" class="form-field">
         <label class="form-label">Sub-category</label>
         <CustomDropdown
           v-model="form.sub_category_id"
@@ -67,6 +67,49 @@
           :show-placeholder-in-menu="true"
         />
       </div>
+      <!-- Product expense flow: only when main category is "Products" -->
+      <template v-if="isProductExpense">
+        <div class="form-field full">
+          <label class="form-label">Product category (type) *</label>
+          <CustomDropdown
+            v-model="form.product_category"
+            :options="productCategoryOptions"
+            option-value="id"
+            option-label="name"
+            placeholder="Select product category"
+            :show-placeholder-in-menu="true"
+            :disabled="productCategoriesLoading"
+            @change="onProductCategoryChange"
+          />
+          <p v-if="errors.product_category" class="form-error">{{ errors.product_category }}</p>
+        </div>
+        <div class="form-field full">
+          <label class="form-label">Product *</label>
+          <CustomDropdown
+            v-model="form.product_id"
+            :options="productsInCategoryOptions"
+            option-value="id"
+            option-label="name"
+            placeholder="Select product"
+            :show-placeholder-in-menu="true"
+            :disabled="!form.product_category || productsLoading"
+            @change="onProductChange"
+          />
+          <p v-if="errors.product_id" class="form-error">{{ errors.product_id }}</p>
+        </div>
+        <div class="form-field">
+          <label class="form-label">Quantity *</label>
+          <input
+            v-model.number="form.quantity"
+            type="number"
+            class="form-input"
+            placeholder="1"
+            min="1"
+            step="1"
+          />
+          <p v-if="errors.quantity" class="form-error">{{ errors.quantity }}</p>
+        </div>
+      </template>
       <div class="form-field">
         <label class="form-label">Status *</label>
         <CustomDropdown
@@ -163,6 +206,7 @@
 import { ref, watch, computed, onBeforeUnmount } from 'vue'
 import CustomDropdown from '@/components/base/ui/CustomDropdown.vue'
 import { validateAttachment, resolveAttachmentUrl } from '@/utils/expenseHelpers'
+import ProductService from '@/api/products.js'
 
 const props = defineProps({
   modelValue: { type: Object, default: () => ({}) },
@@ -184,6 +228,9 @@ const form = ref({
   sub_category_id: null,
   category_id: null,
   status: 'paid',
+  product_category: '',
+  product_id: null,
+  quantity: null,
   ...props.modelValue,
 })
 
@@ -281,7 +328,7 @@ function onFileSelect(e) {
   e.target.value = ''
 }
 
-function removeFile(item, index) {
+function removeFile(item) {
   if (item.isExisting) {
     attachmentIdsToRemove.value = [...attachmentIdsToRemove.value, item.id]
   } else {
@@ -324,6 +371,17 @@ const list = computed(() => Array.isArray(props.categories) ? props.categories :
 
 const mainCategoryOptions = computed(() => list.value.filter((c) => !c.parent_id))
 
+/** Main expense category "Products" (name === "Products" && parent_id == null) for product-expense flow */
+const productsCategoryId = computed(() => {
+  const main = list.value.find((c) => !c.parent_id && String(c.name).trim().toLowerCase() === 'products')
+  return main ? main.id : null
+})
+
+const isProductExpense = computed(() => {
+  const mainId = form.value.main_category_id
+  return mainId != null && mainId !== '' && mainId === productsCategoryId.value
+})
+
 const statusOptions = [
   { id: 'paid', name: 'Paid' },
   { id: 'unpaid', name: 'Unpaid' },
@@ -335,8 +393,76 @@ const subCategoryOptions = computed(() => {
   return list.value.filter((c) => c.parent_id === mainId)
 })
 
+// Product expense: categories from GET /api/products/categories
+const productCategories = ref([])
+const productCategoriesLoading = ref(false)
+const productCategoryOptions = computed(() =>
+  (productCategories.value || []).map((c) => ({ id: c, name: String(c).charAt(0).toUpperCase() + String(c).slice(1) }))
+)
+
+// Product expense: products from GET /api/products?category=...
+const productsInCategory = ref([])
+const productsLoading = ref(false)
+const productsInCategoryOptions = computed(() =>
+  (productsInCategory.value || []).map((p) => ({ id: p.id, name: p.name || p.sku || `Product #${p.id}` }))
+)
+
+async function loadProductCategories() {
+  productCategoriesLoading.value = true
+  try {
+    const res = await ProductService.getCategories()
+    productCategories.value = res?.data ?? []
+  } catch {
+    productCategories.value = []
+  } finally {
+    productCategoriesLoading.value = false
+  }
+}
+
+async function loadProductsByCategory(category) {
+  if (!category) {
+    productsInCategory.value = []
+    return
+  }
+  productsLoading.value = true
+  try {
+    const list = await ProductService.getProductsByCategory(category)
+    productsInCategory.value = Array.isArray(list) ? list : []
+  } catch {
+    productsInCategory.value = []
+  } finally {
+    productsLoading.value = false
+  }
+}
+
 function onMainCategoryChange() {
   form.value.sub_category_id = null
+  if (!isProductExpense.value) {
+    form.value.product_category = ''
+    form.value.product_id = null
+    form.value.quantity = null
+  } else {
+    loadProductCategories()
+  }
+}
+
+function onProductCategoryChange() {
+  form.value.product_id = null
+  loadProductsByCategory(form.value.product_category)
+}
+
+async function onProductChange() {
+  const id = form.value.product_id
+  if (!id) return
+  try {
+    const product = await ProductService.getProductById(id)
+    if (product) {
+      form.value.price = product.price != null ? Number(product.price) : form.value.price
+      form.value.title = form.value.title || `Stock-in: ${product.name || product.sku || 'Product'}`
+    }
+  } catch {
+    // keep current title/price
+  }
 }
 
 function resolveCategoryId() {
@@ -369,6 +495,12 @@ watch(
     if (v && typeof v === 'object') {
       form.value = { ...form.value, ...v }
       syncCategoryFromId(v.category_id)
+      if (v.product_category) {
+        form.value.product_category = v.product_category
+        loadProductsByCategory(v.product_category)
+      }
+      if (v.product_id != null) form.value.product_id = v.product_id
+      if (v.quantity != null) form.value.quantity = v.quantity
     }
   },
   { deep: true, immediate: true }
@@ -382,6 +514,19 @@ watch(
   { deep: true }
 )
 
+// When user selects Products category, load product categories
+watch(
+  () => form.value.main_category_id,
+  (mainId) => {
+    if (mainId != null && mainId !== '' && mainId === productsCategoryId.value) {
+      loadProductCategories()
+    } else {
+      productCategories.value = []
+      productsInCategory.value = []
+    }
+  }
+)
+
 function validate() {
   const e = {}
   if (!String(form.value.title).trim()) e.title = 'Title is required.'
@@ -390,17 +535,36 @@ function validate() {
   const catId = resolveCategoryId()
   if (catId == null || catId === '') e.category_id = 'Category is required.'
   if (!['paid', 'unpaid'].includes(form.value.status)) e.status = 'Status must be Paid or Unpaid.'
+
+  if (isProductExpense.value) {
+    if (!form.value.product_category) e.product_category = 'Product category is required.'
+    if (form.value.product_id == null || form.value.product_id === '') e.product_id = 'Product is required.'
+    const q = form.value.quantity
+    if (q == null || q === '' || Number(q) < 1) e.quantity = 'Quantity must be at least 1.'
+  }
+
   errors.value = e
   return Object.keys(e).length === 0
 }
 
 function onSubmit() {
   if (!validate()) return
+  const catId = resolveCategoryId()
   const payload = {
     ...form.value,
-    category_id: resolveCategoryId(),
+    category_id: catId,
     new_attachments: pendingFiles.value.map((e) => e.file),
     attachment_ids_to_remove: [...attachmentIdsToRemove.value],
+  }
+  // Product expenses: ensure category_id is Products and include product_id, quantity
+  if (isProductExpense.value) {
+    payload.category_id = productsCategoryId.value
+    payload.product_id = form.value.product_id
+    payload.quantity = Number(form.value.quantity) || 1
+  } else {
+    delete payload.product_id
+    delete payload.quantity
+    delete payload.product_category
   }
   emit('update:modelValue', payload)
   emit('submit', payload)

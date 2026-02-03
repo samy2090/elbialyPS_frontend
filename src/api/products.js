@@ -14,16 +14,16 @@ class ProductService {
       console.log('=== API Request ===')
       console.log('URL:', api.defaults.baseURL + '/api/products')
       console.log('Params:', params)
-      
+
       const response = await api.get('/api/products', { params })
-      
+
       console.log('=== Raw API Response ===')
       console.log('Response object:', response)
       console.log('Response.data:', response.data)
-      
+
       // Handle different Laravel response formats
       let productsData = null
-      
+
       // Format 1: Laravel Paginated Response (most common)
       // { data: [...], current_page, total, per_page, last_page, ... }
       if (response.data?.data && Array.isArray(response.data.data) && response.data.current_page !== undefined) {
@@ -85,25 +85,25 @@ class ProductService {
         console.warn('=== UNEXPECTED RESPONSE FORMAT ===')
         console.warn('Full response.data:', JSON.stringify(response.data, null, 2))
         console.warn('Attempting fallback extraction...')
-        
-        const fallbackProducts = 
-          response.data?.data || 
-          response.data?.products || 
+
+        const fallbackProducts =
+          response.data?.data ||
+          response.data?.products ||
           (Array.isArray(response.data) ? response.data : []) ||
           []
-        
+
         productsData = {
           products: Array.isArray(fallbackProducts) ? fallbackProducts : [],
           pagination: null
         }
       }
-      
+
       console.log('=== Processed Products Data ===')
       console.log('Products count:', productsData.products?.length || 0)
       console.log('First product sample:', productsData.products?.[0] || 'No products')
       console.log('Pagination:', productsData.pagination)
       console.log('==================')
-      
+
       return productsData
     } catch (error) {
       console.error('Get Products Error Details:', {
@@ -130,6 +130,41 @@ class ProductService {
   }
 
   /**
+   * Get product categories (distinct category values for filtering)
+   * GET /api/products/categories → { data: string[] }
+   * @returns {Promise<{ data: string[] }>}
+   */
+  static async getCategories() {
+    try {
+      const response = await api.get('/api/products/categories')
+      const data = response.data?.data ?? response.data
+      return Array.isArray(data) ? { data } : { data: data?.data ?? [] }
+    } catch (error) {
+      console.error('Get Product Categories Error:', error)
+      throw new Error(error.response?.data?.message || 'Failed to fetch product categories')
+    }
+  }
+
+  /**
+   * Get products by category (and optional search, pagination)
+   * GET /api/products?category={category}&search=...&paginate=...&per_page=...
+   * @param {string} category - Product category (e.g. drink, snack, food, other)
+   * @param {Object} params - Optional: search, paginate, per_page
+   * @returns {Promise}
+   */
+  static async getProductsByCategory(category, params = {}) {
+    try {
+      const response = await api.get('/api/products', { params: { category, ...params } })
+      const data = response.data?.data ?? response.data
+      const list = Array.isArray(data) ? data : (data?.data ?? [])
+      return list
+    } catch (error) {
+      console.error('Get Products By Category Error:', error)
+      throw new Error(error.response?.data?.message || 'Failed to fetch products')
+    }
+  }
+
+  /**
    * Get product by ID
    * @param {number} id - Product ID
    * @returns {Promise}
@@ -138,7 +173,7 @@ class ProductService {
     try {
       const response = await api.get(`/api/products/${id}`)
       console.log('Get Product By ID Response:', response.data)
-      
+
       // Handle different response formats
       if (response.data?.data) {
         return response.data.data

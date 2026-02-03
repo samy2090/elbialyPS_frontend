@@ -4,7 +4,7 @@
     <div class="expenses-section__header">
       <div class="expenses-section__header-info">
         <h1 class="expenses-section__title">Expense Management</h1>
-        <p class="expenses-section__subtitle">Track expenses, categories, recurrences and reports</p>
+        <p class="expenses-section__subtitle">Track expenses, categories and recurrences</p>
       </div>
     </div>
 
@@ -77,6 +77,20 @@
             @change="onFilterChange"
           />
         </div>
+        <!-- Report summary (uses same filters as list) -->
+        <div class="expenses-section__report-inline">
+          <div v-if="reportLoading" class="expenses-section__report-loading">
+            <div class="spinner"></div>
+            <span>Loading summary...</span>
+          </div>
+          <div v-else-if="reportError" class="expenses-section__report-error">
+            <span>{{ reportError }}</span>
+            <button type="button" class="expenses-section__action-btn secondary" @click="loadReportSummary">Retry</button>
+          </div>
+          <div v-else class="expenses-section__reports">
+            <ReportSummaryCards :totals="reportSummary?.totals || {}" />
+          </div>
+        </div>
         <div v-if="expensesLoading" class="expenses-section__loading">
           <div class="spinner"></div>
           <p>Loading expenses...</p>
@@ -107,8 +121,14 @@
               <tbody>
                 <tr v-for="row in expensesPaginated.data" :key="row.id" class="expenses-section__row">
                   <td>{{ row.expense_number }}</td>
-                  <td>{{ row.title }}</td>
-                  <td>{{ row.category?.full_path || row.category?.name || '—' }}</td>
+                  <td>
+                    <span>{{ row.title }}</span>
+                    <span v-if="row.product_id" class="expense-badge product-stock">Product (stock-in)</span>
+                    <span v-if="row.product_id && (row.product?.name || row.quantity)" class="expense-product-info">
+                      {{ row.product?.name || 'Product' }}{{ row.quantity != null ? ` × ${row.quantity}` : '' }}
+                    </span>
+                  </td>
+                  <td>{{ expenseCategoryLabel(row) }}</td>
                   <td>{{ formatExpenseDate(row.expense_date) }}</td>
                   <td><CurrencyDisplay :amount="row.price" /></td>
                   <td><ExpenseStatusBadge :status="row.status" /></td>
@@ -138,10 +158,14 @@
               <div class="expense-card__header">
                 <span class="expense-card__number">{{ row.expense_number }}</span>
                 <ExpenseStatusBadge :status="row.status" />
+                <span v-if="row.product_id" class="expense-badge product-stock">Product (stock-in)</span>
               </div>
               <h3 class="expense-card__title">{{ row.title }}</h3>
+              <p v-if="row.product_id && (row.product?.name || row.quantity)" class="expense-card__product-info">
+                {{ row.product?.name || 'Product' }}{{ row.quantity != null ? ` × ${row.quantity}` : '' }}
+              </p>
               <div class="expense-card__meta">
-                <span class="expense-card__category">{{ row.category?.full_path || row.category?.name || '—' }}</span>
+                <span class="expense-card__category">{{ expenseCategoryLabel(row) }}</span>
                 <span class="expense-card__date">{{ formatExpenseDate(row.expense_date) }}</span>
               </div>
               <div class="expense-card__amount">
@@ -189,7 +213,7 @@
         </div>
         <div v-else class="expenses-section__categories-tree">
           <div class="categories-tree">
-            <template v-for="mainCat in mainCategories" :key="mainCat.id">
+            <template v-for="mainCat in mainCategoriesExcludingProducts" :key="mainCat.id">
               <!-- Main category row (clickable to expand/collapse) -->
               <div
                 class="category-row category-row--main"
@@ -227,11 +251,14 @@
                     </div>
                   </div>
                 </div>
-                <div class="category-row__actions" @click.stop>
+                <div v-if="!isProductsCategory(mainCat)" class="category-row__actions" @click.stop>
                   <button type="button" class="row-btn edit" @click="openCategoryForm(mainCat)">Edit</button>
                   <button v-if="mainCat.is_active" type="button" class="row-btn warning" @click="deactivateCategory(mainCat)">Deactivate</button>
                   <button v-else type="button" class="row-btn success" @click="activateCategory(mainCat)">Activate</button>
                   <button type="button" class="row-btn danger" @click="confirmDeleteCategory(mainCat)">Delete</button>
+                </div>
+                <div v-else class="category-row__actions category-row__actions--readonly">
+                  <span class="category-row__readonly-hint">System category — cannot edit, deactivate or delete</span>
                 </div>
               </div>
               <!-- Sub-categories (nested under main, shown when expanded) -->
@@ -292,11 +319,14 @@
               <thead>
                 <tr>
                   <th>Title</th>
-                  <th>Category</th>
                   <th>Price</th>
+                  <th>Category</th>
                   <th>Frequency</th>
                   <th>Due day</th>
-                  <th>Next due</th>
+                  <th>Start date</th>
+                  <th>End date</th>
+                  <th>Last payment</th>
+                  <th>Next payment</th>
                   <th>Active</th>
                   <th>Actions</th>
                 </tr>
@@ -304,11 +334,14 @@
               <tbody>
                 <tr v-for="row in recurrencesPaginated.data" :key="row.id" class="expenses-section__row">
                   <td>{{ row.title }}</td>
-                  <td>{{ row.category?.full_path || row.category?.name || '—' }}</td>
                   <td><CurrencyDisplay :amount="row.price" /></td>
+                  <td>{{ recurrenceCategoryLabel(row) }}</td>
                   <td>{{ row.frequency }}</td>
                   <td>{{ row.due_day }}</td>
-                  <td>{{ row.next_due_date ? formatExpenseDate(row.next_due_date) : '—' }}</td>
+                  <td>{{ row.start_date ? formatExpenseDate(row.start_date) : '—' }}</td>
+                  <td>{{ row.end_date ? formatExpenseDate(row.end_date) : '—' }}</td>
+                  <td>{{ row.last_payment_date ? formatExpenseDate(row.last_payment_date) : '—' }}</td>
+                  <td>{{ row.next_payment_date ? formatExpenseDate(row.next_payment_date) : '—' }}</td>
                   <td>
                     <span :class="row.is_active ? 'badge active' : 'badge inactive'">{{ row.is_active ? 'Active' : 'Inactive' }}</span>
                   </td>
@@ -342,12 +375,18 @@
                 <span :class="row.is_active ? 'badge active' : 'badge inactive'">{{ row.is_active ? 'Active' : 'Inactive' }}</span>
               </div>
               <h3 class="recurrence-card__title">{{ row.title }}</h3>
-              <div class="recurrence-card__meta">
-                <span class="recurrence-card__category">{{ row.category?.full_path || row.category?.name || '—' }}</span>
-                <span class="recurrence-card__due">Due day {{ row.due_day }} · Next: {{ row.next_due_date ? formatExpenseDate(row.next_due_date) : '—' }}</span>
-              </div>
               <div class="recurrence-card__amount">
                 <CurrencyDisplay :amount="row.price" />
+              </div>
+              <div class="recurrence-card__meta">
+                <span class="recurrence-card__category">{{ recurrenceCategoryLabel(row) }}</span>
+                <span class="recurrence-card__due">Due day {{ row.due_day }}</span>
+                <span class="recurrence-card__dates" v-if="row.start_date || row.end_date">
+                  {{ row.start_date ? formatExpenseDate(row.start_date) : '—' }} – {{ row.end_date ? formatExpenseDate(row.end_date) : '—' }}
+                </span>
+                <span class="recurrence-card__payments">
+                  Last: {{ row.last_payment_date ? formatExpenseDate(row.last_payment_date) : '—' }} · Next: {{ row.next_payment_date ? formatExpenseDate(row.next_payment_date) : '—' }}
+                </span>
               </div>
               <div class="recurrence-card__actions" @click.stop>
                 <ConfirmPaymentButton
@@ -376,29 +415,6 @@
             :links="recurrencesPaginated.links || []"
             @page-change="onRecurrencesPageChange"
           />
-        </div>
-      </div>
-
-      <!-- Reports -->
-      <div v-show="activeTab === 'reports'" class="expenses-section__panel">
-        <div class="expenses-section__filters">
-          <DateRangePicker
-            v-model="reportDateRange"
-            placeholder="Report period"
-            title="Report period"
-          />
-          <button type="button" class="expenses-section__filter-btn" @click="loadReportSummary">Refresh</button>
-        </div>
-        <div v-if="reportLoading" class="expenses-section__loading">
-          <div class="spinner"></div>
-          <p>Loading report...</p>
-        </div>
-        <div v-else-if="reportError" class="expenses-section__error">
-          <p>{{ reportError }}</p>
-          <button type="button" class="expenses-section__action-btn secondary" @click="loadReportSummary">Retry</button>
-        </div>
-        <div v-else class="expenses-section__reports">
-          <ReportSummaryCards :totals="reportSummary?.totals || {}" />
         </div>
       </div>
     </div>
@@ -438,7 +454,7 @@
         <div class="expenses-section__modal-body">
           <ExpenseCategoryForm
             :model-value="categoryFormData"
-            :main-categories="mainCategories"
+            :main-categories="mainCategoriesExcludingProducts"
             :submit-label="categorySaving ? 'Saving...' : 'Save'"
             :saving="categorySaving"
             @submit="saveCategory"
@@ -482,10 +498,15 @@
         <div class="expenses-section__modal-body">
           <div class="expense-detail-grid">
             <p><strong>Title:</strong> {{ viewingExpense.title }}</p>
+            <p v-if="viewingExpense.product_id" class="expense-detail-product">
+              <strong>Product (stock-in):</strong>
+              <span class="expense-badge product-stock">Product (stock-in)</span>
+              {{ viewingExpense.product?.name || 'Product' }}{{ viewingExpense.quantity != null ? ` × ${viewingExpense.quantity}` : '' }} — affected stock
+            </p>
             <p><strong>Description:</strong> {{ viewingExpense.description || '—' }}</p>
             <p><strong>Amount:</strong> <CurrencyDisplay :amount="viewingExpense.price" /></p>
             <p><strong>Date:</strong> {{ formatExpenseDate(viewingExpense.expense_date) }}</p>
-            <p><strong>Category:</strong> {{ viewingExpense.category?.full_path || viewingExpense.category?.name || '—' }}</p>
+            <p><strong>Category:</strong> {{ expenseCategoryLabel(viewingExpense) }}</p>
             <p><strong>Status:</strong> <ExpenseStatusBadge :status="viewingExpense.status" /></p>
           </div>
           <AttachmentList
@@ -577,9 +598,8 @@ const toastType = ref('success')
 
 const tabs = [
   { id: 'expenses', label: 'Expenses', icon: 'span' },
-  { id: 'categories', label: 'Categories', icon: 'span' },
   { id: 'recurrences', label: 'Recurrences', icon: 'span' },
-  { id: 'reports', label: 'Reports', icon: 'span' },
+  { id: 'categories', label: 'Categories', icon: 'span' },
 ]
 
 function showToast(msg, type = 'success') {
@@ -590,7 +610,6 @@ function showToast(msg, type = 'success') {
 
 // Filters (DateRangePicker uses { startDate, endDate })
 const filtersDateRange = ref({ startDate: null, endDate: null })
-const reportDateRange = ref({ startDate: null, endDate: null })
 const filters = ref({ status: '' })
 
 const filterStatusOptions = [
@@ -632,6 +651,28 @@ const mainCategories = computed(() => {
   })
   return withChildren
 })
+
+/** Main categories excluding "Products" — used for categories tree (hide Products) and for parent dropdown in add/edit category (Products cannot be parent) */
+const mainCategoriesExcludingProducts = computed(() =>
+  mainCategories.value.filter((c) => !isProductsCategory(c))
+)
+
+/** Category label for expense or recurrence: show both main and sub when present (e.g. "Main → Sub") */
+function expenseCategoryLabel(row) {
+  const cat = row?.category
+  if (!cat) return '—'
+  if (cat.full_path) return cat.full_path
+  if (cat.parent_id && categories.value?.length) {
+    const parent = categories.value.find((c) => c.id === cat.parent_id)
+    if (parent) return `${parent.name} → ${cat.name}`
+  }
+  return cat.name || '—'
+}
+
+/** Category label for recurrence: same as expense (main → sub when present) */
+function recurrenceCategoryLabel(row) {
+  return expenseCategoryLabel(row)
+}
 
 const recurrencesPaginated = ref({ data: [], current_page: 1, last_page: 1, from: 0, to: 0, total: 0, links: [], prev_page_url: null, next_page_url: null })
 const recurrencesLoading = ref(false)
@@ -676,6 +717,7 @@ function onExpensesPageChange(page) {
 
 function onFilterChange() {
   loadExpenses(1)
+  loadReportSummary()
 }
 
 async function loadCategories() {
@@ -715,10 +757,27 @@ async function loadReportSummary() {
   reportError.value = ''
   try {
     const params = {}
-    if (reportDateRange.value?.startDate) params.start_date = reportDateRange.value.startDate
-    if (reportDateRange.value?.endDate) params.end_date = reportDateRange.value.endDate
-    const data = await expenseReportsApi.getSummary(params)
-    reportSummary.value = data
+    const startDate = filtersDateRange.value?.startDate
+    const endDate = filtersDateRange.value?.endDate
+    if (startDate) {
+      params.start_date = startDate
+      params.end_date = endDate || startDate
+    }
+    if (filters.value.status) params.status = filters.value.status
+
+    const [summaryData, paidVsUnpaidData] = await Promise.all([
+      expenseReportsApi.getSummary(params),
+      expenseReportsApi.getPaidVsUnpaid(params).catch(() => null),
+    ])
+
+    const totals = { ...(summaryData?.totals || {}) }
+    if (paidVsUnpaidData?.paid != null || paidVsUnpaidData?.unpaid != null) {
+      totals.paid_amount = paidVsUnpaidData?.paid?.total_amount ?? totals.paid_amount ?? 0
+      totals.paid_count = paidVsUnpaidData?.paid?.count ?? totals.paid_count ?? 0
+      totals.unpaid_amount = paidVsUnpaidData?.unpaid?.total_amount ?? totals.unpaid_amount ?? 0
+      totals.unpaid_count = paidVsUnpaidData?.unpaid?.count ?? totals.unpaid_count ?? 0
+    }
+    reportSummary.value = { ...summaryData, totals }
   } catch (e) {
     reportError.value = e.response?.data?.message || e.message || 'Failed to load report.'
   } finally {
@@ -727,14 +786,17 @@ async function loadReportSummary() {
 }
 
 watch(activeTab, (tab) => {
-  if (tab === 'expenses' && !expensesPaginated.value.data?.length && !expensesLoading.value) loadExpenses()
-  if (tab === 'categories' && !categories.value.length && !categoriesLoading.value) loadCategories()
-  if (tab === 'recurrences' && !recurrencesPaginated.value.data?.length && !recurrencesLoading.value) loadRecurrences()
-  if (tab === 'reports' && !reportSummary.value && !reportLoading.value) loadReportSummary()
+  if (tab === 'expenses') {
+    loadExpenses()
+    loadReportSummary()
+  }
+  if (tab === 'categories') loadCategories()
+  if (tab === 'recurrences') loadRecurrences()
 })
 
 onMounted(() => {
   loadExpenses()
+  loadReportSummary()
   loadCategories()
 })
 
@@ -753,6 +815,9 @@ async function openExpenseForm(expense = null) {
     expense_date: expense.expense_date?.slice(0, 10),
     category_id: expense.category_id,
     status: expense.status,
+    product_id: expense.product_id ?? null,
+    quantity: expense.quantity ?? null,
+    product_category: expense.product?.category ?? null,
   } : {}
   expenseFormExistingAttachments.value = []
   if (expense?.id) {
@@ -773,9 +838,19 @@ function closeExpenseModal() {
 async function saveExpense(payload) {
   const newAttachments = payload.new_attachments || []
   const idsToRemove = payload.attachment_ids_to_remove || []
-  const body = { ...payload }
-  delete body.new_attachments
-  delete body.attachment_ids_to_remove
+  const body = {
+    title: payload.title,
+    description: payload.description ?? null,
+    price: payload.price,
+    expense_date: payload.expense_date,
+    category_id: payload.category_id,
+    status: payload.status,
+  }
+  if (payload.product_id != null && payload.quantity != null) {
+    body.product_id = payload.product_id
+    body.quantity = Number(payload.quantity) || 1
+  }
+  // Do not send product_id/quantity for non-product expenses to avoid backend validation errors
 
   expenseSaving.value = true
   try {
@@ -802,6 +877,7 @@ async function saveExpense(payload) {
     }
     closeExpenseModal()
     loadExpenses(expensesPaginated.value.current_page)
+    loadReportSummary()
   } catch (e) {
     const msg = e.response?.data?.message || e.response?.data?.errors ? Object.values(e.response.data.errors || {}).flat().join(' ') || e.message : e.message
     showToast(msg || 'Failed to save.', 'error')
@@ -816,6 +892,7 @@ async function toggleExpenseStatus(row) {
     else await expensesApi.markPaid(row.id)
     showToast('Status updated.')
     loadExpenses(expensesPaginated.value.current_page)
+    loadReportSummary()
   } catch (e) {
     showToast(e.response?.data?.message || e.message || 'Failed to update status.', 'error')
   }
@@ -834,6 +911,7 @@ async function deleteExpenseConfirm() {
     showToast('Expense deleted.')
     deleteExpenseTarget.value = null
     loadExpenses(expensesPaginated.value.current_page)
+    loadReportSummary()
   } catch (e) {
     showToast(e.response?.data?.message || e.message || 'Failed to delete.', 'error')
   } finally {
@@ -892,7 +970,14 @@ const categorySaving = ref(false)
 const deleteCategoryTarget = ref(null)
 const categoryDeleting = ref(false)
 const deleteCategoryError = ref('')
+
+/** Main expense category "Products" (name === "Products" && parent_id == null) — cannot be edited, deactivated or deleted */
+function isProductsCategory(cat) {
+  return cat && !cat.parent_id && String(cat.name || '').trim().toLowerCase() === 'products'
+}
+
 function openCategoryForm(cat = null) {
+  if (cat && isProductsCategory(cat)) return
   editingCategory.value = cat
   categoryFormData.value = cat ? { id: cat.id, name: cat.name, parent_id: cat.parent_id, is_active: cat.is_active } : {}
   showCategoryModal.value = true
@@ -920,6 +1005,7 @@ async function saveCategory(payload) {
   }
 }
 async function deactivateCategory(cat) {
+  if (isProductsCategory(cat)) return
   try {
     await expenseCategoriesApi.deactivate(cat.id)
     showToast('Category deactivated.')
@@ -929,6 +1015,7 @@ async function deactivateCategory(cat) {
   }
 }
 async function activateCategory(cat) {
+  if (isProductsCategory(cat)) return
   try {
     await expenseCategoriesApi.activate(cat.id)
     showToast('Category activated.')
@@ -938,6 +1025,7 @@ async function activateCategory(cat) {
   }
 }
 function confirmDeleteCategory(cat) {
+  if (isProductsCategory(cat)) return
   deleteCategoryTarget.value = cat
   deleteCategoryError.value = ''
 }
@@ -1476,6 +1564,16 @@ async function deleteRecurrenceConfirm() {
   gap: 0.5rem;
 }
 
+.category-row__actions--readonly {
+  align-items: center;
+}
+
+.category-row__readonly-hint {
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+}
+
 @media (max-width: 768px) {
   .category-row {
     flex-direction: column;
@@ -1660,6 +1758,39 @@ async function deleteRecurrenceConfirm() {
   letter-spacing: -0.01em;
 }
 
+.expense-card__product-info {
+  font-size: 0.8125rem;
+  color: rgba(167, 139, 250, 0.9);
+  margin: 0 0 0.5rem;
+}
+
+.expense-badge.product-stock {
+  display: inline-block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  padding: 0.2rem 0.5rem;
+  border-radius: 8px;
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.4);
+  color: #4ade80;
+  margin-left: 0.5rem;
+  vertical-align: middle;
+}
+
+.expense-product-info {
+  display: block;
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.65);
+  margin-top: 0.25rem;
+}
+
+.expense-detail-product {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
 .expense-card__meta {
   display: flex;
   flex-direction: column;
@@ -1792,7 +1923,9 @@ async function deleteRecurrenceConfirm() {
   line-height: 1.3;
 }
 
-.recurrence-card__due {
+.recurrence-card__due,
+.recurrence-card__dates,
+.recurrence-card__payments {
   font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.45);
 }
@@ -1901,6 +2034,22 @@ async function deleteRecurrenceConfirm() {
 
 .badge.active { color: #34d399; background: rgba(52, 211, 153, 0.15); }
 .badge.inactive { color: rgba(255, 255, 255, 0.5); background: rgba(255, 255, 255, 0.08); }
+
+.expenses-section__report-inline {
+  margin-bottom: 1rem;
+}
+
+.expenses-section__report-loading,
+.expenses-section__report-error {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+}
+
+.expenses-section__report-error .expenses-section__action-btn {
+  flex-shrink: 0;
+}
 
 .expenses-section__reports {
   padding: 0.5rem 0;
