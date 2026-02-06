@@ -1,21 +1,23 @@
 <template>
   <div class="site-auth-status">
     <div v-if="authStore.isAuthenticated && authStore.user" class="site-user-info">
-      <div class="site-user-avatar">
-        <div class="site-avatar-circle">
-          <img
-            v-if="avatarUrl"
-            :src="avatarUrl"
-            alt=""
-            class="site-avatar-img"
-          />
-          <span v-else class="site-avatar-initials">{{ initials }}</span>
+      <RouterLink to="/profile" class="site-user-profile-link" @click="onNavClick">
+        <div class="site-user-avatar">
+          <div class="site-avatar-circle">
+            <img
+              v-if="avatarUrl"
+              :src="avatarUrl"
+              alt=""
+              class="site-avatar-img"
+            />
+            <span v-else class="site-avatar-initials">{{ initials }}</span>
+          </div>
         </div>
-      </div>
-      <div class="site-user-details">
-        <span class="site-welcome-text">Welcome back</span>
-        <span class="site-user-name">{{ authStore.user.name }}</span>
-      </div>
+        <div class="site-user-details">
+          <span class="site-welcome-text">Welcome back</span>
+          <span class="site-user-name">{{ authStore.user.name }}</span>
+        </div>
+      </RouterLink>
       <button
         @click="onLogoutClick"
         class="site-logout-btn"

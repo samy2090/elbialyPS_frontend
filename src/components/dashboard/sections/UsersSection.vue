@@ -555,17 +555,10 @@ const adminUsers = computed(() => userStore.getUsers?.filter(user => getUserRole
 // Methods
 const loadUsers = async (params = {}) => {
   try {
-    console.log('UsersSection: Loading users...', params)
     usersLoaded.value = false
     await userStore.fetchUsers(params)
     usersLoaded.value = true
-    console.log('UsersSection: Users loaded. Count:', userStore.getUsers.length)
-    
-    if (userStore.getUsers.length === 0) {
-      console.warn('UsersSection: Users array is empty after fetch')
-    }
   } catch (error) {
-    console.error('UsersSection: Error loading users:', error)
     usersLoaded.value = true
   }
 }
@@ -699,13 +692,9 @@ const onUserUpdated = () => {
 
 // Lifecycle
 onMounted(() => {
-  console.log('UsersSection: Component mounted, loading users...')
   loadUsers(searchQuery.value ? { search: searchQuery.value } : {})
-  
   if (userStore.fetchUserOptions) {
-    userStore.fetchUserOptions().catch(err => {
-      console.warn('UsersSection: Failed to fetch user options:', err)
-    })
+    userStore.fetchUserOptions().catch(() => {})
   }
 })
 

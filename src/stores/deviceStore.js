@@ -20,32 +20,23 @@ export const useDeviceStore = defineStore('device', () => {
         error.value = null
         try {
             const response = await deviceApi.getAllDevices()
-            console.log('Device Store - API Response:', response)
-            
+
             // The API now returns { devices: [...], pagination: {...} }
             // Handle the processed response from the API
             if (response && response.devices) {
                 devices.value = Array.isArray(response.devices) ? response.devices : []
-                console.log('Devices loaded:', devices.value.length)
             } else if (Array.isArray(response)) {
                 // Fallback: if response is directly an array
                 devices.value = response
-                console.log('Devices loaded (direct array):', devices.value.length)
             } else {
                 // Try to extract devices from various possible structures
-                devices.value = response?.data?.devices || 
-                               response?.data?.data || 
-                               response?.devices || 
-                               (Array.isArray(response?.data) ? response.data : []) ||
-                               []
-                console.log('Devices loaded (fallback):', devices.value.length)
-            }
-            
-            if (devices.value.length === 0) {
-                console.warn('No devices found in response:', response)
+                devices.value = response?.data?.devices ||
+                    response?.data?.data ||
+                    response?.devices ||
+                    (Array.isArray(response?.data) ? response.data : []) ||
+                    []
             }
         } catch (err) {
-            console.error('Error fetching devices:', err)
             error.value = err.response?.data?.message || err.message || 'Failed to fetch devices'
             devices.value = []
             throw err // Re-throw error for component handling
@@ -59,7 +50,6 @@ export const useDeviceStore = defineStore('device', () => {
         error.value = null
         try {
             const response = await deviceApi.createDevice(deviceData)
-            console.log('Create Device API Response:', response)
             // Handle Laravel API response structure for single device
             const newDevice = response.data?.device || response.data || response
             devices.value.push(newDevice)
@@ -78,7 +68,6 @@ export const useDeviceStore = defineStore('device', () => {
         error.value = null
         try {
             const response = await deviceApi.updateDevice(id, deviceData)
-            console.log('Update Device API Response:', response)
             // Handle Laravel API response structure for single device
             const updatedDevice = response.data?.device || response.data || response
             const index = devices.value.findIndex(device => device.id === id)
@@ -87,7 +76,6 @@ export const useDeviceStore = defineStore('device', () => {
             }
             return updatedDevice
         } catch (err) {
-            console.error('Error updating device:', err)
             error.value = err.response?.data?.message || err.message || 'Failed to update device'
             throw err
         } finally {
@@ -102,7 +90,6 @@ export const useDeviceStore = defineStore('device', () => {
             await deviceApi.deleteDevice(id)
             devices.value = devices.value.filter(device => device.id !== id)
         } catch (err) {
-            console.error('Error deleting device:', err)
             error.value = err.response?.data?.message || err.message || 'Failed to delete device'
             throw err
         } finally {
@@ -115,7 +102,6 @@ export const useDeviceStore = defineStore('device', () => {
         error.value = null
         try {
             const response = await deviceApi.updateDeviceStatus(id, status)
-            console.log('Update Device Status API Response:', response)
             // Handle Laravel API response structure for single device
             const updatedDevice = response.data?.device || response.data || response
             const index = devices.value.findIndex(device => device.id === id)
@@ -125,7 +111,6 @@ export const useDeviceStore = defineStore('device', () => {
             }
             return updatedDevice
         } catch (err) {
-            console.error('Error updating device status:', err)
             error.value = err.response?.data?.message || err.message || 'Failed to update device status'
             throw err
         } finally {

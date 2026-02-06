@@ -614,6 +614,27 @@
   transform: translateY(-1px);
 }
 
+/* Profile link: avatar + name → My Profile page */
+.site-user-profile-link {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-decoration: none;
+  color: inherit;
+  flex: 1;
+  min-width: 0;
+}
+
+.site-user-profile-link:focus {
+  outline: none;
+}
+
+.site-user-profile-link:focus-visible {
+  outline: 2px solid var(--user-accent, #8b5cf6);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
 .site-user-avatar {
   position: relative;
   flex-shrink: 0;

@@ -14,6 +14,7 @@ export { default as CtaBlock } from './ui/CtaBlock.vue'
 export { default as SectionHeader } from './ui/SectionHeader.vue'
 export { default as HeroSection } from './ui/HeroSection.vue'
 export { default as FuturisticButton } from './ui/FuturisticButton.vue'
+export { default as Lightbox } from './ui/Lightbox.vue'
 
 // Icons
 export * from './ui/icons'

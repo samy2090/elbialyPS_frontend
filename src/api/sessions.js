@@ -12,22 +12,13 @@ class SessionService {
      */
     static async getSessionsByDate(date, params = {}) {
         try {
-            console.log('=== Session API Request (By Date) ===')
-            console.log('URL:', api.defaults.baseURL + `/api/sessions/date/${date}`)
-            console.log('Params:', params)
-
             const response = await api.get(`/api/sessions/date/${date}`, { params })
-
-            console.log('=== Raw API Response (By Date) ===')
-            console.log('Response object:', response)
-            console.log('Response.data:', response.data)
 
             // Handle different Laravel response formats (same as getAllSessions)
             let sessionsData = null
 
             // Format 1: Laravel Paginated Response
             if (response.data?.data && Array.isArray(response.data.data) && response.data.current_page !== undefined) {
-                console.log('Detected format: Laravel paginated response')
                 sessionsData = {
                     sessions: response.data.data,
                     pagination: {
@@ -43,7 +34,6 @@ class SessionService {
             }
             // Format 2: Laravel Resource Collection with success wrapper
             else if (response.data?.success && Array.isArray(response.data.data)) {
-                console.log('Detected format: Success wrapper with data array')
                 sessionsData = {
                     sessions: response.data.data,
                     pagination: response.data.meta || response.data.pagination || null
@@ -51,7 +41,6 @@ class SessionService {
             }
             // Format 3: Direct array response
             else if (Array.isArray(response.data)) {
-                console.log('Detected format: Direct array')
                 sessionsData = {
                     sessions: response.data,
                     pagination: null
@@ -59,7 +48,6 @@ class SessionService {
             }
             // Format 4: Nested sessions property
             else if (response.data?.sessions && Array.isArray(response.data.sessions)) {
-                console.log('Detected format: Nested sessions property')
                 sessionsData = {
                     sessions: response.data.sessions,
                     pagination: response.data.pagination || response.data.meta || null
@@ -67,7 +55,6 @@ class SessionService {
             }
             // Format 5: Resource Collection with meta
             else if (response.data?.data && Array.isArray(response.data.data) && response.data.meta) {
-                console.log('Detected format: Resource Collection with meta')
                 sessionsData = {
                     sessions: response.data.data,
                     pagination: {
@@ -78,10 +65,6 @@ class SessionService {
             }
             // Fallback
             else {
-                console.warn('=== UNEXPECTED RESPONSE FORMAT (By Date) ===')
-                console.warn('Full response.data:', JSON.stringify(response.data, null, 2))
-                console.warn('Attempting fallback extraction...')
-
                 const fallbackSessions =
                     response.data?.data ||
                     response.data?.sessions ||
@@ -94,22 +77,8 @@ class SessionService {
                 }
             }
 
-            console.log('=== Processed Sessions Data (By Date) ===')
-            console.log('Sessions count:', sessionsData.sessions?.length || 0)
-            console.log('First session sample:', sessionsData.sessions?.[0] || 'No sessions')
-            console.log('Pagination:', sessionsData.pagination)
-            console.log('==================')
-
             return sessionsData
         } catch (error) {
-            console.error('Get Sessions By Date Error Details:', {
-                message: error.message,
-                code: error.code,
-                response: error.response,
-                request: error.request,
-                config: error.config
-            })
-
             // Provide more specific error information
             if (error.response?.status === 401) {
                 throw new Error('Authentication required - please login first')
@@ -134,15 +103,7 @@ class SessionService {
      */
     static async getAllSessions(params = {}) {
         try {
-            console.log('=== Session API Request ===')
-            console.log('URL:', api.defaults.baseURL + '/api/sessions')
-            console.log('Params:', params)
-
             const response = await api.get('/api/sessions', { params })
-
-            console.log('=== Raw API Response ===')
-            console.log('Response object:', response)
-            console.log('Response.data:', response.data)
 
             // Handle different Laravel response formats
             let sessionsData = null
@@ -150,7 +111,6 @@ class SessionService {
             // Format 1: Laravel Paginated Response (most common)
             // { data: [...], current_page, total, per_page, last_page, ... }
             if (response.data?.data && Array.isArray(response.data.data) && response.data.current_page !== undefined) {
-                console.log('Detected format: Laravel paginated response')
                 sessionsData = {
                     sessions: response.data.data,
                     pagination: {
@@ -166,8 +126,7 @@ class SessionService {
             }
             // Format 2: Laravel Resource Collection with success wrapper
             // { success: true, data: [...], message: "..." }
-            else if (response.data?.success && Array.isArray(response.data.data)) {
-                console.log('Detected format: Success wrapper with data array')
+            else if ((response.data?.success || response.data?.status === 'success') && Array.isArray(response.data.data)) {
                 sessionsData = {
                     sessions: response.data.data,
                     pagination: response.data.meta || response.data.pagination || null
@@ -176,7 +135,6 @@ class SessionService {
             // Format 3: Direct array response
             // [...]
             else if (Array.isArray(response.data)) {
-                console.log('Detected format: Direct array')
                 sessionsData = {
                     sessions: response.data,
                     pagination: null
@@ -185,7 +143,6 @@ class SessionService {
             // Format 4: Nested sessions property
             // { sessions: [...], pagination: {...} }
             else if (response.data?.sessions && Array.isArray(response.data.sessions)) {
-                console.log('Detected format: Nested sessions property')
                 sessionsData = {
                     sessions: response.data.sessions,
                     pagination: response.data.pagination || response.data.meta || null
@@ -194,7 +151,6 @@ class SessionService {
             // Format 5: Resource Collection (Laravel API Resource)
             // { data: [...], meta: {...}, links: {...} }
             else if (response.data?.data && Array.isArray(response.data.data) && response.data.meta) {
-                console.log('Detected format: Resource Collection with meta')
                 sessionsData = {
                     sessions: response.data.data,
                     pagination: {
@@ -205,10 +161,6 @@ class SessionService {
             }
             // Fallback: try to extract any array from response
             else {
-                console.warn('=== UNEXPECTED RESPONSE FORMAT ===')
-                console.warn('Full response.data:', JSON.stringify(response.data, null, 2))
-                console.warn('Attempting fallback extraction...')
-
                 const fallbackSessions =
                     response.data?.data ||
                     response.data?.sessions ||
@@ -221,22 +173,8 @@ class SessionService {
                 }
             }
 
-            console.log('=== Processed Sessions Data ===')
-            console.log('Sessions count:', sessionsData.sessions?.length || 0)
-            console.log('First session sample:', sessionsData.sessions?.[0] || 'No sessions')
-            console.log('Pagination:', sessionsData.pagination)
-            console.log('==================')
-
             return sessionsData
         } catch (error) {
-            console.error('Get Sessions Error Details:', {
-                message: error.message,
-                code: error.code,
-                response: error.response,
-                request: error.request,
-                config: error.config
-            })
-
             // Provide more specific error information
             if (error.response?.status === 401) {
                 throw new Error('Authentication required - please login first')
@@ -260,7 +198,6 @@ class SessionService {
     static async getSessionById(id) {
         try {
             const response = await api.get(`/api/sessions/${id}`)
-            console.log('Get Session By ID Response:', response.data)
 
             // Handle different response formats
             if (response.data?.data) {
@@ -270,7 +207,6 @@ class SessionService {
             }
             return response.data
         } catch (error) {
-            console.error('Get Session Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to fetch session')
         }
     }
@@ -285,7 +221,6 @@ class SessionService {
             const response = await api.post('/api/sessions', sessionData)
             return response.data
         } catch (error) {
-            console.error('Create Session Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to create session')
         }
     }
@@ -301,7 +236,6 @@ class SessionService {
             const response = await api.put(`/api/sessions/${id}`, sessionData)
             return response.data
         } catch (error) {
-            console.error('Update Session Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to update session')
         }
     }
@@ -316,7 +250,6 @@ class SessionService {
             const response = await api.delete(`/api/sessions/${id}`)
             return response.data
         } catch (error) {
-            console.error('Delete Session Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to delete session')
         }
     }
@@ -332,7 +265,6 @@ class SessionService {
             const response = await api.patch(`/api/sessions/${id}/end`, data)
             return response.data
         } catch (error) {
-            console.error('End Session Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to end session')
         }
     }
@@ -347,7 +279,6 @@ class SessionService {
             const response = await api.patch(`/api/sessions/${id}/pause`)
             return response.data
         } catch (error) {
-            console.error('Pause Session Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to pause session')
         }
     }
@@ -362,7 +293,6 @@ class SessionService {
             const response = await api.patch(`/api/sessions/${id}/resume`)
             return response.data
         } catch (error) {
-            console.error('Resume Session Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to resume session')
         }
     }
@@ -377,7 +307,6 @@ class SessionService {
     static async getSessionActivities(sessionId) {
         try {
             const response = await api.get(`/api/sessions/${sessionId}/activities`)
-            console.log('Get Session Activities Response:', response.data)
 
             // Handle different response formats
             if (response.data?.data) {
@@ -387,7 +316,6 @@ class SessionService {
             }
             return response.data
         } catch (error) {
-            console.error('Get Session Activities Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to fetch session activities')
         }
     }
@@ -401,7 +329,6 @@ class SessionService {
     static async getActivityById(sessionId, activityId) {
         try {
             const response = await api.get(`/api/sessions/${sessionId}/activities/${activityId}`)
-            console.log('Get Activity By ID Response:', response.data)
 
             // Handle different response formats
             if (response.data?.data) {
@@ -411,7 +338,6 @@ class SessionService {
             }
             return response.data
         } catch (error) {
-            console.error('Get Activity Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to fetch activity')
         }
     }
@@ -427,7 +353,6 @@ class SessionService {
             const response = await api.get(`/api/sessions/${sessionId}/activities/type/${type}`)
             return response.data
         } catch (error) {
-            console.error('Get Activities By Type Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to fetch activities by type')
         }
     }
@@ -444,12 +369,6 @@ class SessionService {
             if (!sessionId || sessionId === 0 || isNaN(Number(sessionId))) {
                 throw new Error('Invalid session ID. Session ID must be a valid number.')
             }
-
-            console.log('Create Activity Request:', {
-                sessionId,
-                activityData,
-                url: `/api/sessions/${sessionId}/activities`
-            })
 
             // Prepare request data
             // Laravel validation might need session_id in body for exists:sessions,id validation
@@ -470,27 +389,9 @@ class SessionService {
                 requestData.activity_type = String(requestData.activity_type).toLowerCase()
             }
 
-            console.log('Create Activity Request Data:', requestData)
-            console.log('Session ID validation:', {
-                urlSessionId: sessionId,
-                urlSessionIdType: typeof sessionId,
-                bodySessionId: requestData.session_id,
-                bodySessionIdType: typeof requestData.session_id,
-                activity_type: requestData.activity_type
-            })
-
             const response = await api.post(`/api/sessions/${sessionId}/activities`, requestData)
-            console.log('Create Activity Response:', response.data)
             return response.data
         } catch (error) {
-            console.error('Create Activity Error:', error)
-            console.error('Error Details:', {
-                message: error.message,
-                response: error.response?.data,
-                status: error.response?.status,
-                errors: error.response?.data?.errors
-            })
-
             // Provide more detailed error messages
             if (error.response?.data?.errors) {
                 const errors = error.response.data.errors
@@ -517,7 +418,6 @@ class SessionService {
             const response = await api.put(`/api/sessions/${sessionId}/activities/${activityId}`, activityData)
             return response.data
         } catch (error) {
-            console.error('Update Activity Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to update activity')
         }
     }
@@ -533,7 +433,6 @@ class SessionService {
             const response = await api.delete(`/api/sessions/${sessionId}/activities/${activityId}`)
             return response.data
         } catch (error) {
-            console.error('Delete Activity Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to delete activity')
         }
     }
@@ -550,7 +449,6 @@ class SessionService {
             const response = await api.patch(`/api/sessions/${sessionId}/activities/${activityId}/status`, { status })
             return response.data
         } catch (error) {
-            console.error('Update Activity Status Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to update activity status')
         }
     }
@@ -567,7 +465,6 @@ class SessionService {
             const response = await api.patch(`/api/sessions/${sessionId}/activities/${activityId}/end`, data)
             return response.data
         } catch (error) {
-            console.error('End Activity Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to end activity')
         }
     }
@@ -583,7 +480,6 @@ class SessionService {
             const response = await api.patch(`/api/sessions/${sessionId}/activities/${activityId}/calculate-duration`)
             return response.data
         } catch (error) {
-            console.error('Calculate Activity Duration Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to calculate activity duration')
         }
     }
@@ -620,7 +516,6 @@ class SessionService {
             const fallback = data?.users ?? data?.data ?? (Array.isArray(data) ? data : [])
             return Array.isArray(fallback) ? fallback : []
         } catch (error) {
-            console.error('Get Available Users Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to fetch available users')
         }
     }
@@ -637,7 +532,6 @@ class SessionService {
             const response = await api.post(`/api/sessions/${sessionId}/activities/${activityId}/users`, data)
             return response.data
         } catch (error) {
-            console.error('Add User To Activity Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to add user to activity')
         }
     }
@@ -654,7 +548,6 @@ class SessionService {
             const response = await api.delete(`/api/sessions/${sessionId}/activities/${activityId}/users/${userId}`)
             return response.data
         } catch (error) {
-            console.error('Remove User From Activity Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to remove user from activity')
         }
     }
@@ -672,7 +565,6 @@ class SessionService {
             const response = await api.get(`/api/sessions/${sessionId}/activities/${activityId}/products`)
             return response.data
         } catch (error) {
-            console.error('Get Activity Products Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to fetch activity products')
         }
     }
@@ -689,7 +581,6 @@ class SessionService {
             const response = await api.post(`/api/sessions/${sessionId}/activities/${activityId}/products`, data)
             return response.data
         } catch (error) {
-            console.error('Add Product To Activity Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to add product to activity')
         }
     }
@@ -724,7 +615,6 @@ class SessionService {
             const response = await api.delete(`/api/sessions/${sessionId}/activities/${activityId}/products/${productOrderId}`)
             return response.data
         } catch (error) {
-            console.error('Delete Activity Product Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to delete activity product')
         }
     }
@@ -741,7 +631,6 @@ class SessionService {
             const response = await api.get(`/api/sessions/${sessionId}/activities/${activityId}/products/user/${userId}`)
             return response.data
         } catch (error) {
-            console.error('Get Activity Products By User Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to fetch user products')
         }
     }
@@ -770,7 +659,6 @@ class SessionService {
                 history: Array.isArray(history) ? history : []
             }
         } catch (error) {
-            console.error('Get Activity History Error:', error)
             throw new Error(error.response?.data?.message || 'Failed to fetch activity history')
         }
     }

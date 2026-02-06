@@ -1,5 +1,5 @@
 <template>
-  <section class="hero-section">
+  <section ref="heroRef" class="hero-section" :class="{ 'hero-section--visible': isVisible }">
     <div class="hero-section__bg">
       <div class="hero-section__orb hero-section__orb--1" aria-hidden="true"></div>
       <div class="hero-section__orb hero-section__orb--2" aria-hidden="true"></div>
@@ -44,10 +44,36 @@
 </template>
 
 <script setup>
+import { ref, onMounted, onUnmounted } from 'vue'
+
 defineProps({
   title: { type: String, default: '' },
   titleHighlight: { type: String, default: '' },
   description: { type: String, default: '' },
+})
+
+const heroRef = ref(null)
+const isVisible = ref(false)
+
+// Only run animations when hero is in view (saves CPU when off-screen)
+let observer = null
+onMounted(() => {
+  if (!heroRef.value || typeof IntersectionObserver === 'undefined') {
+    isVisible.value = true
+    return
+  }
+  observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) isVisible.value = true
+      })
+    },
+    { rootMargin: '50px', threshold: 0.01 }
+  )
+  observer.observe(heroRef.value)
+})
+onUnmounted(() => {
+  if (observer && heroRef.value) observer.unobserve(heroRef.value)
 })
 </script>
 
@@ -67,11 +93,15 @@ defineProps({
   pointer-events: none;
 }
 
+/* Orbs: GPU-friendly (transform + opacity). Blur only on desktop; solid on mobile. */
 .hero-section__orb {
   position: absolute;
   border-radius: 50%;
-  filter: blur(90px);
   opacity: 0.4;
+  will-change: transform, opacity;
+}
+
+.hero-section--visible .hero-section__orb {
   animation: heroOrb 14s ease-in-out infinite;
 }
 
@@ -81,6 +111,7 @@ defineProps({
   background: rgba(139, 92, 246, 0.3);
   top: -25%;
   left: -12%;
+  filter: blur(90px);
   animation-delay: 0s;
 }
 
@@ -90,6 +121,7 @@ defineProps({
   background: rgba(6, 182, 212, 0.25);
   top: 25%;
   right: -18%;
+  filter: blur(90px);
   animation-delay: -3s;
 }
 
@@ -99,6 +131,7 @@ defineProps({
   background: rgba(168, 85, 247, 0.2);
   bottom: -15%;
   left: 25%;
+  filter: blur(90px);
   animation-delay: -7s;
 }
 
@@ -108,6 +141,7 @@ defineProps({
   background: rgba(236, 72, 153, 0.15);
   top: 60%;
   left: 5%;
+  filter: blur(90px);
   animation-delay: -11s;
 }
 
@@ -127,6 +161,10 @@ defineProps({
   background-size: 56px 56px;
   mask-image: radial-gradient(ellipse 110% 90% at 50% 40%, black 15%, transparent 72%);
   -webkit-mask-image: radial-gradient(ellipse 110% 90% at 50% 40%, black 15%, transparent 72%);
+  will-change: opacity;
+}
+
+.hero-section--visible .hero-section__grid {
   animation: heroGridPulse 8s ease-in-out infinite;
 }
 
@@ -152,9 +190,22 @@ defineProps({
   right: 0;
   height: 2px;
   background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.8), rgba(139, 92, 246, 0.9), transparent);
-  box-shadow: 0 0 24px rgba(6, 182, 212, 0.5);
-  animation: heroScan 4s linear infinite;
   pointer-events: none;
+  will-change: transform, opacity;
+}
+
+/* Static glow (no animated box-shadow) for performance */
+.hero-section__scan::after {
+  content: '';
+  position: absolute;
+  inset: -2px 0;
+  background: rgba(6, 182, 212, 0.15);
+  border-radius: 2px;
+  z-index: -1;
+}
+
+.hero-section--visible .hero-section__scan {
+  animation: heroScan 4s linear infinite;
 }
 
 @keyframes heroScan {
@@ -177,11 +228,25 @@ defineProps({
   height: 4px;
   border-radius: 50%;
   background: rgba(139, 92, 246, 0.5);
-  box-shadow: 0 0 12px rgba(139, 92, 246, 0.6);
-  animation: heroParticle 10s ease-in-out infinite;
-  animation-delay: calc(var(--p, 0) * -0.5s);
+  will-change: transform, opacity;
+  /* Position with % (one-time), animation uses only transform + opacity */
   left: calc((var(--p, 1) * 6.25%) % 100%);
   top: calc((var(--p, 1) * 7%) % 100%);
+}
+
+.hero-section--visible .hero-section__particle {
+  animation: heroParticle 10s ease-in-out infinite;
+  animation-delay: calc(var(--p, 0) * -0.5s);
+}
+
+/* Light shadow on desktop only; none on mobile to reduce paint cost */
+.hero-section__particle::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 @keyframes heroParticle {
@@ -221,6 +286,10 @@ defineProps({
 
 .hero-section__badge-wrap {
   margin-bottom: 1rem;
+  opacity: 0;
+}
+
+.hero-section--visible .hero-section__badge-wrap {
   animation: heroBadgeIn 0.7s cubic-bezier(0.34, 1.2, 0.64, 1) both;
 }
 
@@ -236,9 +305,14 @@ defineProps({
   color: rgba(255, 255, 255, 0.97);
   margin-bottom: 1.35rem;
   letter-spacing: -0.045em;
+  opacity: 0;
+}
+
+.hero-section--visible .hero-section__title {
   animation: heroTitleIn 1s cubic-bezier(0.34, 1.2, 0.64, 1) both;
 }
 
+/* Gradient text: animate background-position only (no filter in keyframes for perf) */
 .hero-section__title-highlight {
   display: inline-block;
   background: linear-gradient(120deg, #a78bfa 0%, #06b6d4 40%, #a78bfa 70%, #ec4899 100%);
@@ -246,14 +320,16 @@ defineProps({
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
-  animation: heroHighlightShimmer 6s ease-in-out infinite;
   position: relative;
-  filter: drop-shadow(0 0 30px rgba(139, 92, 246, 0.4));
+}
+
+.hero-section--visible .hero-section__title-highlight {
+  animation: heroHighlightShimmer 6s ease-in-out infinite;
 }
 
 @keyframes heroHighlightShimmer {
-  0%, 100% { background-position: 0% center; filter: drop-shadow(0 0 30px rgba(139, 92, 246, 0.4)); }
-  50% { background-position: 100% center; filter: drop-shadow(0 0 40px rgba(6, 182, 212, 0.5)); }
+  0%, 100% { background-position: 0% center; opacity: 1; }
+  50% { background-position: 100% center; opacity: 0.92; }
 }
 
 @keyframes heroTitleIn {
@@ -267,6 +343,10 @@ defineProps({
   line-height: 1.7;
   margin-bottom: 2.25rem;
   max-width: 520px;
+  opacity: 0;
+}
+
+.hero-section--visible .hero-section__description {
   animation: heroDescIn 1s cubic-bezier(0.34, 1.2, 0.64, 1) 0.2s both;
 }
 
@@ -279,6 +359,10 @@ defineProps({
   display: flex;
   flex-wrap: wrap;
   gap: 1rem;
+  opacity: 0;
+}
+
+.hero-section--visible .hero-section__actions {
   animation: heroActionsIn 1s cubic-bezier(0.34, 1.2, 0.64, 1) 0.35s both;
 }
 
@@ -291,12 +375,83 @@ defineProps({
   display: flex;
   justify-content: center;
   align-items: center;
+  opacity: 0;
+}
+
+.hero-section--visible .hero-section__visual {
   animation: heroVisualIn 1.2s cubic-bezier(0.34, 1.2, 0.64, 1) 0.25s both;
 }
 
 @keyframes heroVisualIn {
   from { opacity: 0; transform: scale(0.9) translateX(30px); }
   to { opacity: 1; transform: scale(1) translateX(0); }
+}
+
+/* ---------- Mobile: lighter animations for performance ---------- */
+@media (max-width: 767px) {
+  /* No blur on orbs (filter is very expensive on mobile GPU) */
+  .hero-section__orb--1,
+  .hero-section__orb--2,
+  .hero-section__orb--3,
+  .hero-section__orb--4 {
+    filter: none;
+  }
+
+  /* Slightly smaller orbs, same positions */
+  .hero-section__orb--1 { width: 320px; height: 320px; }
+  .hero-section__orb--2 { width: 240px; height: 240px; }
+  .hero-section__orb--3 { width: 180px; height: 180px; }
+  .hero-section__orb--4 { width: 120px; height: 120px; }
+
+  .hero-section--visible .hero-section__orb {
+    animation-duration: 20s;
+  }
+
+  .hero-section--visible .hero-section__grid {
+    animation-duration: 12s;
+  }
+
+  .hero-section--visible .hero-section__scan {
+    animation-duration: 6s;
+  }
+
+  .hero-section--visible .hero-section__particle {
+    animation-duration: 14s;
+  }
+
+  /* Fewer particles visible on mobile (hide the rest) */
+  .hero-section__particle:nth-child(n+7) {
+    display: none;
+  }
+
+  /* Remove glow pseudo on particles to reduce paint */
+  .hero-section__particle::before {
+    display: none;
+  }
+
+  /* Shorter entry animation durations */
+  .hero-section--visible .hero-section__badge-wrap {
+    animation-duration: 0.5s;
+  }
+  .hero-section--visible .hero-section__title {
+    animation-duration: 0.6s;
+  }
+  .hero-section--visible .hero-section__description {
+    animation-duration: 0.6s;
+    animation-delay: 0.1s;
+  }
+  .hero-section--visible .hero-section__actions {
+    animation-duration: 0.6s;
+    animation-delay: 0.2s;
+  }
+  .hero-section--visible .hero-section__visual {
+    animation-duration: 0.7s;
+    animation-delay: 0.15s;
+  }
+
+  .hero-section--visible .hero-section__title-highlight {
+    animation: none;
+  }
 }
 
 @media (max-width: 768px) {
@@ -323,13 +478,24 @@ defineProps({
   }
 }
 
+/* ---------- Reduced motion: disable animations, show final state ---------- */
 @media (prefers-reduced-motion: reduce) {
   .hero-section__orb,
   .hero-section__grid,
   .hero-section__scan,
   .hero-section__particle,
   .hero-section__title-highlight {
-    animation: none;
+    animation: none !important;
+  }
+
+  .hero-section__badge-wrap,
+  .hero-section__title,
+  .hero-section__description,
+  .hero-section__actions,
+  .hero-section__visual {
+    animation: none !important;
+    opacity: 1;
+    transform: none;
   }
 }
 </style>

@@ -51,8 +51,6 @@ let isRedirecting = false
 // Response interceptor
 api.interceptors.response.use(
   (response) => {
-    console.log('API Response received:', response.status, response.statusText)
-
     // Extract CSRF token from response if available
     if (response.headers['x-xsrf-token']) {
       csrfToken = response.headers['x-xsrf-token']
@@ -77,8 +75,6 @@ api.interceptors.response.use(
   (error) => {
     // Handle 401 Unauthorized errors
     if (error.response?.status === 401) {
-      console.log('Unauthorized - redirecting to login')
-
       // Clear auth data from localStorage
       localStorage.removeItem('auth_user_data')
       localStorage.removeItem('auth_token')

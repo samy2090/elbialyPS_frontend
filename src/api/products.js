@@ -11,15 +11,7 @@ class ProductService {
    */
   static async getAllProducts(params = {}) {
     try {
-      console.log('=== API Request ===')
-      console.log('URL:', api.defaults.baseURL + '/api/products')
-      console.log('Params:', params)
-
       const response = await api.get('/api/products', { params })
-
-      console.log('=== Raw API Response ===')
-      console.log('Response object:', response)
-      console.log('Response.data:', response.data)
 
       // Handle different Laravel response formats
       let productsData = null
@@ -27,7 +19,6 @@ class ProductService {
       // Format 1: Laravel Paginated Response (most common)
       // { data: [...], current_page, total, per_page, last_page, ... }
       if (response.data?.data && Array.isArray(response.data.data) && response.data.current_page !== undefined) {
-        console.log('Detected format: Laravel paginated response')
         productsData = {
           products: response.data.data,
           pagination: {
@@ -43,8 +34,7 @@ class ProductService {
       }
       // Format 2: Laravel Resource Collection with success wrapper
       // { success: true, data: [...], message: "..." }
-      else if (response.data?.success && Array.isArray(response.data.data)) {
-        console.log('Detected format: Success wrapper with data array')
+      else if ((response.data?.success || response.data?.status === 'success') && Array.isArray(response.data.data)) {
         productsData = {
           products: response.data.data,
           pagination: response.data.meta || response.data.pagination || null
@@ -53,7 +43,6 @@ class ProductService {
       // Format 3: Direct array response
       // [...]
       else if (Array.isArray(response.data)) {
-        console.log('Detected format: Direct array')
         productsData = {
           products: response.data,
           pagination: null
@@ -62,7 +51,6 @@ class ProductService {
       // Format 4: Nested products property
       // { products: [...], pagination: {...} }
       else if (response.data?.products && Array.isArray(response.data.products)) {
-        console.log('Detected format: Nested products property')
         productsData = {
           products: response.data.products,
           pagination: response.data.pagination || response.data.meta || null
@@ -71,7 +59,6 @@ class ProductService {
       // Format 5: Resource Collection (Laravel API Resource)
       // { data: [...], meta: {...}, links: {...} }
       else if (response.data?.data && Array.isArray(response.data.data) && response.data.meta) {
-        console.log('Detected format: Resource Collection with meta')
         productsData = {
           products: response.data.data,
           pagination: {
@@ -82,10 +69,6 @@ class ProductService {
       }
       // Fallback: try to extract any array from response
       else {
-        console.warn('=== UNEXPECTED RESPONSE FORMAT ===')
-        console.warn('Full response.data:', JSON.stringify(response.data, null, 2))
-        console.warn('Attempting fallback extraction...')
-
         const fallbackProducts =
           response.data?.data ||
           response.data?.products ||
@@ -98,22 +81,8 @@ class ProductService {
         }
       }
 
-      console.log('=== Processed Products Data ===')
-      console.log('Products count:', productsData.products?.length || 0)
-      console.log('First product sample:', productsData.products?.[0] || 'No products')
-      console.log('Pagination:', productsData.pagination)
-      console.log('==================')
-
       return productsData
     } catch (error) {
-      console.error('Get Products Error Details:', {
-        message: error.message,
-        code: error.code,
-        response: error.response,
-        request: error.request,
-        config: error.config
-      })
-
       // Provide more specific error information
       if (error.response?.status === 401) {
         throw new Error('Authentication required - please login first')
@@ -140,7 +109,6 @@ class ProductService {
       const data = response.data?.data ?? response.data
       return Array.isArray(data) ? { data } : { data: data?.data ?? [] }
     } catch (error) {
-      console.error('Get Product Categories Error:', error)
       throw new Error(error.response?.data?.message || 'Failed to fetch product categories')
     }
   }
@@ -159,7 +127,6 @@ class ProductService {
       const list = Array.isArray(data) ? data : (data?.data ?? [])
       return list
     } catch (error) {
-      console.error('Get Products By Category Error:', error)
       throw new Error(error.response?.data?.message || 'Failed to fetch products')
     }
   }
@@ -172,7 +139,6 @@ class ProductService {
   static async getProductById(id) {
     try {
       const response = await api.get(`/api/products/${id}`)
-      console.log('Get Product By ID Response:', response.data)
 
       // Handle different response formats
       if (response.data?.data) {
@@ -182,7 +148,6 @@ class ProductService {
       }
       return response.data
     } catch (error) {
-      console.error('Get Product Error:', error)
       throw new Error(error.response?.data?.message || 'Failed to fetch product')
     }
   }

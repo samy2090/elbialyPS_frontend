@@ -11,17 +11,7 @@ class UserService {
    */
   static async getAllUsers(params = {}) {
     try {
-      console.log('=== API Request ===')
-      console.log('URL:', api.defaults.baseURL + '/api/users')
-      console.log('Params:', params)
-
       const response = await api.get('/api/users', { params })
-
-      console.log('=== Raw API Response ===')
-      console.log('Response object:', response)
-      console.log('Response.data:', response.data)
-      console.log('Response.data type:', typeof response.data)
-      console.log('Is array?', Array.isArray(response.data))
 
       // Handle different Laravel response formats
       let usersData = null
@@ -29,7 +19,6 @@ class UserService {
       // Format 1: Laravel Resource Collection with success wrapper
       // { success: true, data: [...], message: "..." } OR { status: "success", data: [...] }
       if ((response.data?.success || response.data?.status === 'success') && Array.isArray(response.data.data)) {
-        console.log('Detected format: Success wrapper with data array')
         usersData = {
           users: response.data.data,
           pagination: response.data.meta || response.data.pagination || null
@@ -38,7 +27,6 @@ class UserService {
       // Format 2: Laravel Paginated Response (most common)
       // { data: [...], current_page, total, per_page, last_page, ... }
       else if (response.data?.data && Array.isArray(response.data.data) && response.data.current_page !== undefined) {
-        console.log('Detected format: Laravel paginated response')
         usersData = {
           users: response.data.data,
           pagination: {
@@ -55,7 +43,6 @@ class UserService {
       // Format 3: Direct array response
       // [...]
       else if (Array.isArray(response.data)) {
-        console.log('Detected format: Direct array')
         usersData = {
           users: response.data,
           pagination: null
@@ -64,7 +51,6 @@ class UserService {
       // Format 4: Nested users property
       // { users: [...], pagination: {...} }
       else if (response.data?.users && Array.isArray(response.data.users)) {
-        console.log('Detected format: Nested users property')
         usersData = {
           users: response.data.users,
           pagination: response.data.pagination || response.data.meta || null
@@ -73,7 +59,6 @@ class UserService {
       // Format 5: Resource Collection (Laravel API Resource)
       // { data: [...], meta: {...}, links: {...} }
       else if (response.data?.data && Array.isArray(response.data.data) && response.data.meta) {
-        console.log('Detected format: Resource Collection with meta')
         usersData = {
           users: response.data.data,
           pagination: {
@@ -85,7 +70,6 @@ class UserService {
       // Format 6: Nested data.data (double nested)
       // { data: { data: [...] } }
       else if (response.data?.data?.data && Array.isArray(response.data.data.data)) {
-        console.log('Detected format: Double nested data.data')
         usersData = {
           users: response.data.data.data,
           pagination: response.data.data.pagination || response.data.pagination || null
@@ -93,7 +77,6 @@ class UserService {
       }
       // Format 7: Single user object (shouldn't happen but handle it)
       else if (response.data && typeof response.data === 'object' && response.data.id && !Array.isArray(response.data)) {
-        console.log('Detected format: Single user object (unexpected)')
         usersData = {
           users: [response.data],
           pagination: null
@@ -101,10 +84,6 @@ class UserService {
       }
       // Fallback: try to extract any array from response
       else {
-        console.warn('=== UNEXPECTED RESPONSE FORMAT ===')
-        console.warn('Full response.data:', JSON.stringify(response.data, null, 2))
-        console.warn('Attempting fallback extraction...')
-
         // Try multiple fallback strategies
         const fallbackUsers =
           response.data?.data ||
@@ -118,22 +97,8 @@ class UserService {
         }
       }
 
-      console.log('=== Processed Users Data ===')
-      console.log('Users count:', usersData.users?.length || 0)
-      console.log('First user sample:', usersData.users?.[0] || 'No users')
-      console.log('Pagination:', usersData.pagination)
-      console.log('==================')
-
       return usersData
     } catch (error) {
-      console.error('Get Users Error Details:', {
-        message: error.message,
-        code: error.code,
-        response: error.response,
-        request: error.request,
-        config: error.config
-      })
-
       // Provide more specific error information
       if (error.response?.status === 401) {
         throw new Error('Authentication required - please login first')
@@ -164,7 +129,6 @@ class UserService {
         avatar_options: Array.isArray(data?.avatar_options) ? data.avatar_options : []
       }
     } catch (error) {
-      console.error('Get User Options Dropdown Error:', error)
       return {
         roles: {},
         statuses: {},
@@ -189,7 +153,6 @@ class UserService {
   static async getUserById(id) {
     try {
       const response = await api.get(`/api/users/${id}`)
-      console.log('Get User By ID Response:', response.data)
 
       // Handle different response formats
       if (response.data?.data) {
@@ -199,7 +162,6 @@ class UserService {
       }
       return response.data
     } catch (error) {
-      console.error('Get User Error:', error)
       throw new Error(error.response?.data?.message || 'Failed to fetch user')
     }
   }
@@ -285,8 +247,9 @@ class UserService {
   }
 
   /**
-   * Get authenticated user
-   * @returns {Promise}
+   * Get authenticated user (GET /api/user).
+   * Response may include avatar_options: [{ path, url }, ...] for profile avatar picker.
+   * @returns {Promise<{ user?: object, data?: object }>}
    */
   static async getAuthenticatedUser() {
     try {
@@ -299,7 +262,55 @@ class UserService {
   }
 
   /**
-   * Update user profile
+   * Get preset avatars (GET /api/avatars).
+   * Use when avatar_options are not included in GET /api/user.
+   * @returns {Promise<Array<{ path: string, url: string }>>}
+   */
+  static async getAvatars() {
+    try {
+      const response = await api.get('/api/avatars')
+      const data = response.data?.data ?? response.data
+      return Array.isArray(data) ? data : []
+    } catch (error) {
+      console.error('Get Avatars Error:', error)
+      return []
+    }
+  }
+
+  /**
+   * Update current authenticated user's profile.
+   * Uses only: PUT/PATCH /api/user for JSON, POST /api/user for FormData (avatar upload).
+   * @param {Object} userData - Profile data (name, email, phone, password, password_confirmation, avatar).
+   *   If avatar is a File, sends POST /api/user with FormData; otherwise PATCH /api/user with JSON.
+   * @returns {Promise<{ user?: object, data?: object }>}
+   */
+  static async updateCurrentUserProfile(userData) {
+    try {
+      const isAvatarFile = userData.avatar instanceof File
+      if (isAvatarFile) {
+        const formData = new FormData()
+        formData.append('avatar', userData.avatar)
+        for (const [key, value] of Object.entries(userData)) {
+          if (key === 'avatar' || value === undefined || value === null) continue
+          if (value instanceof File) continue
+          formData.append(key, typeof value === 'object' && value !== null ? JSON.stringify(value) : String(value))
+        }
+        const response = await api.post('/api/user', formData)
+        return response.data
+      }
+      const { avatar, ...rest } = userData
+      const payload = { ...rest }
+      if (avatar != null && avatar !== '') payload.avatar = avatar
+      const response = await api.patch('/api/user', payload)
+      return response.data
+    } catch (error) {
+      console.error('Update Current User Profile Error:', error)
+      throw new Error(error.response?.data?.message || 'Failed to update profile')
+    }
+  }
+
+  /**
+   * Update user profile (legacy) – PUT /api/user/profile
    * @param {Object} userData - User profile data
    * @returns {Promise}
    */

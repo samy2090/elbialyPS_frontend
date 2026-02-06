@@ -693,7 +693,7 @@
         </div>
       </div>
 
-      <!-- Mobile Cards View -->
+      <!-- Mobile Cards View (mobile-first, touch-optimized) -->
       <div class="sessions-cards-container mobile-only">
         <div 
           v-for="session in sortedSessions" 
@@ -701,78 +701,93 @@
           class="session-card"
           :class="{ 'expanded': expandedSessionId === session.id }"
         >
-          <div class="session-card-header" @click="toggleSessionExpand(session)">
-            <div class="session-avatar">
-              {{ getSessionInitials(session.id) }}
+          <!-- Top row: Session ID, customer name, status pill -->
+          <div class="session-card-top" @click="toggleSessionExpand(session)">
+            <div class="session-card-top-info">
+              <span class="session-card-id">#{{ session.id }}</span>
+              <span class="session-card-customer">{{ session.customer?.name || 'N/A' }}</span>
             </div>
-            <div class="session-info">
-              <h3 class="session-name">Session #{{ session.id }}</h3>
-              <p class="session-customer">Customer: {{ session.customer?.name || 'N/A' }}</p>
-            </div>
-            <div class="expand-icon">
+            <span :class="getStatusClass(session)" class="session-card-status-pill">
+              {{ session.status || 'N/A' }}
+            </span>
+            <div class="session-card-expand" aria-label="Toggle details">
               <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </div>
           </div>
-          <div class="session-card-content">
-            <div class="session-badges">
-              <span :class="getStatusClass(session)" class="status-badge">
-                {{ session.status || 'N/A' }}
-              </span>
+
+          <!-- Second row: Timer as visual anchor (large, centered) -->
+          <div v-if="shouldShowSessionTimer(session) && session.activities && session.activities[0] && calculateTime(session.activities[0])" class="session-card-timer-wrap">
+            <div class="session-card-timer" :class="{ 'timer-expired': calculateTime(session.activities[0])?.expired }">
+              <div class="session-card-timer-display">
+                <span class="session-card-timer-value">{{ String(calculateTime(session.activities[0])?.hours || 0).padStart(2, '0') }}</span>
+                <span class="session-card-timer-sep">:</span>
+                <span class="session-card-timer-value">{{ String(calculateTime(session.activities[0])?.minutes || 0).padStart(2, '0') }}</span>
+                <span class="session-card-timer-unit">H M</span>
+              </div>
+              <span v-if="calculateTime(session.activities[0])?.isCountdown && !calculateTime(session.activities[0])?.expired" class="session-card-timer-dir countdown">▼</span>
+              <span v-else-if="calculateTime(session.activities[0])?.expired" class="session-card-timer-dir expired" title="Time's up!">⏰</span>
+              <span v-else class="session-card-timer-dir countup">▲</span>
+              <div v-if="calculateTime(session.activities[0])?.expired" class="session-card-timer-msg">Time's Up!</div>
             </div>
-            <!-- Timer Display for Single Activity Sessions -->
-            <div v-if="shouldShowSessionTimer(session) && session.activities && session.activities[0] && calculateTime(session.activities[0])" class="session-timer-wrapper">
-              <div class="futuristic-timer" :class="{ 'timer-expired': calculateTime(session.activities[0])?.expired }">
-                <div class="timer-display">
-                  <div class="timer-unit">
-                    <span class="timer-value">{{ String(calculateTime(session.activities[0])?.hours || 0).padStart(2, '0') }}</span>
-                    <span class="timer-label">H</span>
-                  </div>
-                  <span class="timer-separator">:</span>
-                  <div class="timer-unit">
-                    <span class="timer-value">{{ String(calculateTime(session.activities[0])?.minutes || 0).padStart(2, '0') }}</span>
-                    <span class="timer-label">M</span>
-                  </div>
-                  <span v-if="calculateTime(session.activities[0])?.isCountdown && !calculateTime(session.activities[0])?.expired" class="timer-countdown-indicator">▼</span>
-                  <span v-else-if="calculateTime(session.activities[0])?.expired" class="timer-expired-indicator" title="Time's up!">⏰</span>
-                  <span v-else class="timer-countup-indicator">▲</span>
-                </div>
-                <div v-if="calculateTime(session.activities[0])?.expired" class="timer-expired-message">Time's Up!</div>
+          </div>
+
+          <!-- Middle: Metadata (no duplicate customer – already in header). Creator, Started, Ended, Price, Activities. -->
+          <div class="session-card-meta">
+            <div class="session-card-meta-row">
+              <div class="session-card-meta-item">
+                <span class="session-card-meta-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </span>
+                <span class="session-card-meta-value">{{ session.creator?.name || 'N/A' }}</span>
               </div>
-            </div>
-            <div class="session-meta">
-              <div class="meta-item">
-                <span class="meta-label">Creator:</span>
-                <span class="meta-value">{{ session.creator?.name || 'N/A' }}</span>
-              </div>
-              <div class="meta-item">
-                <span class="meta-label">Started:</span>
-                <span class="meta-value">{{ formatDateTime(session.started_at) }}</span>
-              </div>
-              <div class="meta-item">
-                <span class="meta-label">Price:</span>
-                <span class="meta-value">${{ parseFloat(session.total_price || 0).toFixed(2) }}</span>
-              </div>
-              <div class="meta-item">
-                <span class="meta-label">Activities:</span>
-                <span class="meta-value">{{ session.activities?.length || 0 }}</span>
+              <div class="session-card-meta-item">
+                <span class="session-card-meta-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </span>
+                <span class="session-card-meta-value">{{ formatDateTime(session.started_at) }}</span>
               </div>
             </div>
-            <div class="session-actions">
-              <button @click.stop="editSession(session)" class="action-btn small primary">
-                Edit
-              </button>
-              <button v-if="session.status === 'active'" @click.stop="pauseSession(session)" class="action-btn small warning">
-                Pause
-              </button>
-              <button v-if="session.status === 'paused'" @click.stop="resumeSession(session)" class="action-btn small success">
-                Resume
-              </button>
-              <button v-if="session.status !== 'ended'" @click.stop="endSession(session)" class="action-btn small danger">
-                End
-              </button>
+            <div class="session-card-meta-row">
+              <div class="session-card-meta-item">
+                <span class="session-card-meta-icon session-card-meta-icon-ended" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                </span>
+                <span class="session-card-meta-value">{{ session.status === 'ended' && session.ended_at ? formatDateTime(session.ended_at) : '—' }}</span>
+              </div>
+              <div class="session-card-meta-item">
+                <span class="session-card-meta-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                </span>
+                <span class="session-card-meta-value">${{ parseFloat(session.total_price || 0).toFixed(2) }}</span>
+              </div>
             </div>
+            <div class="session-card-meta-row">
+              <div class="session-card-meta-item">
+                <span class="session-card-meta-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                </span>
+                <span class="session-card-meta-value">{{ session.activities?.length || 0 }} activities</span>
+              </div>
+              <div class="session-card-meta-item session-card-meta-item-spacer"></div>
+            </div>
+          </div>
+
+          <!-- Bottom: Thumb-friendly action buttons (min 44px), single row -->
+          <div class="session-card-actions">
+            <button @click.stop="editSession(session)" class="session-card-btn session-card-btn-edit" type="button">
+              Edit
+            </button>
+            <button v-if="session.status === 'active'" @click.stop="pauseSession(session)" class="session-card-btn session-card-btn-pause" type="button">
+              Pause
+            </button>
+            <button v-if="session.status === 'paused'" @click.stop="resumeSession(session)" class="session-card-btn session-card-btn-resume" type="button">
+              Resume
+            </button>
+            <button v-if="session.status !== 'ended'" @click.stop="endSession(session)" class="session-card-btn session-card-btn-end" type="button">
+              End
+            </button>
           </div>
           
           <!-- Expanded Content -->
@@ -1889,7 +1904,6 @@ const showProductDropdown = ref({}) // Key: `${sessionId}-${activityId}-${userId
 // Methods
 const loadSessions = async (page = 1) => {
   try {
-    console.log('SessionsSection: Loading sessions...', { page, perPage: perPage.value, dateRange: dateRange.value })
     sessionsLoaded.value = false
     currentPage.value = page
 
@@ -1932,14 +1946,7 @@ const loadSessions = async (page = 1) => {
     // Clear expired activities handled set when sessions are refreshed
     // This allows re-checking activities after refresh
     expiredActivitiesHandled.value.clear()
-    
-    console.log('SessionsSection: Sessions loaded. Count:', sessionStore.getSessions.length)
-    
-    if (sessionStore.getSessions.length === 0) {
-      console.warn('SessionsSection: Sessions array is empty after fetch')
-    }
   } catch (error) {
-    console.error('SessionsSection: Error loading sessions:', error)
     sessionsLoaded.value = true
   }
 }
@@ -2101,7 +2108,6 @@ const toggleSessionExpand = async (session) => {
         const fullSession = sessionStore.getCurrentSession || session
         expandedSessionId.value = fullSession.id
       } catch (error) {
-        console.error('Failed to fetch session details:', error)
         expandedSessionId.value = session.id
       }
     } else {
@@ -2142,7 +2148,6 @@ const pauseSession = async (session) => {
     showSuccessMessage('Session paused successfully!')
     loadSessions(currentPage.value)
   } catch (error) {
-    console.error('Failed to pause session:', error)
   }
 }
 
@@ -2152,7 +2157,6 @@ const resumeSession = async (session) => {
     showSuccessMessage('Session resumed successfully!')
     loadSessions(currentPage.value)
   } catch (error) {
-    console.error('Failed to resume session:', error)
   }
 }
 
@@ -2181,14 +2185,12 @@ const endSession = async (session) => {
       await confirmEndSession()
     }
   } catch (error) {
-    console.error('Failed to check session activities:', error)
     // Fallback: try to end session anyway
     try {
       await sessionStore.endSession(session.id)
       showSuccessMessage('Session ended successfully!')
       loadSessions(currentPage.value)
     } catch (endError) {
-      console.error('Failed to end session:', endError)
     }
   }
 }
@@ -2205,7 +2207,6 @@ const confirmEndSession = async () => {
     closeEndSessionModal()
     loadSessions(currentPage.value)
   } catch (error) {
-    console.error('Failed to end session:', error)
     sessionStore.error = error.message || 'Failed to end session'
   }
 }
@@ -2240,7 +2241,6 @@ const confirmDeleteSession = async () => {
       showSuccessMessage('Session deleted successfully!')
       closeDeleteModal()
     } catch (error) {
-      console.error('Failed to delete session:', error)
       closeDeleteModal()
     }
   }
@@ -2257,10 +2257,6 @@ const openCreateActivityModal = () => {
   const sessionId = selectedSession.value?.id || editingSession.value?.id
   if (!sessionId || sessionId === 0) {
     showSuccessMessage('Please select a valid session first')
-    console.error('Cannot create activity: Invalid session ID', { 
-      selectedSession: selectedSession.value, 
-      editingSession: editingSession.value 
-    })
     return
   }
   showCreateActivityModal.value = true
@@ -2327,7 +2323,6 @@ const editSession = async (session) => {
     }
     showEditModal.value = true
   } catch (error) {
-    console.error('Failed to fetch session details:', error)
     // Fallback to the session data from the list (which includes activities from API)
     editingSession.value = {
       ...session,
@@ -2363,7 +2358,6 @@ const confirmChangeActivityStatus = async () => {
       selectedSession.value = sessionStore.getCurrentSession || selectedSession.value
       closeActivityStatusModal()
     } catch (error) {
-      console.error('Failed to change activity status:', error)
     }
   }
 }
@@ -2377,7 +2371,6 @@ const endActivity = async (activity) => {
       await sessionStore.fetchSessionById(selectedSession.value.id)
       selectedSession.value = sessionStore.getCurrentSession || selectedSession.value
     } catch (error) {
-      console.error('Failed to end activity:', error)
     }
   }
 }
@@ -2391,7 +2384,6 @@ const calculateActivityDuration = async (activity) => {
       await sessionStore.fetchSessionById(selectedSession.value.id)
       selectedSession.value = sessionStore.getCurrentSession || selectedSession.value
     } catch (error) {
-      console.error('Failed to calculate activity duration:', error)
     }
   }
 }
@@ -2405,7 +2397,6 @@ const deleteActivity = async (activity) => {
       await sessionStore.fetchSessionById(selectedSession.value.id)
       selectedSession.value = sessionStore.getCurrentSession || selectedSession.value
     } catch (error) {
-      console.error('Failed to delete activity:', error)
     }
   }
 }
@@ -2416,9 +2407,6 @@ const openCreateActivityModalFromEdit = () => {
   const sessionId = editingSession.value?.id
   if (!sessionId || sessionId === 0) {
     showSuccessMessage('Please select a valid session first')
-    console.error('Cannot create activity: Invalid session ID', { 
-      editingSession: editingSession.value 
-    })
     return
   }
   // Set selectedSession to editingSession so the activity form can access it
@@ -2430,7 +2418,6 @@ const openCreateActivityForSession = async (session) => {
   try {
     // Ensure we have the full session with ID
     if (!session || !session.id) {
-      console.error('Session does not have an ID:', session)
       showSuccessMessage('Error: Session ID is missing')
       return
     }
@@ -2438,16 +2425,9 @@ const openCreateActivityForSession = async (session) => {
     // Convert session ID to number to ensure it's valid
     const sessionIdNum = Number(session.id)
     if (!sessionIdNum || sessionIdNum <= 0 || isNaN(sessionIdNum)) {
-      console.error('Invalid session ID:', session.id, 'Type:', typeof session.id)
       showSuccessMessage('Error: Invalid session ID')
       return
     }
-    
-    console.log('Opening create activity modal - Initial session:', {
-      sessionId: sessionIdNum,
-      sessionIdType: typeof sessionIdNum,
-      session: session
-    })
     
     // Fetch full session details to ensure we have all data and session exists
     await sessionStore.fetchSessionById(sessionIdNum)
@@ -2455,7 +2435,6 @@ const openCreateActivityForSession = async (session) => {
     
     // Verify the fetched session has a valid ID
     if (!fullSession || !fullSession.id) {
-      console.error('Fetched session does not have an ID:', fullSession)
       showSuccessMessage('Error: Session not found')
       return
     }
@@ -2463,7 +2442,6 @@ const openCreateActivityForSession = async (session) => {
     // Ensure the ID is a number
     const finalSessionId = Number(fullSession.id)
     if (!finalSessionId || finalSessionId <= 0 || isNaN(finalSessionId)) {
-      console.error('Fetched session has invalid ID:', fullSession.id)
       showSuccessMessage('Error: Invalid session ID')
       return
     }
@@ -2474,14 +2452,7 @@ const openCreateActivityForSession = async (session) => {
       id: finalSessionId // Ensure ID is a number
     }
     showCreateActivityModal.value = true
-    
-    console.log('Opening create activity modal for session:', {
-      sessionId: finalSessionId,
-      sessionIdType: typeof finalSessionId,
-      session: selectedSession.value
-    })
   } catch (error) {
-    console.error('Failed to open create activity modal:', error)
     showSuccessMessage('Failed to open activity form: ' + (error.message || 'Unknown error'))
   }
 }
@@ -2504,7 +2475,6 @@ const endActivityFromEditModal = async (activity) => {
       await sessionStore.fetchSessionById(editingSession.value.id)
       editingSession.value = sessionStore.getCurrentSession || editingSession.value
     } catch (error) {
-      console.error('Failed to end activity:', error)
       showSuccessMessage('Failed to end activity')
     }
   }
@@ -2520,7 +2490,6 @@ const deleteActivityFromEditModal = async (activity) => {
         await sessionStore.fetchSessionById(editingSession.value.id)
         editingSession.value = sessionStore.getCurrentSession || editingSession.value
       } catch (error) {
-        console.error('Failed to delete activity:', error)
         showSuccessMessage('Failed to delete activity')
       }
     }
@@ -2536,7 +2505,6 @@ const editActivityFromExpanded = async (session, activity) => {
       await sessionStore.fetchSessionById(session.id)
       selectedSession.value = sessionStore.getCurrentSession || session
     } catch (error) {
-      console.error('Failed to fetch session details:', error)
       selectedSession.value = session
     }
   }
@@ -2550,7 +2518,6 @@ const pauseActivityFromExpanded = async (session, activity) => {
     // Refresh the session data in the expanded view
     await refreshExpandedSession(session.id)
   } catch (error) {
-    console.error('Failed to pause activity:', error)
     showSuccessMessage('Failed to pause activity')
   }
 }
@@ -2562,7 +2529,6 @@ const resumeActivityFromExpanded = async (session, activity) => {
     // Refresh the session data in the expanded view
     await refreshExpandedSession(session.id)
   } catch (error) {
-    console.error('Failed to resume activity:', error)
     showSuccessMessage('Failed to resume activity')
   }
 }
@@ -2588,7 +2554,6 @@ const endActivityFromExpanded = async (session, activity) => {
       // Refresh the session data in the expanded view
       await refreshExpandedSession(session.id)
     } catch (error) {
-      console.error('Failed to end activity:', error)
       showSuccessMessage('Failed to end activity')
     }
   }
@@ -2622,7 +2587,6 @@ const toggleActivityMode = async (session, activity) => {
     // Refresh the session data in the expanded view to ensure consistency
     await refreshExpandedSession(session.id)
   } catch (error) {
-    console.error('Failed to toggle activity mode:', error)
     // Revert optimistic update on error
     const activityIndex = session.activities?.findIndex(a => a.id === activity.id)
     if (activityIndex !== -1 && session.activities) {
@@ -2638,7 +2602,6 @@ const refreshExpandedSession = async (sessionId) => {
     // Fetch the full session details with activities to update the UI
     await sessionStore.fetchSessionById(sessionId)
   } catch (error) {
-    console.error('Failed to refresh session:', error)
   }
 }
 
@@ -2738,7 +2701,6 @@ const loadAllUsers = async () => {
     await userStore.fetchUsers({ paginate: false })
     allUsers.value = userStore.getUsers || []
   } catch (error) {
-    console.error('Failed to load users:', error)
     allUsers.value = []
   }
 }
@@ -2792,7 +2754,6 @@ const loadAvailableUsers = async (session, activity) => {
     
     return availableUsersCache.value[key]
   } catch (error) {
-    console.error('Failed to load available users:', error)
     availableUsersCache.value = { ...availableUsersCache.value, [key]: [] }
     return []
   } finally {
@@ -2845,7 +2806,6 @@ const searchUsers = (session, activity, query) => {
       // Use full object replacement for Vue reactivity
       userSearchResults.value = { ...userSearchResults.value, [key]: sorted }
     } catch (error) {
-      console.error('Failed to search users:', error)
       userSearchResults.value = { ...userSearchResults.value, [key]: [] }
     } finally {
       userSearchLoading.value = { ...userSearchLoading.value, [key]: false }
@@ -3023,7 +2983,6 @@ const createAndSelectUser = async (session, activity) => {
   // Show success message
   showSuccessMessage(`User "${userName}" created and added successfully`)
   } catch (error) {
-    console.error('Failed to create user:', error)
     showSuccessMessage('Failed to create user: ' + (error.message || 'Unknown error'))
   } finally {
     creatingUser.value[key] = false
@@ -3092,7 +3051,6 @@ const createAndSelectUserInEdit = async (session, activity) => {
   // Show success message
   showSuccessMessage(`User "${userName}" created and added successfully`)
   } catch (error) {
-    console.error('Failed to create user:', error)
     showSuccessMessage('Failed to create user: ' + (error.message || 'Unknown error'))
   } finally {
     creatingUser.value[key] = false
@@ -3141,7 +3099,6 @@ const addUserToActivity = async (session, activity, userId = null) => {
     
     showSuccessMessage('User added successfully!')
   } catch (error) {
-    console.error('Error adding user:', error)
     const message = error.message || 'Failed to add user'
     showSuccessMessage(message)
   }
@@ -3163,7 +3120,6 @@ const addUserToActivityInEditModal = async (session, activity, userId = null) =>
     
     showSuccessMessage('User added successfully!')
   } catch (error) {
-    console.error('Error adding user:', error)
     const message = error.message || 'Failed to add user'
     showSuccessMessage(message)
   }
@@ -3188,7 +3144,6 @@ const checkUserHasProducts = async (session, activity, userId) => {
     userProducts.value[key] = userProductsList
     return userProductsList.length > 0
   } catch (error) {
-    console.error('Error checking user products:', error)
     return false
   } finally {
     loadingUserProducts.value[key] = false
@@ -3258,7 +3213,6 @@ const removeUserFromActivity = async (session, activity, userId) => {
     
     showSuccessMessage('User removed successfully!')
   } catch (error) {
-    console.error('Error removing user:', error)
     showSuccessMessage('Failed to remove user')
   }
 }
@@ -3288,7 +3242,6 @@ const removeUserFromActivityInEditModal = async (session, activity, userId) => {
     
     showSuccessMessage('User removed successfully!')
   } catch (error) {
-    console.error('Error removing user:', error)
     showSuccessMessage('Failed to remove user')
   }
 }
@@ -3391,7 +3344,6 @@ const loadUserProducts = async (session, activity, userId) => {
     const products = response.data || response || []
     userProducts.value[key] = products.filter(p => p.ordered_by_user_id === userId)
   } catch (error) {
-    console.error('Error loading user products:', error)
     userProducts.value[key] = []
   } finally {
     loadingUserProducts.value[key] = false
@@ -3437,7 +3389,6 @@ const addProductToUser = async (session, activity, userId) => {
     
     showSuccessMessage('Product added successfully!')
   } catch (error) {
-    console.error('Error adding product:', error)
     showSuccessMessage(error.message || 'Failed to add product')
   } finally {
     addingProduct.value[key] = false
@@ -3464,7 +3415,6 @@ const deleteProductFromUser = async (session, activity, userId, productOrderId) 
     
     showSuccessMessage('Product removed successfully!')
   } catch (error) {
-    console.error('Error deleting product:', error)
     showSuccessMessage(error.message || 'Failed to remove product')
   }
 }
@@ -3545,7 +3495,6 @@ const checkAndEndExpiredActivities = async () => {
             // Also refresh the sessions list
             await loadSessions(currentPage.value)
           } catch (error) {
-            console.error('Failed to auto-end expired activity:', error)
             // Remove from handled set so we can retry
             expiredActivitiesHandled.value.delete(activityKey)
           }
@@ -3656,7 +3605,6 @@ const handleClickOutside = (e) => {
 
 // Lifecycle
 onMounted(async () => {
-  console.log('SessionsSection: Component mounted, loading sessions...')
   await loadAllUsers() // Load users for search functionality
   // Load products for dropdown
   if (productStore.getProducts.length === 0) {

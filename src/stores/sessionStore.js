@@ -28,82 +28,43 @@ export const useSessionStore = defineStore('session', {
       this.error = null
 
       try {
-        console.log('=== SessionStore: Fetching Sessions ===')
-        console.log('Params:', params)
-        
         const response = await SessionService.getAllSessions(params)
-        
-        console.log('=== SessionStore: Processing Response ===')
-        console.log('Response type:', typeof response)
-        console.log('Response:', response)
-        
+
         // The API service should return { sessions: [...], pagination: {...} }
         if (response && typeof response === 'object') {
           if (response.sessions && Array.isArray(response.sessions)) {
             // Expected format: { sessions: [...], pagination: {...} }
             this.sessions = response.sessions
             this.pagination = response.pagination || null
-            console.log('✓ SessionStore: Set sessions from response.sessions array')
-            console.log('  Sessions count:', this.sessions.length)
-            console.log('  Pagination:', this.pagination)
           } else if (Array.isArray(response)) {
             // Direct array format
             this.sessions = response
             this.pagination = null
-            console.log('✓ SessionStore: Set sessions from direct array')
-            console.log('  Sessions count:', this.sessions.length)
           } else if (response.data) {
             // Nested data format (fallback)
             if (Array.isArray(response.data)) {
               this.sessions = response.data
               this.pagination = response.pagination || null
-              console.log('✓ SessionStore: Set sessions from response.data array')
-              console.log('  Sessions count:', this.sessions.length)
             } else if (response.data.sessions && Array.isArray(response.data.sessions)) {
               this.sessions = response.data.sessions
               this.pagination = response.data.pagination || response.pagination || null
-              console.log('✓ SessionStore: Set sessions from response.data.sessions')
-              console.log('  Sessions count:', this.sessions.length)
             } else {
-              console.warn('⚠ SessionStore: Unexpected response.data format')
-              console.warn('  response.data:', response.data)
               this.sessions = []
             }
           } else {
-            console.warn('⚠ SessionStore: Response object has no sessions or data property')
-            console.warn('  Response keys:', Object.keys(response))
             this.sessions = []
           }
         } else {
-          console.error('✗ SessionStore: Response is not an object')
-          console.error('  Response:', response)
           this.sessions = []
         }
-        
+
         // Final validation: Ensure sessions is always an array
         if (!Array.isArray(this.sessions)) {
-          console.error('✗ SessionStore: CRITICAL - Sessions is not an array!')
-          console.error('  Sessions value:', this.sessions)
-          console.error('  Type:', typeof this.sessions)
           this.sessions = []
         }
-        
-        // Log final state
-        console.log('=== SessionStore: Final State ===')
-        console.log('Sessions array length:', this.sessions.length)
-        console.log('First session:', this.sessions[0] || 'No sessions')
-        console.log('Has pagination:', !!this.pagination)
-        console.log('=============================')
-        
+
         return response
       } catch (error) {
-        console.error('SessionStore: Failed to fetch sessions:', error)
-        console.error('SessionStore: Error details:', {
-          message: error.message,
-          response: error.response,
-          status: error.response?.status
-        })
-
         // Provide more specific error messages
         if (error.message.includes('401') || error.response?.status === 401) {
           this.error = 'You need to be logged in to view sessions. Please login first.'
@@ -158,10 +119,8 @@ export const useSessionStore = defineStore('session', {
       this.error = null
 
       try {
-        console.log('SessionStore: Creating session with data:', sessionData)
         const response = await SessionService.createSession(sessionData)
-        console.log('SessionStore: Create session response:', response)
-        
+
         // Handle different response formats from API
         let newSession = null
         if (response?.data) {
@@ -174,17 +133,14 @@ export const useSessionStore = defineStore('session', {
           // Response is the session object directly
           newSession = response
         }
-        
+
         if (newSession) {
           // Add the new session to the sessions list
           this.sessions.push(newSession)
-        } else {
-          console.warn('SessionStore: Could not extract session from response:', response)
         }
-        
+
         return response
       } catch (error) {
-        console.error('SessionStore: Failed to create session:', error)
         this.error = error.message || 'Failed to create session'
         throw error
       } finally {
@@ -202,10 +158,8 @@ export const useSessionStore = defineStore('session', {
       this.error = null
 
       try {
-        console.log('SessionStore: Updating session', id, 'with data:', sessionData)
         const response = await SessionService.updateSession(id, sessionData)
-        console.log('SessionStore: Update session response:', response)
-        
+
         // Handle different response formats from API
         let updatedSession = null
         if (response?.data) {
@@ -227,13 +181,10 @@ export const useSessionStore = defineStore('session', {
           if (this.currentSession && this.currentSession.id === id) {
             this.currentSession = { ...this.currentSession, ...updatedSession }
           }
-        } else {
-          console.warn('SessionStore: Could not extract session from update response:', response)
         }
 
         return response
       } catch (error) {
-        console.error('SessionStore: Failed to update session:', error)
         this.error = error.message || 'Failed to update session'
         throw error
       } finally {
@@ -420,7 +371,7 @@ export const useSessionStore = defineStore('session', {
 
       try {
         const response = await SessionService.updateActivity(sessionId, activityId, activityData)
-        
+
         // Handle different response formats
         let updatedActivity = null
         if (response?.data?.data) {
@@ -436,9 +387,9 @@ export const useSessionStore = defineStore('session', {
 
         // Update the activity in the activities list
         if (updatedActivity) {
-        const index = this.activities.findIndex(a => a.id === activityId)
-        if (index !== -1) {
-          this.activities[index] = updatedActivity
+          const index = this.activities.findIndex(a => a.id === activityId)
+          if (index !== -1) {
+            this.activities[index] = updatedActivity
           }
         }
 

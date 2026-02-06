@@ -255,89 +255,27 @@ const toggleNotifications = () => {
 }
 
 // Event handlers
-const onContentSelected = (content) => {
-  console.log('Content selected:', content)
-}
-
-const onActionTriggered = (actionId) => {
-  console.log('Action triggered:', actionId)
-}
-
-const onCategorySelected = (category) => {
-  console.log('Category selected:', category)
-}
-
-const onItemSelected = (item) => {
-  console.log('Item selected:', item)
-}
-
-const onEditAvatar = () => {
-  console.log('Edit avatar requested')
-}
-
-const onChangePassword = () => {
-  console.log('Change password requested')
-}
-
-const onExportData = () => {
-  console.log('Export data requested')
-}
-
-const onSetup2FA = () => {
-  console.log('Setup 2FA requested')
-}
-
-const onDeleteAccount = () => {
-  console.log('Delete account requested')
-}
-
-const onUserSelected = (user) => {
-  console.log('User selected:', user)
-}
-
-const onUserCreated = (user) => {
-  console.log('User created:', user)
-}
-
-const onUserUpdated = (user) => {
-  console.log('User updated:', user)
-}
-
-const onProductSelected = (product) => {
-  console.log('Product selected:', product)
-}
-
-const onProductCreated = (product) => {
-  console.log('Product created:', product)
-}
-
-const onProductUpdated = (product) => {
-  console.log('Product updated:', product)
-}
-
-const onDeviceSelected = (device) => {
-  console.log('Device selected:', device)
-}
-
-const onDeviceCreated = (device) => {
-  console.log('Device created:', device)
-}
-
-const onDeviceUpdated = (device) => {
-  console.log('Device updated:', device)
-}
-
-const onSessionSelected = (session) => {
-  console.log('Session selected:', session)
-}
-
-const onSessionCreated = (session) => {
-  console.log('Session created:', session)
-}
-
-const onSessionUpdated = (session) => {
-  console.log('Session updated:', session)
-}
+const onContentSelected = () => {}
+const onActionTriggered = () => {}
+const onCategorySelected = () => {}
+const onItemSelected = () => {}
+const onEditAvatar = () => {}
+const onChangePassword = () => {}
+const onExportData = () => {}
+const onSetup2FA = () => {}
+const onDeleteAccount = () => {}
+const onUserSelected = () => {}
+const onUserCreated = () => {}
+const onUserUpdated = () => {}
+const onProductSelected = () => {}
+const onProductCreated = () => {}
+const onProductUpdated = () => {}
+const onDeviceSelected = () => {}
+const onDeviceCreated = () => {}
+const onDeviceUpdated = () => {}
+const onSessionSelected = () => {}
+const onSessionCreated = () => {}
+const onSessionUpdated = () => {}
 
 // Window resize handler
 const handleResize = () => {

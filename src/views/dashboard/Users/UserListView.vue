@@ -258,11 +258,9 @@ export default {
     // Load users (supports GET /api/users?search=... for name, email, username, phone)
     const loadUsers = async (params = {}) => {
       try {
-        console.log('UserListView: Loading users...', params)
         usersLoaded.value = false
         await userStore.fetchUsers(params)
         usersLoaded.value = true
-        console.log('UserListView: Users loaded. Count:', userStore.getUsers.length)
       } catch (error) {
         console.error('UserListView: Failed to load users:', error)
         usersLoaded.value = true // Set to true even on error to show error state

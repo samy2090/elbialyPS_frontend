@@ -24,30 +24,18 @@ export const useProductStore = defineStore('product', {
       this.error = null
 
       try {
-        console.log('=== ProductStore: Fetching Products ===')
-        console.log('Params:', params)
-        
         const response = await ProductService.getAllProducts(params)
-        
-        console.log('=== ProductStore: Processing Response ===')
-        console.log('Response type:', typeof response)
-        console.log('Response:', response)
-        
+
         // The API service should return { products: [...], pagination: {...} }
         if (response && typeof response === 'object') {
           if (response.products && Array.isArray(response.products)) {
             // Expected format: { products: [...], pagination: {...} }
             this.products = response.products
             this.pagination = response.pagination || null
-            console.log('✓ ProductStore: Set products from response.products array')
-            console.log('  Products count:', this.products.length)
-            console.log('  Pagination:', this.pagination)
           } else if (Array.isArray(response)) {
             // Direct array format
             this.products = response
             this.pagination = null
-            console.log('✓ ProductStore: Set products from direct array')
-            console.log('  Products count:', this.products.length)
           } else if (response.data) {
             // Nested data format (fallback)
             if (Array.isArray(response.data)) {
@@ -58,48 +46,23 @@ export const useProductStore = defineStore('product', {
             } else if (response.data.products && Array.isArray(response.data.products)) {
               this.products = response.data.products
               this.pagination = response.data.pagination || response.pagination || null
-              console.log('✓ ProductStore: Set products from response.data.products')
-              console.log('  Products count:', this.products.length)
             } else {
-              console.warn('⚠ ProductStore: Unexpected response.data format')
-              console.warn('  response.data:', response.data)
               this.products = []
             }
           } else {
-            console.warn('⚠ ProductStore: Response object has no products or data property')
-            console.warn('  Response keys:', Object.keys(response))
             this.products = []
           }
         } else {
-          console.error('✗ ProductStore: Response is not an object')
-          console.error('  Response:', response)
           this.products = []
         }
-        
+
         // Final validation: Ensure products is always an array
         if (!Array.isArray(this.products)) {
-          console.error('✗ ProductStore: CRITICAL - Products is not an array!')
-          console.error('  Products value:', this.products)
-          console.error('  Type:', typeof this.products)
           this.products = []
         }
-        
-        // Log final state
-        console.log('=== ProductStore: Final State ===')
-        console.log('Products array length:', this.products.length)
-        console.log('First product:', this.products[0] || 'No products')
-        console.log('Has pagination:', !!this.pagination)
-        console.log('=============================')
-        
+
         return response
       } catch (error) {
-        console.error('ProductStore: Failed to fetch products:', error)
-        console.error('ProductStore: Error details:', {
-          message: error.message,
-          response: error.response,
-          status: error.response?.status
-        })
-
         // Provide more specific error messages
         if (error.message.includes('401') || error.response?.status === 401) {
           this.error = 'You need to be logged in to view products. Please login first.'

@@ -3387,22 +3387,38 @@ body.modal-open {
   gap: 0.5rem;
 }
 
-/* Session Cards */
+/* ============================================================
+   Session Cards - Futuristic, minimal, glassmorphism (mobile)
+   ============================================================ */
 .sessions-cards-container {
   display: grid;
-  gap: 1.25rem;
+  gap: clamp(0.75rem, 3vw, 1rem);
+  padding: clamp(0.5rem, 2vw, 0.75rem) 0;
 }
 
 .session-card {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 5px;
-  transition: all 0.3s ease;
-  backdrop-filter: blur(10px);
+  --card-bg: rgba(12, 12, 22, 0.55);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --card-radius: clamp(14px, 4vw, 18px);
+  --card-padding: clamp(0.875rem, 4vw, 1.125rem);
+  --card-gap: clamp(0.5rem, 2.5vw, 0.75rem);
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--card-radius);
+  padding: var(--card-padding);
   position: relative;
   overflow: hidden;
-  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-gap);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+    0 1px 0 0 rgba(255, 255, 255, 0.04) inset;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.2s ease;
+  margin-bottom: 10px;
 }
 
 .session-card::before {
@@ -3411,84 +3427,510 @@ body.modal-open {
   top: 0;
   left: 0;
   right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, #8b5cf6, #a855f7, #ec4899);
+  bottom: 0;
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.03) 0%, transparent 40%, transparent 100%);
+  pointer-events: none;
   opacity: 0;
-  transition: opacity var(--transition-normal);
+  transition: opacity 0.25s ease;
 }
 
-.session-card:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.2);
-  transform: translateY(-2px);
-  box-shadow: 
-    0 10px 25px rgba(0, 0, 0, 0.2),
-    0 5px 10px rgba(0, 0, 0, 0.1);
+.session-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.5), transparent);
+  opacity: 0;
+  transition: opacity 0.25s ease;
 }
 
-.session-card:hover::before {
-  opacity: 0.8;
+.session-card:active {
+  transform: scale(0.995);
 }
 
-.session-card-header {
+.session-card.expanded {
+  border-color: rgba(139, 92, 246, 0.25);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(139, 92, 246, 0.12) inset,
+    0 0 40px rgba(139, 92, 246, 0.06);
+}
+
+.session-card.expanded::before {
+  opacity: 1;
+}
+
+.session-card.expanded::after {
+  opacity: 1;
+}
+
+/* Top: Session ID, customer, status pill */
+.session-card-top {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  margin-bottom: 1rem;
+  gap: clamp(0.5rem, 2.5vw, 0.75rem);
+  min-height: 44px;
+  padding: 0.125rem 0;
   cursor: pointer;
   user-select: none;
-  padding: 10px;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.session-card-header:hover {
-  opacity: 0.9;
+.session-card-top-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1875rem;
+  flex: 1;
+  min-width: 0;
 }
 
-.expand-icon {
+.session-card-id {
+  font-size: clamp(0.6875rem, 2.2vw, 0.75rem);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.45);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.session-card-customer {
+  font-size: clamp(0.9375rem, 3vw, 1.0625rem);
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.98);
+  letter-spacing: 0.02em;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+/* Status pill - subtle, elegant color coding */
+.session-card-status-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3125rem 0.625rem;
+  border-radius: 9999px;
+  font-size: clamp(0.625rem, 2vw, 0.6875rem);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+  transition: box-shadow 0.2s ease, opacity 0.2s ease;
+}
+
+.session-card-status-pill.status-active {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.18) 0%, rgba(22, 163, 74, 0.12) 100%);
+  color: #6ee7b7;
+  border: 1px solid rgba(34, 197, 94, 0.28);
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.15);
+}
+
+.session-card.expanded .session-card-status-pill.status-active {
+  box-shadow: 0 0 16px rgba(34, 197, 94, 0.25);
+}
+
+.session-card-status-pill.status-paused {
+  background: linear-gradient(135deg, rgba(251, 146, 60, 0.16) 0%, rgba(234, 88, 12, 0.1) 100%);
+  color: #fdba74;
+  border: 1px solid rgba(251, 146, 60, 0.25);
+}
+
+.session-card-status-pill.status-ended {
+  background: linear-gradient(135deg, rgba(148, 163, 184, 0.12) 0%, rgba(100, 116, 139, 0.08) 100%);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.session-card-expand {
   margin-left: auto;
-  color: rgba(255, 255, 255, 0.5);
-  transition: all 0.3s ease;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.4);
+  transition: transform 0.25s ease, color 0.2s ease;
+  flex-shrink: 0;
+  border-radius: 10px;
+}
+
+.session-card-expand:active {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.session-card-expand svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.session-card.expanded .session-card-expand {
+  transform: rotate(180deg);
+  color: rgba(167, 139, 250, 0.95);
+}
+
+/* Timer - Futuristic glassmorphism (session-card style + futuristic-timer effects) */
+.session-card-timer-wrap {
+  display: flex;
+  justify-content: center;
+  padding: clamp(0.375rem, 2vw, 0.5rem) 0;
+}
+
+.session-card-timer {
+  --timer-glow: rgba(139, 92, 246, 0.45);
+  background: rgba(18, 18, 32, 0.45);
+  border: 1px solid rgba(139, 92, 246, 0.22);
+  border-radius: clamp(10px, 3vw, 14px);
+  padding: clamp(0.625rem, 3vw, 0.875rem) clamp(0.875rem, 4vw, 1.25rem);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+  min-width: 140px;
+  backdrop-filter: blur(20px) saturate(1.15);
+  -webkit-backdrop-filter: blur(20px) saturate(1.15);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+    0 1px 0 0 rgba(255, 255, 255, 0.06) inset,
+    0 0 20px var(--timer-glow),
+    inset 0 0 24px rgba(139, 92, 246, 0.08);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, --timer-glow 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.session-card-timer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(145deg, rgba(139, 92, 246, 0.08) 0%, transparent 45%, transparent 100%);
+  pointer-events: none;
+  border-radius: inherit;
+}
+
+/* Scan / shimmer (futuristic-timer effect) */
+.session-card-timer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(139, 92, 246, 0.15),
+    transparent
+  );
+  pointer-events: none;
+  border-radius: inherit;
+  animation: session-timer-scan 4s ease-in-out infinite;
+}
+
+@keyframes session-timer-scan {
+  0% {
+    left: -100%;
+  }
+  50% {
+    left: 140%;
+  }
+  100% {
+    left: 140%;
+  }
+}
+
+.session-card-timer.timer-expired {
+  --timer-glow: rgba(239, 68, 68, 0.25);
+  border-color: rgba(239, 68, 68, 0.28);
+  background: rgba(40, 18, 22, 0.5);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(239, 68, 68, 0.1) inset,
+    0 0 24px rgba(239, 68, 68, 0.12),
+    inset 0 0 20px rgba(239, 68, 68, 0.06);
+}
+
+.session-card-timer.timer-expired::before {
+  background: linear-gradient(145deg, rgba(239, 68, 68, 0.06) 0%, transparent 50%);
+}
+
+.session-card-timer.timer-expired::after {
+  background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.1), transparent);
+  animation: session-timer-scan 5s ease-in-out infinite;
+}
+
+.session-card-timer-display {
+  display: flex;
+  align-items: baseline;
+  gap: 0.125rem;
+  position: relative;
+  z-index: 1;
+}
+
+.session-card-timer-value {
+  font-family: 'Courier New', 'Monaco', 'Consolas', monospace;
+  font-size: clamp(1.5rem, 5.5vw, 1.875rem);
+  font-weight: 700;
+  color: rgba(196, 181, 253, 0.98);
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  text-shadow:
+    0 0 12px rgba(139, 92, 246, 0.7),
+    0 0 24px rgba(139, 92, 246, 0.4),
+    0 0 36px rgba(139, 92, 246, 0.2),
+    0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.session-card-timer.timer-expired .session-card-timer-value {
+  color: #fca5a5;
+  text-shadow:
+    0 0 12px rgba(239, 68, 68, 0.6),
+    0 0 20px rgba(239, 68, 68, 0.3),
+    0 1px 4px rgba(0, 0, 0, 0.25);
+}
+
+.session-card-timer-sep {
+  font-family: 'Courier New', 'Monaco', 'Consolas', monospace;
+  font-size: clamp(1.5rem, 5.5vw, 1.875rem);
+  font-weight: 700;
+  color: rgba(167, 139, 250, 0.9);
+  margin: 0 0.0625rem;
+  text-shadow: 0 0 10px rgba(139, 92, 246, 0.6);
+  animation: session-timer-blink 1.2s ease-in-out infinite;
+}
+
+@keyframes session-timer-blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  51%, 100% {
+    opacity: 0.35;
+  }
+}
+
+.session-card-timer.timer-expired .session-card-timer-sep {
+  color: rgba(252, 165, 165, 0.8);
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+}
+
+.session-card-timer-unit {
+  font-size: clamp(0.5625rem, 1.8vw, 0.625rem);
+  font-weight: 600;
+  color: rgba(139, 92, 246, 0.65);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-left: 0.25rem;
+}
+
+.session-card-timer.timer-expired .session-card-timer-unit {
+  color: rgba(248, 113, 113, 0.6);
+}
+
+.session-card-timer-dir {
+  font-size: 0.75rem;
+  margin-left: 0.25rem;
+  animation: session-timer-pulse 2s ease-in-out infinite;
+}
+
+.session-card-timer-dir.countup {
+  color: #86efac;
+  text-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+}
+
+.session-card-timer-dir.countdown {
+  color: #fca5a5;
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+}
+
+.session-card-timer-dir.expired {
+  color: #f87171;
+  text-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+  animation: none;
+}
+
+@keyframes session-timer-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.08);
+  }
+}
+
+.session-card-timer-msg {
+  width: 100%;
+  text-align: center;
+  font-size: clamp(0.6875rem, 2vw, 0.75rem);
+  font-weight: 600;
+  color: #f87171;
+  margin-top: 0.25rem;
+  letter-spacing: 0.03em;
+  text-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+}
+
+/* Meta grid - icon + value, clear hierarchy */
+.session-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.375rem, 2vw, 0.5rem);
+}
+
+.session-card-meta-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(0.375rem, 2vw, 0.625rem);
+}
+
+.session-card-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4375rem;
+  min-height: 2rem;
+  padding: 0.125rem 0;
+}
+
+.session-card-meta-icon {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  color: rgba(255, 255, 255, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.expand-icon svg {
-  width: 1.25rem;
-  height: 1.25rem;
+.session-card-meta-icon svg {
+  width: 100%;
+  height: 100%;
 }
 
-.session-card.expanded .expand-icon {
-  transform: rotate(180deg);
-  color: #8b5cf6;
+.session-card-meta-value {
+  font-size: clamp(0.75rem, 2.5vw, 0.8125rem);
+  color: rgba(255, 255, 255, 0.82);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
 }
 
-.session-card.expanded {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(139, 92, 246, 0.4);
-  box-shadow: 
-    0 10px 40px rgba(139, 92, 246, 0.2),
-    0 0 0 1px rgba(139, 92, 246, 0.1) inset,
-    0 0 30px rgba(139, 92, 246, 0.1);
+.session-card-meta-item-spacer {
+  min-height: 0;
+  visibility: hidden;
 }
 
-.session-card.expanded::before {
-  opacity: 1;
-  height: 3px;
-  background: linear-gradient(90deg, #8b5cf6, #a855f7, #ec4899, #8b5cf6);
-  background-size: 200% 100%;
-  animation: gradient-shift 3s ease infinite;
+.session-card-meta-icon-ended {
+  color: rgba(148, 163, 184, 0.7);
 }
 
-@keyframes gradient-shift {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
+/* Actions - large tap targets, sleek, micro-interactions */
+.session-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(0.375rem, 2vw, 0.5rem);
+  padding-top: clamp(0.5rem, 2.5vw, 0.625rem);
+  margin-top: 0.125rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+.session-card-btn {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.625rem 0.75rem;
+  border-radius: clamp(8px, 2.5vw, 12px);
+  font-size: clamp(0.8125rem, 2.5vw, 0.875rem);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  border: 1px solid transparent;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.session-card-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.session-card-btn:active {
+  transform: scale(0.96) translateY(0);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.session-card-btn-edit {
+  background: linear-gradient(145deg, rgba(139, 92, 246, 0.22) 0%, rgba(124, 58, 237, 0.15) 100%);
+  color: #c4b5fd;
+  border-color: rgba(139, 92, 246, 0.35);
+}
+
+.session-card-btn-edit:hover {
+  background: linear-gradient(145deg, rgba(139, 92, 246, 0.3) 0%, rgba(124, 58, 237, 0.22) 100%);
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+.session-card-btn-edit:active {
+  background: linear-gradient(145deg, rgba(139, 92, 246, 0.35) 0%, rgba(124, 58, 237, 0.28) 100%);
+}
+
+.session-card-btn-pause {
+  background: linear-gradient(145deg, rgba(251, 146, 60, 0.14) 0%, rgba(234, 88, 12, 0.08) 100%);
+  color: #fdba74;
+  border-color: rgba(251, 146, 60, 0.28);
+}
+
+.session-card-btn-pause:hover {
+  background: linear-gradient(145deg, rgba(251, 146, 60, 0.22) 0%, rgba(234, 88, 12, 0.14) 100%);
+  border-color: rgba(251, 146, 60, 0.4);
+}
+
+.session-card-btn-pause:active {
+  background: linear-gradient(145deg, rgba(251, 146, 60, 0.28) 0%, rgba(234, 88, 12, 0.2) 100%);
+}
+
+.session-card-btn-resume {
+  background: linear-gradient(145deg, rgba(34, 197, 94, 0.14) 0%, rgba(22, 163, 74, 0.08) 100%);
+  color: #86efac;
+  border-color: rgba(34, 197, 94, 0.28);
+}
+
+.session-card-btn-resume:hover {
+  background: linear-gradient(145deg, rgba(34, 197, 94, 0.22) 0%, rgba(22, 163, 74, 0.14) 100%);
+  border-color: rgba(34, 197, 94, 0.4);
+}
+
+.session-card-btn-resume:active {
+  background: linear-gradient(145deg, rgba(34, 197, 94, 0.28) 0%, rgba(22, 163, 74, 0.2) 100%);
+}
+
+.session-card-btn-end {
+  background: linear-gradient(145deg, rgba(239, 68, 68, 0.14) 0%, rgba(185, 28, 28, 0.08) 100%);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.28);
+}
+
+.session-card-btn-end:hover {
+  background: linear-gradient(145deg, rgba(239, 68, 68, 0.22) 0%, rgba(185, 28, 28, 0.14) 100%);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+.session-card-btn-end:active {
+  background: linear-gradient(145deg, rgba(239, 68, 68, 0.28) 0%, rgba(185, 28, 28, 0.2) 100%);
+}
+
+/* Legacy session card content (used by expanded / table) */
 .session-card-content {
   display: flex;
   flex-direction: column;
@@ -3508,7 +3950,47 @@ body.modal-open {
   flex-wrap: wrap;
 }
 
-/* Expanded Content Styles - Futuristic Design */
+/* Legacy session card content (used by expanded / table) */
+.session-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 10px;
+}
+
+.session-badges {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.session-meta {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+/* Expanded Content Styles - Futuristic Design (mobile card) */
+.session-card .session-expanded-content {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  animation: expand-content 0.3s ease-out;
+}
+
+.session-card .expanded-divider {
+  margin-bottom: 0.75rem;
+}
+
+.session-card .expanded-section {
+  margin-bottom: 1rem;
+  padding: 0.5rem;
+}
+
+.session-card .expanded-section-title {
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+}
+
 .session-expanded-content {
   margin-top: 1.5rem;
   padding-top: 1.5rem;

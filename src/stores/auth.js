@@ -188,7 +188,6 @@ export const useAuthStore = defineStore('auth', {
 
       try {
         const response = await AuthService.login(credentials)
-        console.log('Login response:', response)
 
         // Extract user from common Laravel/API response shapes
         const user = extractUserFromResponse(response)

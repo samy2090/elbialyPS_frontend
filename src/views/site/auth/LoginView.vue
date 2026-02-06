@@ -104,7 +104,7 @@
         </svg>
         Back to Home
       </router-link>
-      <router-link to="/dashboard" class="quick-link">
+      <!-- <router-link to="/dashboard" class="quick-link">
         <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
           <rect x="3" y="3" width="7" height="7" stroke="currentColor" stroke-width="2"/>
           <rect x="14" y="3" width="7" height="7" stroke="currentColor" stroke-width="2"/>
@@ -112,7 +112,7 @@
           <rect x="3" y="14" width="7" height="7" stroke="currentColor" stroke-width="2"/>
         </svg>
         Dashboard
-      </router-link>
+      </router-link> -->
     </template>
   </AuthLayout>
 </template>

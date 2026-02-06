@@ -512,8 +512,6 @@ const confirmDeleteProduct = async () => {
       showSuccessMessage('Product deleted successfully!')
       closeDeleteModal()
     } catch (error) {
-      console.error('Failed to delete product:', error)
-      // Error is already handled by the store
       closeDeleteModal()
     }
   }
@@ -521,7 +519,6 @@ const confirmDeleteProduct = async () => {
 
 // Lifecycle
 onMounted(() => {
-  console.log('ProductsSection: Component mounted, loading products...')
   loadProducts()
 })
 
