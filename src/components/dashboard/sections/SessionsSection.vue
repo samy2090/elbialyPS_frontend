@@ -733,44 +733,49 @@
             </div>
           </div>
 
-          <!-- Middle: Metadata (no duplicate customer – already in header). Creator, Started, Ended, Price, Activities. -->
+          <!-- Middle: Metadata. Date (day) separate; start/end time only; Creator, Price, Activities. -->
           <div class="session-card-meta">
             <div class="session-card-meta-row">
+              <div class="session-card-meta-item session-card-meta-date">
+                <span class="session-card-meta-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                </span>
+                <span class="session-card-meta-value">{{ formatDateOnly(session.started_at) }}</span>
+              </div>
               <div class="session-card-meta-item">
                 <span class="session-card-meta-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 </span>
                 <span class="session-card-meta-value">{{ session.creator?.name || 'N/A' }}</span>
               </div>
-              <div class="session-card-meta-item">
-                <span class="session-card-meta-icon" aria-hidden="true">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-                </span>
-                <span class="session-card-meta-value">{{ formatDateTime(session.started_at) }}</span>
-              </div>
             </div>
             <div class="session-card-meta-row">
+              <div class="session-card-meta-item">
+                <span class="session-card-meta-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </span>
+                <span class="session-card-meta-value">{{ formatTimeOnly(session.started_at) }}</span>
+              </div>
               <div class="session-card-meta-item">
                 <span class="session-card-meta-icon session-card-meta-icon-ended" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
                 </span>
-                <span class="session-card-meta-value">{{ session.status === 'ended' && session.ended_at ? formatDateTime(session.ended_at) : '—' }}</span>
+                <span class="session-card-meta-value">{{ session.status === 'ended' && session.ended_at ? formatTimeOnly(session.ended_at) : '—' }}</span>
               </div>
+            </div>
+            <div class="session-card-meta-row">
               <div class="session-card-meta-item">
                 <span class="session-card-meta-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
                 </span>
                 <span class="session-card-meta-value">${{ parseFloat(session.total_price || 0).toFixed(2) }}</span>
               </div>
-            </div>
-            <div class="session-card-meta-row">
               <div class="session-card-meta-item">
                 <span class="session-card-meta-icon" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
                 </span>
                 <span class="session-card-meta-value">{{ session.activities?.length || 0 }} activities</span>
               </div>
-              <div class="session-card-meta-item session-card-meta-item-spacer"></div>
             </div>
           </div>
 
@@ -795,53 +800,29 @@
             <div v-if="expandedSessionId === session.id" class="session-expanded-content">
               <div class="expanded-divider"></div>
               
-              <!-- Session Details Section -->
-              <div class="expanded-section">
+              <!-- Session extras only (data not shown in card): Type, Discount, Total -->
+              <div class="expanded-section expanded-section-extras">
                 <h4 class="expanded-section-title">
-                  <span class="title-icon">⚡</span>
-                  Session Information
+                  <span class="title-icon" aria-hidden="true">⚡</span>
+                  Session details
                 </h4>
-                <div class="expanded-details-grid">
-                  <div class="expanded-detail-item">
-                    <span class="expanded-label">Session ID</span>
-                    <span class="expanded-value">{{ session.id }}</span>
-                  </div>
+                <div class="expanded-details-grid expanded-details-extras">
                   <div class="expanded-detail-item">
                     <span class="expanded-label">Customer</span>
                     <span class="expanded-value">{{ session.customer?.name || 'N/A' }}</span>
                   </div>
                   <div class="expanded-detail-item">
-                    <span class="expanded-label">Creator</span>
-                    <span class="expanded-value">{{ session.creator?.name || 'N/A' }}</span>
-                  </div>
-                  <div class="expanded-detail-item">
-                    <span class="expanded-label">Status</span>
-                    <span :class="getStatusClass(session)" class="status-badge">
-                      {{ session.status || 'N/A' }}
-                    </span>
-                  </div>
-                  <div class="expanded-detail-item">
-                    <span class="expanded-label">Session Type</span>
+                    <span class="expanded-label">Session type</span>
                     <span class="expanded-value">{{ getSessionType(session) }}</span>
                   </div>
-                  <div class="expanded-detail-item">
-                    <span class="expanded-label">Started At</span>
-                    <span class="expanded-value">{{ formatDateTime(session.started_at) }}</span>
-                  </div>
-                  <div class="expanded-detail-item">
-                    <span class="expanded-label">Ended At</span>
-                    <span class="expanded-value">{{ formatDateTime(session.ended_at) || 'N/A' }}</span>
-                  </div>
-                  <div class="expanded-detail-item">
-                    <span class="expanded-label">Subtotal</span>
-                    <span class="expanded-value">${{ parseFloat((session.total_price || 0) + (session.discount || 0)).toFixed(2) }}</span>
-                  </div>
-                  <div v-if="session.discount" class="expanded-detail-item">
+                  <div class="expanded-detail-item" :class="{ 'has-value': session.discount }">
                     <span class="expanded-label">Discount</span>
-                    <span class="expanded-value discount">-${{ parseFloat(session.discount || 0).toFixed(2) }}</span>
+                    <span class="expanded-value" :class="{ discount: session.discount }">
+                      {{ session.discount ? `-$${parseFloat(session.discount).toFixed(2)}` : '—' }}
+                    </span>
                   </div>
-                  <div class="expanded-detail-item highlight">
-                    <span class="expanded-label">Total Price</span>
+                  <div class="expanded-detail-item expanded-detail-item-total">
+                    <span class="expanded-label">Total price</span>
                     <span class="expanded-value">${{ parseFloat(session.total_price || 0).toFixed(2) }}</span>
                   </div>
                 </div>
@@ -2127,6 +2108,29 @@ const formatDateTime = (dateString) => {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  }).format(date)
+}
+
+const formatDateOnly = (dateString) => {
+  if (!dateString) return 'N/A'
+  const date = new Date(dateString)
+  if (isNaN(date.getTime())) return 'N/A'
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Africa/Cairo',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  }).format(date)
+}
+
+const formatTimeOnly = (dateString) => {
+  if (!dateString) return '—'
+  const date = new Date(dateString)
+  if (isNaN(date.getTime())) return '—'
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Africa/Cairo',
     hour: '2-digit',
     minute: '2-digit'
   }).format(date)
