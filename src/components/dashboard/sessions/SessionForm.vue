@@ -100,8 +100,8 @@
           </div>
         </div>
 
-        <!-- Device Field (Optional) -->
-        <div class="form-field">
+        <!-- Device Field (Optional) - only when creating -->
+        <div v-if="!isEditing" class="form-field">
           <label class="field-label">
             <svg class="label-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <rect x="5" y="2" width="14" height="20" rx="2" stroke="currentColor" stroke-width="2"/>
@@ -135,8 +135,8 @@
           </small>
         </div>
 
-        <!-- Mode Field (Only shown when device is selected) -->
-        <div class="form-field" v-if="form.device_id">
+        <!-- Mode Field (Only shown when device is selected, create only) -->
+        <div class="form-field" v-if="!isEditing && form.device_id">
           <label class="field-label">
             <svg class="label-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" stroke-width="2"/>
@@ -157,8 +157,8 @@
           </small>
         </div>
 
-        <!-- Duration Field (Only shown when device is selected) -->
-        <div class="form-field" v-if="form.device_id">
+        <!-- Duration Field (Only shown when device is selected, create only) -->
+        <div class="form-field" v-if="!isEditing && form.device_id">
           <label class="field-label">
             <svg class="label-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
@@ -177,24 +177,6 @@
           <small class="field-hint">
             Select how long the customer will use the device (0.5 to 3 hours)
           </small>
-        </div>
-
-        <!-- Started At Field (Auto-set to current time for new sessions) -->
-        <div class="form-field" v-if="isEditing">
-          <label class="field-label">
-            <svg class="label-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-              <polyline points="12,6 12,12 16,14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            Started At
-          </label>
-          <input 
-            v-model="form.started_at" 
-            type="datetime-local" 
-            class="form-input"
-            :disabled="!isEditing"
-          />
-          <small v-if="!isEditing" class="field-hint">Session will start at the current time when created</small>
         </div>
 
         <!-- Other Time Field (Only for new sessions with device selected) -->
@@ -225,8 +207,8 @@
           <small v-else class="field-hint">Session will start at the current time when created</small>
         </div>
 
-        <!-- Status Field -->
-        <div class="form-field">
+        <!-- Status Field - only when creating -->
+        <div v-if="!isEditing" class="form-field">
           <label class="field-label">
             <svg class="label-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
@@ -244,8 +226,8 @@
           />
         </div>
 
-        <!-- Price and Discount Row (only shown when status is "ended") -->
-        <div class="form-row" v-if="form.status === 'ended'">
+        <!-- Price and Discount: when editing always show; when creating only when status is "ended" -->
+        <div class="form-row" v-if="isEditing || form.status === 'ended'">
           <div class="form-field">
             <label class="field-label">
               <svg class="label-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -260,7 +242,9 @@
               min="0"
               class="form-input" 
               placeholder="0.00"
+              :disabled="isEditing && isTotalPriceDisabled"
             />
+            <small v-if="isEditing && isTotalPriceDisabled" class="field-hint">Total price can only be edited when session is ended.</small>
           </div>
 
           <div class="form-field">
@@ -429,6 +413,13 @@ export default {
       { value: 'paused', label: 'Paused' },
       { value: 'ended', label: 'Ended' }
     ])
+
+    // When editing, total price is disabled if session is active or paused
+    const isTotalPriceDisabled = computed(() => {
+      if (!props.session) return false
+      const status = props.session.status || form.value.status
+      return status === 'active' || status === 'paused'
+    })
     
     // Calculate ended_at based on started_at and duration_hours
     const calculateEndDate = (durationHours) => {
@@ -741,20 +732,24 @@ export default {
         // Determine session type based on device selection
         const sessionType = form.value.device_id ? 'playing' : 'chillout'
         
-        // Prepare submit data
-        const submitData = {
+        // When editing, only customer, total_price, and discount are editable
+        let submitData
+        if (isEditing.value) {
+          submitData = {
+            customer_id: Number(form.value.customer_id),
+          }
+          if (form.value.total_price !== '' && form.value.total_price !== null && form.value.total_price !== undefined) {
+            submitData.total_price = parseFloat(form.value.total_price)
+          }
+          if (form.value.discount !== '' && form.value.discount !== null && form.value.discount !== undefined) {
+            submitData.discount = parseFloat(form.value.discount)
+          }
+        } else {
+        // Prepare submit data for new session
+        submitData = {
           customer_id: Number(form.value.customer_id),
           status: form.value.status || 'active',
         }
-        
-        // For new sessions, started_at will be set by backend to current time
-        // The backend will also create the first activity automatically
-        if (isEditing.value) {
-          // When editing, allow changing started_at
-          if (form.value.started_at) {
-            submitData.started_at = convertToApiFormat(form.value.started_at)
-          }
-        } else {
           // When creating new session, send started_at only if custom time is provided
           if (useCustomTime.value && form.value.custom_started_at) {
             submitData.started_at = convertToApiFormat(form.value.custom_started_at)
@@ -762,48 +757,31 @@ export default {
           // Otherwise, don't send started_at - backend sets it to current time
         }
         
-        // Add device_id if selected (optional)
-        if (form.value.device_id) {
-          submitData.device_id = Number(form.value.device_id)
-        }
-        
-        // Add duration field at root level (backend expects this to calculate ended_at)
-        if (form.value.duration_hours && form.value.duration_hours !== '') {
-          submitData.duration = parseFloat(form.value.duration_hours)
-          console.log('Sending duration to backend:', {
-            duration_hours: form.value.duration_hours,
-            duration: submitData.duration
-          })
-        }
-        
-        // Add activity data for the first activity (only when creating)
-        // Note: Backend extracts mode and started_at from activity_data
-        // The duration field above is used by backend to calculate ended_at
+        // Create-only: device, duration, activity_data, created_by, price/discount
         if (!isEditing.value) {
+          if (form.value.device_id) {
+            submitData.device_id = Number(form.value.device_id)
+          }
+          if (form.value.duration_hours && form.value.duration_hours !== '') {
+            submitData.duration = parseFloat(form.value.duration_hours)
+          }
           submitData.activity_data = {
             activity_type: sessionType,
             device_id: form.value.device_id ? Number(form.value.device_id) : null,
             mode: form.value.mode || 'single',
           }
-          
-          // If custom start time is provided, also set it for the activity
-          // This ensures both session and activity have the same start time
           if (useCustomTime.value && form.value.custom_started_at) {
             submitData.activity_data.started_at = convertToApiFormat(form.value.custom_started_at)
           }
-        }
-        
-        // Add created_by if creating new session
-        if (!isEditing.value && authStore.user) {
-          submitData.created_by = authStore.user.id
-        }
-        
-        // Add optional fields only if they have values
-        if (form.value.total_price) {
-          submitData.total_price = parseFloat(form.value.total_price)
-        }
-        if (form.value.discount) {
-          submitData.discount = parseFloat(form.value.discount)
+          if (authStore.user) {
+            submitData.created_by = authStore.user.id
+          }
+          if (form.value.total_price) {
+            submitData.total_price = parseFloat(form.value.total_price)
+          }
+          if (form.value.discount) {
+            submitData.discount = parseFloat(form.value.discount)
+          }
         }
         
         // Debug: Log the data being sent
@@ -851,7 +829,8 @@ export default {
       selectCustomer,
       handleCustomerBlur,
       createAndSelectCustomer,
-      useCustomTime
+      useCustomTime,
+      isTotalPriceDisabled
     }
   }
 }
