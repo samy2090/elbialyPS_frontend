@@ -85,25 +85,19 @@
 
     <!-- Sessions Table/Cards -->
     <div v-else-if="sessionStore.getSessions.length > 0" class="sessions-display">
-      <!-- Futuristic Stats Section -->
+      <!-- Compact Stats Bar - Mobile-first -->
       <div v-if="showStatsSection" class="sessions-stats-section">
         <div class="stats-container">
           <div class="stat-card active-stat" :class="{ 'stat-card-clicked': clickedCard === 'active' }" @click="triggerRipple('active')">
             <div class="stat-ripple"></div>
             <div class="stat-ripple stat-ripple-2"></div>
             <div class="stat-ripple stat-ripple-3"></div>
-            <div class="stat-icon-wrapper">
-              <div class="stat-icon active-icon">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-                  <path d="M8 12L11 15L16 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-              </div>
-              <div class="stat-pulse"></div>
+            <div class="stat-icon active-icon">
+              <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><path d="M8 12L11 15L16 9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
             <div class="stat-content">
-              <div class="stat-value">{{ activeSessionsCount }}</div>
-              <div class="stat-label">Active Sessions</div>
+              <span class="stat-value">{{ activeSessionsCount }}</span>
+              <span class="stat-label">Active</span>
             </div>
             <div class="stat-glow active-glow"></div>
           </div>
@@ -111,19 +105,12 @@
             <div class="stat-ripple"></div>
             <div class="stat-ripple stat-ripple-2"></div>
             <div class="stat-ripple stat-ripple-3"></div>
-            <div class="stat-icon-wrapper">
-              <div class="stat-icon paused-icon">
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-                  <rect x="9" y="9" width="2" height="6" fill="currentColor"/>
-                  <rect x="13" y="9" width="2" height="6" fill="currentColor"/>
-                </svg>
-              </div>
-              <div class="stat-pulse paused-pulse"></div>
+            <div class="stat-icon paused-icon">
+              <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><rect x="9" y="9" width="2" height="6" fill="currentColor"/><rect x="13" y="9" width="2" height="6" fill="currentColor"/></svg>
             </div>
             <div class="stat-content">
-              <div class="stat-value">{{ pausedSessionsCount }}</div>
-              <div class="stat-label">Paused Sessions</div>
+              <span class="stat-value">{{ pausedSessionsCount }}</span>
+              <span class="stat-label">Paused</span>
             </div>
             <div class="stat-glow paused-glow"></div>
           </div>
