@@ -215,7 +215,7 @@ export const useAuthStore = defineStore('auth', {
     },
 
     /**
-     * User registration
+     * User registration. Uses same response shape as login so user stays signed in (token + user).
      * @param {Object} userData - User registration data
      */
     async register(userData) {
@@ -224,11 +224,17 @@ export const useAuthStore = defineStore('auth', {
 
       try {
         const response = await AuthService.register(userData)
-        this.user = response.user || response.data?.user || response
+        const user = extractUserFromResponse(response)
+        const token = response.token ?? response.data?.token ?? (response.user && response.user.token) ?? (response.data?.user && response.data.user.token)
+        if (!user || !user.id) {
+          throw new Error('Invalid registration response: user data missing')
+        }
+        this.user = user
+        this.token = token || this.token
         this.isAuthenticated = true
 
-        // Save user data to localStorage
-        saveAuthData(this.user)
+        // Save user and token so user stays signed in (same as login)
+        saveAuthData({ ...user, token: this.token })
 
         // Redirect to dashboard
         router.push('/dashboard')
@@ -295,14 +301,11 @@ export const useAuthStore = defineStore('auth', {
         return response
       } catch (error) {
         this.error = error.message || 'Failed to fetch user'
-        this.user = null
-        this.isAuthenticated = false
-
-        // Remove user data from localStorage
-        saveAuthData(null)
-
-        // Redirect to login page if unauthorized
+        // Only clear auth state and redirect on 401; other errors (network, 500, etc.) keep user logged in
         if (error.response?.status === 401) {
+          this.user = null
+          this.isAuthenticated = false
+          saveAuthData(null)
           router.push('/login')
         }
         throw error

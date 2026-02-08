@@ -67,12 +67,15 @@
 
         <!-- Settings Section -->
         <SettingsSection 
-          v-if="activeSection === 'settings' || activeSection === 'settings-site'"
+          v-if="activeSection === 'settings'"
           @change-password="onChangePassword"
           @export-data="onExportData"
           @setup-2fa="onSetup2FA"
           @delete-account="onDeleteAccount"
         />
+
+        <!-- Site Settings Section (admin) -->
+        <SiteSettingsSection v-if="activeSection === 'settings-site'" />
 
         <!-- Devices Section -->
         <DevicesSection 
@@ -84,6 +87,9 @@
 
         <!-- Expenses Section (admin/staff only) -->
         <ExpensesSection v-if="activeSection === 'expenses'" />
+
+        <!-- Score Points Settings Section (admin/staff only) -->
+        <ScorePointsSettingsSection v-if="activeSection === 'settings-score-points'" />
       </div>
     </main>
 
@@ -146,6 +152,8 @@ import ProductsSection from '@/components/dashboard/sections/ProductsSection.vue
 import SessionsSection from '@/components/dashboard/sections/SessionsSection.vue'
 import DevicesSection from '@/components/dashboard/sections/DevicesSection.vue'
 import ExpensesSection from '@/components/dashboard/sections/ExpensesSection.vue'
+import ScorePointsSettingsSection from '@/components/dashboard/sections/ScorePointsSettingsSection.vue'
+import SiteSettingsSection from '@/components/dashboard/sections/SiteSettingsSection.vue'
 
 const route = useRoute()
 // Reactive state - load from localStorage or route query (e.g. /dashboard?section=expenses)
