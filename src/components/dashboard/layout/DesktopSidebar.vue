@@ -310,7 +310,8 @@ const navigationItems = computed(() => [
     subItems: [
       { id: 'settings-site', label: 'Site', icon: SiteIcon },
       { id: 'settings-devices', label: 'Devices', icon: DevicesIcon },
-      { id: 'settings-score-points', label: 'Score Points', icon: ScorePointsIcon }
+      { id: 'settings-score-points', label: 'Score Points', icon: ScorePointsIcon },
+      { id: 'settings-points-transactions', label: 'Points Transactions', icon: ScorePointsIcon }
     ]
   }
 ])

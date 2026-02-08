@@ -4,6 +4,9 @@ import { useAuthStore } from '@/stores/auth'
 import { resolveBackendImageUrl } from '@/utils/helpers'
 import ProfileSection from '@/components/dashboard/sections/ProfileSection.vue'
 import Lightbox from '@/components/base/ui/Lightbox.vue'
+import { userPointBalancesApi } from '@/api/userPointBalancesApi'
+import { userLevelsApi } from '@/api/userLevels'
+import { ranksApi } from '@/api/ranks'
 
 const authStore = useAuthStore()
 
@@ -29,24 +32,135 @@ const profileInitials = computed(() => {
   return name.slice(0, 2).toUpperCase()
 })
 
-onMounted(() => {
-  if (authStore.user?.id) authStore.fetchUser?.()
+/* Dynamic points & level data */
+const pointsLoading = ref(true)
+const pointsError = ref(null)
+const myBalance = ref(null)
+const levelsList = ref([])
+
+function getTotalPointsFromBalance(bal) {
+  if (!bal) return 0
+  const row = bal.user_point_balance ?? bal.balance ?? bal
+  return Number(row?.total_points ?? bal.total_points ?? 0) || 0
+}
+
+function getLevelFromBalance(bal) {
+  if (!bal) return null
+  return bal.user_level ?? bal.level ?? bal.user?.user_level ?? null
+}
+
+const stats = computed(() => {
+  const pointsEarned = myBalance.value != null
+    ? getTotalPointsFromBalance(myBalance.value)
+    : Number(authStore.user?.points_balance ?? authStore.user?.total_points ?? authStore.user?.point_balance ?? 0) || 0
+  const levels = Array.isArray(levelsList.value) ? levelsList.value : (levelsList.value?.data ?? [])
+  const sortedLevels = [...levels].sort((a, b) => (a.min_points ?? 0) - (b.min_points ?? 0))
+  const nextLevel = sortedLevels.find((l) => (l.min_points ?? 0) > pointsEarned)
+  const nextRankAt = nextLevel ? (nextLevel.min_points ?? 0) : pointsEarned || 1
+  const currentLevel = sortedLevels
+    .filter((l) => (l.min_points ?? 0) <= pointsEarned)
+    .pop() ?? sortedLevels[0] ?? null
+  const currentLevelMinPoints = currentLevel != null ? (currentLevel.min_points ?? 0) : 0
+  const nextLevelMinPoints = nextLevel != null ? (nextLevel.min_points ?? 0) : currentLevelMinPoints
+
+  return {
+    totalSpent: '₦12,450',
+    mostUsedDevice: 'PlayStation 5',
+    favoriteDrink: 'Iced Mocha',
+    favoriteSnack: 'Loaded Fries',
+    favoriteFood: 'Pepperoni Pizza',
+    pointsEarned,
+    pointsToNextRank: nextLevel ? Math.max(0, nextRankAt - pointsEarned) : 0,
+    nextRankAt,
+    currentRank: currentLevel?.name ?? '—',
+    nextRank: nextLevel?.name ?? 'Max',
+    currentLevelMinPoints,
+    nextLevelMinPoints,
+  }
 })
 
-/* Static user stats */
-const stats = ref({
-  totalSpent: '₦12,450',
-  mostUsedDevice: 'PlayStation 5',
-  favoriteDrink: 'Iced Mocha',
-  favoriteSnack: 'Loaded Fries',
-  favoriteFood: 'Pepperoni Pizza',
-  pointsEarned: 2840,
-  rankToday: 7,
-  rankThisMonth: 23,
-  pointsToNextRank: 160,
-  nextRankAt: 3000,
-  currentRank: 'Rookie',
-  nextRank: 'Pro',
+/* My Rank (leaderboard position) – three stat-tiles: Today, This month, All time */
+const myRankTiles = ref({
+  today: null,
+  month: null,
+  'all-time': null,
+})
+const myRankLoading = ref(false)
+const myRankError = ref(null)
+
+const rankPeriods = [
+  { key: 'today', label: 'Today' },
+  { key: 'month', label: 'This month' },
+  { key: 'all-time', label: 'All time' },
+]
+
+async function loadMyRank() {
+  myRankLoading.value = true
+  myRankError.value = null
+  const now = new Date()
+  const month = now.getMonth() + 1
+  const year = now.getFullYear()
+  try {
+    const [todayRes, monthRes, allTimeRes] = await Promise.all([
+      ranksApi.myRank({ period: 'today' }),
+      ranksApi.myRank({ period: 'month', month, year }),
+      ranksApi.myRank({ period: 'all-time' }),
+    ])
+    myRankTiles.value = { today: todayRes, month: monthRes, 'all-time': allTimeRes }
+  } catch (e) {
+    myRankError.value = e?.response?.data?.message || e?.message || 'Could not load your rank'
+    myRankTiles.value = { today: null, month: null, 'all-time': null }
+  } finally {
+    myRankLoading.value = false
+  }
+}
+
+function formatRankValue(data) {
+  if (!data) return '—'
+  if (data.in_leaderboard) return `#${data.rank} of ${data.total_users}`
+  return data.message || 'No activity'
+}
+
+function formatRankPoints(data) {
+  if (!data?.in_leaderboard) return ''
+  const pts = data.points ?? 0
+  return pts.toLocaleString() + ' pts'
+}
+
+const progressPercent = computed(() => {
+  const earned = stats.value.pointsEarned
+  const start = stats.value.currentLevelMinPoints
+  const end = stats.value.nextRankAt
+  if (!end || end <= start) return 100
+  return Math.min(100, Math.max(0, ((earned - start) / (end - start)) * 100))
+})
+
+async function loadPointsAndLevels() {
+  pointsLoading.value = true
+  pointsError.value = null
+  try {
+    const [balanceRes, levelsRes] = await Promise.all([
+      userPointBalancesApi.getMyBalance().catch((err) => {
+        if (err?.response?.status === 404) return null
+        throw err
+      }),
+      userLevelsApi.list().catch(() => []),
+    ])
+    myBalance.value = balanceRes && typeof balanceRes === 'object' ? balanceRes : null
+    levelsList.value = Array.isArray(levelsRes) ? levelsRes : (levelsRes?.data ?? [])
+  } catch (e) {
+    pointsError.value = e?.response?.data?.message ?? e?.message ?? 'Failed to load points'
+    myBalance.value = null
+    levelsList.value = []
+  } finally {
+    pointsLoading.value = false
+  }
+}
+
+onMounted(() => {
+  if (authStore.user?.id) authStore.fetchUser?.()
+  loadPointsAndLevels()
+  loadMyRank()
 })
 
 const topItems = ref([
@@ -60,10 +174,6 @@ const recommendations = ref([
   { text: 'Your friend loved this snack!', item: 'Churros', icon: '🥨', tag: 'Popular' },
   { text: 'Level up your gaming—try this.', item: 'VR Booth', icon: '🥽', tag: 'New' },
 ])
-
-const progressPercent = ref(
-  Math.min(100, (stats.value.pointsEarned / stats.value.nextRankAt) * 100)
-)
 
 /* Toggle account / update-info section (ProfileView only) */
 const showAccountSection = ref(false)
@@ -181,14 +291,14 @@ function openAvatarLightbox() {
       <div class="profile-section__inner">
         <h2 class="profile-section__title">Your stats at a glance</h2>
         <p class="profile-section__desc">Money spent, favorites, points & rank—all in one place.</p>
-        <div class="stats-overview">
+        <div v-if="pointsLoading && myBalance == null" class="profile-points-loading">
+          <div class="profile-points-spinner" aria-hidden="true"></div>
+          <p>Loading your points…</p>
+        </div>
+        <p v-else-if="pointsError" class="profile-points-error">{{ pointsError }}</p>
+        <div v-else class="stats-overview">
           <article
-            v-for="(val, key, i) in {
-              totalSpent: stats.totalSpent,
-              pointsEarned: stats.pointsEarned,
-              rankToday: stats.rankToday,
-              rankThisMonth: stats.rankThisMonth,
-            }"
+            v-for="(val, key, i) in { totalSpent: stats.totalSpent, pointsEarned: stats.pointsEarned }"
             :key="key"
             class="stat-tile"
             :style="{ '--delay': `${i * 0.08}s` }"
@@ -197,28 +307,62 @@ function openAvatarLightbox() {
             <div class="stat-tile__border"></div>
             <div class="stat-tile__content">
               <span class="stat-tile__value">{{ typeof val === 'number' ? val.toLocaleString() : val }}</span>
-              <span class="stat-tile__label">{{ key === 'totalSpent' ? 'Total spent' : key === 'pointsEarned' ? 'Points earned' : key === 'rankToday' ? 'Rank today' : 'Rank this month' }}</span>
+              <span class="stat-tile__label">{{ key === 'totalSpent' ? 'Total spent' : 'Total points earned' }}</span>
             </div>
           </article>
+        </div>
+        <!-- My Rank: three stat-tiles (Today, This month, All time) -->
+        <div class="profile-my-rank">
+          <h3 class="profile-my-rank__title">My Rank</h3>
+          <div v-if="myRankLoading" class="profile-my-rank-loading">
+            <div class="profile-points-spinner profile-points-spinner--sm" aria-hidden="true"></div>
+            <span>Loading rank…</span>
+          </div>
+          <p v-else-if="myRankError" class="profile-my-rank-error">{{ myRankError }}</p>
+          <div v-else class="stats-overview stats-overview--rank">
+            <article
+              v-for="(p, i) in rankPeriods"
+              :key="p.key"
+              class="stat-tile"
+              :style="{ '--delay': `${i * 0.08}s` }"
+            >
+              <div class="stat-tile__glow"></div>
+              <div class="stat-tile__border"></div>
+              <div class="stat-tile__content">
+                <span class="stat-tile__value">{{ formatRankValue(myRankTiles[p.key]) }}</span>
+                <span v-if="formatRankPoints(myRankTiles[p.key])" class="stat-tile__sub">{{ formatRankPoints(myRankTiles[p.key]) }}</span>
+                <span class="stat-tile__label">{{ p.label }}</span>
+              </div>
+            </article>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- Points progress bar -->
+    <!-- Points progress bar: Level up your points (dynamic) -->
     <section class="profile-section profile-section--progress" aria-label="Level progress">
       <div class="profile-section__inner">
         <h2 class="profile-section__title">Level up your points!</h2>
-        <p class="profile-section__desc">{{ stats.pointsEarned }} / {{ stats.nextRankAt }} to {{ stats.nextRank }}</p>
-        <div class="rank-bar-wrap">
-          <div class="rank-bar">
-            <div class="rank-bar__fill" :style="{ width: progressPercent + '%' }"></div>
-            <div class="rank-bar__glow" :style="{ width: progressPercent + '%' }"></div>
-          </div>
-          <div class="rank-badges">
-            <span class="rank-badge rank-badge--current">{{ stats.currentRank }}</span>
-            <span class="rank-badge rank-badge--next">{{ stats.nextRank }}</span>
-          </div>
+        <div v-if="pointsLoading && myBalance == null" class="profile-points-loading profile-points-loading--compact">
+          <div class="profile-points-spinner" aria-hidden="true"></div>
+          <p>Loading level…</p>
         </div>
+        <template v-else>
+          <p class="profile-section__desc">
+            <template v-if="stats.nextRank !== 'Max'">{{ stats.pointsEarned.toLocaleString() }} / {{ stats.nextRankAt.toLocaleString() }} pts to {{ stats.nextRank }} </template>
+            <template v-else>{{ stats.pointsEarned.toLocaleString() }} pts · {{ stats.currentRank }} </template>
+          </p>
+          <div class="rank-bar-wrap">
+            <div class="rank-bar">
+              <div class="rank-bar__fill" :style="{ width: progressPercent + '%' }"></div>
+              <div class="rank-bar__glow" :style="{ width: progressPercent + '%' }"></div>
+            </div>
+            <div class="rank-badges">
+              <span class="rank-badge rank-badge--current">{{ stats.currentRank }} ({{ stats.currentLevelMinPoints.toLocaleString() }} pts)</span>
+              <span class="rank-badge rank-badge--next">{{ stats.nextRank }}<template v-if="stats.nextRank !== 'Max'"> ({{ stats.nextLevelMinPoints.toLocaleString() }} pts)</template></span>
+            </div>
+          </div>
+        </template>
       </div>
     </section>
 
@@ -744,6 +888,85 @@ function openAvatarLightbox() {
   opacity: 0.6;
 }
 
+/* Points loading / error */
+.profile-points-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.profile-points-loading--compact {
+  padding: 1.25rem;
+}
+
+.profile-points-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid rgba(0, 245, 255, 0.2);
+  border-top-color: var(--neon-cyan);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.profile-points-error {
+  padding: 1rem 1.25rem;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 12px;
+  color: #fca5a5;
+  margin: 0;
+}
+
+.profile-points-spinner--sm {
+  width: 24px;
+  height: 24px;
+  border-width: 2px;
+}
+
+/* My Rank: three stat-tiles */
+.profile-my-rank {
+  position: relative;
+  margin-top: 1.5rem;
+}
+
+.profile-my-rank__title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0 0 1rem;
+}
+
+.stats-overview--rank {
+  margin-top: 0;
+}
+
+.profile-my-rank-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+}
+
+.profile-my-rank-error {
+  margin: 0;
+  padding: 0.75rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 10px;
+  color: #fca5a5;
+  font-size: 0.9rem;
+}
+
 /* Stats overview tiles */
 .stats-overview {
   display: grid;
@@ -811,11 +1034,18 @@ function openAvatarLightbox() {
 
 .stat-tile__value {
   display: block;
-  font-size: clamp(1.5rem, 3.5vw, 2rem);
+  font-size: clamp(1.25rem, 3vw, 1.75rem);
   font-weight: 800;
   color: var(--neon-cyan);
   text-shadow: 0 0 24px rgba(0, 245, 255, 0.35);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.15rem;
+}
+
+.stat-tile__sub {
+  display: block;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.75);
+  margin-bottom: 0.15rem;
 }
 
 .stat-tile__label {

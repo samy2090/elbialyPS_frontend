@@ -90,6 +90,9 @@
 
         <!-- Score Points Settings Section (admin/staff only) -->
         <ScorePointsSettingsSection v-if="activeSection === 'settings-score-points'" />
+
+        <!-- Points Transactions Section (admin/staff only) -->
+        <PointsTransactionsSection v-if="activeSection === 'settings-points-transactions'" />
       </div>
     </main>
 
@@ -153,6 +156,7 @@ import SessionsSection from '@/components/dashboard/sections/SessionsSection.vue
 import DevicesSection from '@/components/dashboard/sections/DevicesSection.vue'
 import ExpensesSection from '@/components/dashboard/sections/ExpensesSection.vue'
 import ScorePointsSettingsSection from '@/components/dashboard/sections/ScorePointsSettingsSection.vue'
+import PointsTransactionsSection from '@/components/dashboard/sections/PointsTransactionsSection.vue'
 import SiteSettingsSection from '@/components/dashboard/sections/SiteSettingsSection.vue'
 
 const route = useRoute()

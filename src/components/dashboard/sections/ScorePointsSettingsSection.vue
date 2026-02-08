@@ -198,6 +198,9 @@
           </template>
         </div>
 
+        <!-- User Levels (loyalty tiers) -->
+        <UserLevelsBlock />
+
         <div class="settings-footer">
           <button type="submit" class="save-btn" :disabled="saving">
             <svg v-if="!saving" class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -217,6 +220,7 @@
 <script setup>
 import { ref, reactive, onMounted, watch } from 'vue'
 import { scorePointsSettingsApi } from '@/api/scorePointsSettings'
+import UserLevelsBlock from './UserLevelsBlock.vue'
 
 const loading = ref(true)
 const fetchError = ref(null)
