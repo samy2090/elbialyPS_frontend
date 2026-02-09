@@ -48,7 +48,8 @@
       <p>No claims match the filters.</p>
     </div>
     <template v-else>
-      <div class="table-wrap">
+      <!-- Desktop: table -->
+      <div class="table-wrap desktop-only">
         <table class="claims-table">
           <thead>
             <tr>
@@ -88,6 +89,44 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Mobile: cards -->
+      <div class="claims-cards mobile-only">
+        <div v-for="c in claims" :key="'card-' + c.id" class="claim-card">
+          <div class="claim-card-header">
+            <span class="user-name">{{ c.user?.name ?? '—' }}</span>
+            <span :class="['badge', 'badge-' + statusClass(c.status)]">{{ c.status }}</span>
+          </div>
+          <div class="claim-card-body">
+            <div class="claim-card-row">
+              <span class="claim-card-label">Option</span>
+              <span>{{ c.option?.label ?? '—' }}</span>
+            </div>
+            <div class="claim-card-row">
+              <span class="claim-card-label">Reward</span>
+              <span><span class="badge">{{ c.reward_type }}</span> {{ rewardValueLabel(c.reward_value) }}</span>
+            </div>
+            <div class="claim-card-row">
+              <span class="claim-card-label">Created</span>
+              <span>{{ formatDate(c.created_at) }}</span>
+            </div>
+            <div v-if="c.fulfilled_at" class="claim-card-row">
+              <span class="claim-card-label">Fulfilled</span>
+              <span>{{ formatDate(c.fulfilled_at) }}</span>
+            </div>
+          </div>
+          <div class="claim-card-actions">
+            <button
+              v-if="c.status === 'pending' && c.reward_type !== 'points'"
+              type="button"
+              class="action-btn primary"
+              @click="openFulfill(c)"
+            >
+              Fulfill
+            </button>
+          </div>
+        </div>
       </div>
 
       <div v-if="meta.last_page > 1" class="pagination">
@@ -489,5 +528,218 @@ onMounted(() => fetchClaims(1))
   margin-top: 1rem;
   padding-top: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Mobile: cards (shown on small screens) */
+.claims-cards.mobile-only {
+  display: none;
+}
+
+.claim-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.claim-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.claim-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.claim-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.claim-card-label {
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.55);
+  flex-shrink: 0;
+}
+
+.claim-card-actions {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.claim-card-actions .action-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* Mobile layout and touch targets */
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+
+  .mobile-only {
+    display: block !important;
+  }
+
+  .claims-cards.mobile-only {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1rem;
+  }
+
+  .section-header {
+    margin-bottom: 1.25rem;
+  }
+
+  .section-title {
+    font-size: 1.35rem;
+    line-height: 1.25;
+  }
+
+  .section-subtitle {
+    font-size: 0.8125rem;
+    line-height: 1.4;
+  }
+
+  .filters-row {
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1.25rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+  }
+
+  .filter-group {
+    width: 100%;
+  }
+
+  .filter-group label {
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .filter-group input,
+  .filter-group select {
+    width: 100%;
+    min-width: 0;
+    min-height: 48px;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    border-radius: 12px;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.5)' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    padding-right: 2.5rem;
+  }
+
+  .filter-group input[type="number"] {
+    background-image: none;
+    padding-right: 1rem;
+  }
+
+  .filters-row .action-btn.primary {
+    width: 100%;
+    min-height: 48px;
+    padding: 0.875rem 1.25rem;
+    font-size: 1rem;
+    border-radius: 12px;
+    margin-top: 0.25rem;
+  }
+
+  .loading-state,
+  .error-state,
+  .empty-state {
+    padding: 2.5rem 1.25rem;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.02);
+    margin: 0 0 1rem 0;
+  }
+
+  .empty-state p,
+  .loading-state p,
+  .error-state p {
+    font-size: 0.9375rem;
+  }
+
+  .pagination {
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem 0;
+  }
+
+  .pagination .action-btn {
+    width: 100%;
+    min-height: 48px;
+    padding: 0.875rem 1.25rem;
+    font-size: 1rem;
+    border-radius: 12px;
+  }
+
+  .page-info {
+    text-align: center;
+    font-size: 0.8125rem;
+  }
+
+  .claim-card-actions .action-btn {
+    min-height: 48px;
+    padding: 0.875rem 1.25rem;
+    font-size: 1rem;
+    border-radius: 12px;
+  }
+
+  .modal-overlay {
+    padding: 0.75rem;
+    align-items: flex-end;
+  }
+
+  .modal-card {
+    max-width: 100%;
+    border-radius: 16px 16px 0 0;
+    padding: 1.5rem 1.25rem;
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0));
+  }
+
+  .modal-actions {
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-top: 1.25rem;
+  }
+
+  .modal-actions .action-btn {
+    min-height: 48px;
+    padding: 0.875rem 1.25rem;
+    font-size: 1rem;
+    border-radius: 12px;
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (min-width: 769px) {
+  .desktop-only {
+    display: block !important;
+  }
+
+  .mobile-only {
+    display: none !important;
+  }
 }
 </style>

@@ -102,12 +102,35 @@ const spinsRemaining = computed(() => {
   return null
 })
 
+// Dynamic label for the main spin button
+const spinButtonText = computed(() => {
+  if (isSpinning.value) return 'Spinning…'
+  // After the user has a current result and still has spins, show “Spin again”
+  if (currentResult.value && canSpinNow.value) return 'Spin again'
+  return 'SPIN NOW'
+})
 const periodEnd = computed(() => {
   const end = batch.value?.period_end
   if (!end) return null
   const d = new Date(end)
   return isNaN(d.getTime()) ? null : d
 })
+
+/** Set wheel rotation so the segment for the current result is under the pointer (top). */
+function pointWheelAtCurrentResult() {
+  const cr = batch.value?.current_result
+  const opts = options.value
+  if (!cr?.label || !opts?.length) return
+  const segmentAngleDeg = 360 / opts.length
+  const index = opts.findIndex(
+    (opt) =>
+      opt.label === cr.label ||
+      opt.reward?.label === cr.label
+  )
+  if (index === -1) return
+  const angle = (index + 0.5) * segmentAngleDeg
+  rotation.value = 360 - angle
+}
 
 async function fetchStatus() {
   if (!props.canSpin) return
@@ -117,6 +140,7 @@ async function fetchStatus() {
   try {
     const res = await spinWheelApi.getStatus()
     status.value = res
+    pointWheelAtCurrentResult()
   } catch (err) {
     statusError.value = err.response?.data?.message ?? err.message ?? 'Could not load spin wheel'
     status.value = null
@@ -248,7 +272,7 @@ onMounted(() => {
             :style="{
               '--rotation': `${rotation}deg`,
               '--segment-count': segmentCount,
-              '--segment-angle': `${segmentAngle}deg`,
+              '--segment-angle': segmentAngle,
             }"
           >
             <div class="spin-wheel__glass"></div>
@@ -294,7 +318,7 @@ onMounted(() => {
               @click="spin"
             >
               <span class="spin-btn__glow" aria-hidden="true"></span>
-              <span class="spin-btn__text">{{ isSpinning ? 'Spinning…' : 'SPIN NOW' }}</span>
+              <span class="spin-btn__text">{{ spinButtonText }}</span>
             </button>
           </div>
           <div v-if="canChooseNow && !isSpinning" class="spin-actions__row">
@@ -313,13 +337,13 @@ onMounted(() => {
         </template>
       </div>
 
-      <!-- Result area -->
+      <!-- Result area: show current reward whenever we have one (from spin or from API) -->
       <div class="spin-result">
-        <div v-if="!showResult && !currentResult" class="spin-result-placeholder">
+        <div v-if="!currentResult" class="spin-result-placeholder">
           Your reward will appear here
         </div>
         <Transition name="spin-result-reveal">
-          <div v-if="showResult && currentResult" class="spin-result-card">
+          <div v-if="currentResult" class="spin-result-card">
             <div class="spin-result-card__glow" aria-hidden="true"></div>
             <span class="spin-result-card__icon">{{ currentResult.icon }}</span>
             <span class="spin-result-card__text">You got: {{ currentResult.label }}</span>
@@ -513,6 +537,8 @@ onMounted(() => {
   position: relative;
   width: 100%;
   height: 100%;
+  /* ensure the wheel always stays perfectly square */
+  aspect-ratio: 1;
   border-radius: 50%;
   transform: rotate(var(--rotation, 0deg));
   transition: transform 4.2s cubic-bezier(0.17, 0.67, 0.12, 0.99);
@@ -555,14 +581,14 @@ onMounted(() => {
 
 .spin-wheel__segments {
   position: absolute;
-  inset: 12%;
+  inset: 4%;
   border-radius: 50%;
   box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.3);
 }
 
 .spin-wheel__inner-ring {
   position: absolute;
-  inset: 22%;
+  inset: 30%;
   border-radius: 50%;
   background: linear-gradient(145deg, rgba(20, 25, 40, 0.95), rgba(10, 12, 22, 0.98));
   box-shadow:
@@ -572,37 +598,66 @@ onMounted(() => {
   border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+/* Label container: full size of wheel so translate % is relative to wheel */
 .spin-wheel__label {
   position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 38%;
-  transform-origin: left center;
-  transform: translateY(-50%) rotate(calc(var(--i) * var(--seg-angle) + (var(--seg-angle) / 2)));
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 50% 50%;
+
+  --angle: calc((var(--i) + 0.5) * var(--segment-angle) * 1deg);
+  /* Place labels on the segment ring (between inner ring and outer edge) */
+  --radius: 33%;
+
+  transform:
+    rotate(var(--angle))
+    translateY(calc(-1 * var(--radius)));
+
   pointer-events: none;
 }
 
+/* Inner content: centered on segment, rotated WITH the slice so text is part of the wheel */
 .spin-wheel__label-inner {
-  display: inline-flex;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  transform: rotate(90deg);
-  transform-origin: center center;
+  justify-content: center;
+  gap: 3px;
+  text-align: center;
+  width: 72px;
+  max-width: 22vw;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  pointer-events: none;
+  /* Readable on all segment colors */
+  text-shadow:
+    0 0 2px rgba(0, 0, 0, 0.8),
+    0 1px 3px rgba(0, 0, 0, 0.6),
+    0 0 8px rgba(0, 0, 0, 0.4);
 }
 
 .spin-wheel__label-icon {
-  font-size: clamp(0.9rem, 2.8vw, 1.1rem);
+  font-size: clamp(1rem, 3vw, 1.35rem);
   line-height: 1;
-  filter: drop-shadow(0 0 6px rgba(0, 212, 255, 0.4));
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.5));
 }
 
 .spin-wheel__label-text {
-  font-size: clamp(0.6rem, 2vw, 0.7rem);
+  font-size: clamp(0.8rem, 2.5vw, 0.95rem);
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.95);
-  text-shadow: 0 0 8px rgba(0, 0, 0, 0.5);
+  color: rgba(255, 255, 255, 0.98);
+  text-shadow:
+    0 0 2px rgba(0, 0, 0, 0.8),
+    0 1px 2px rgba(0, 0, 0, 0.6);
   white-space: nowrap;
+  line-height: 1.2;
 }
 
 .spin-wheel__hub {
