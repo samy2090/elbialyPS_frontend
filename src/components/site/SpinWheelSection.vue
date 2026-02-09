@@ -76,9 +76,10 @@ const showResult = ref(false)
 const chooseSuccess = ref(false)
 const apiError = ref(null)
 
-// Can user spin right now? (authenticated + batch.can_spin)
+// Can user spin right now? (authenticated + (batch.can_spin OR spins remaining))
 const canSpinNow = computed(() => {
-  return props.canSpin && batch.value?.can_spin === true && !isSpinning.value
+  const hasSpins = spinsRemaining.value != null && spinsRemaining.value > 0
+  return props.canSpin && (batch.value?.can_spin === true || hasSpins) && !isSpinning.value
 })
 
 // Can user choose (claim) current result?
@@ -681,7 +682,7 @@ onMounted(() => {
   position: absolute;
   left: 50%;
   top: -8px;
-  transform: translateX(-50%);
+  transform: translateX(calc(-50% + 10px));
   width: 0;
   height: 0;
   border-left: 14px solid transparent;

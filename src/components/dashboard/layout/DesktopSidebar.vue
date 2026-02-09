@@ -363,15 +363,22 @@ const navigationItems = computed(() => [
     ]
   },
   { id: 'profile', label: 'Profile', icon: ProfileIcon },
+  {
+    id: 'points',
+    label: 'Points',
+    icon: ScorePointsIcon,
+    subItems: [
+      { id: 'settings-score-points', label: 'Score Points', icon: ScorePointsIcon },
+      { id: 'settings-points-transactions', label: 'Points Transactions', icon: ScorePointsIcon }
+    ]
+  },
   { 
     id: 'settings', 
     label: 'Settings', 
     icon: SettingsIcon,
     subItems: [
       { id: 'settings-site', label: 'Site', icon: SiteIcon },
-      { id: 'settings-devices', label: 'Devices', icon: DevicesIcon },
-      { id: 'settings-score-points', label: 'Score Points', icon: ScorePointsIcon },
-      { id: 'settings-points-transactions', label: 'Points Transactions', icon: ScorePointsIcon }
+      { id: 'settings-devices', label: 'Devices', icon: DevicesIcon }
     ]
   }
 ])

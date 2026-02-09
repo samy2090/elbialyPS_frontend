@@ -33,6 +33,11 @@ export const spinWheelAdminApi = {
     return api.delete(`/api/spin-wheel/options/${id}`).then((r) => r.data)
   },
 
+  getHistory(params = {}) {
+    const qs = new URLSearchParams(params).toString()
+    return api.get(`/api/spin-wheel/admin/history?${qs}`).then((r) => r.data)
+  },
+
   getClaims(params = {}) {
     const qs = new URLSearchParams(params).toString()
     return api.get(`/api/spin-wheel/claims?${qs}`).then((r) => r.data)

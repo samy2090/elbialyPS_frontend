@@ -158,19 +158,10 @@ async function loadPointsAndLevels() {
   }
 }
 
-/* Spin wheel: history and claims */
-const spinHistory = ref([])
-const spinHistoryLoading = ref(false)
-const spinHistoryError = ref(null)
+/* Spin wheel: claimed rewards only */
 const myClaims = ref([])
 const myClaimsLoading = ref(false)
 const myClaimsError = ref(null)
-
-function formatSpinDate(s) {
-  if (!s) return '—'
-  const d = new Date(s)
-  return isNaN(d.getTime()) ? s : d.toLocaleString()
-}
 
 function formatClaimDate(s) {
   if (!s) return '—'
@@ -183,21 +174,6 @@ function claimStatusBadge(status) {
   if (status === 'pending') return { text: 'Pending', class: 'profile-claim-badge--warning' }
   if (status === 'fulfilled') return { text: 'Fulfilled', class: 'profile-claim-badge--info' }
   return { text: status || '—', class: 'profile-claim-badge--muted' }
-}
-
-async function loadSpinHistory() {
-  if (!authStore.user?.id) return
-  spinHistoryLoading.value = true
-  spinHistoryError.value = null
-  try {
-    const res = await spinWheelApi.getHistory({ limit: 20 })
-    spinHistory.value = res?.data ?? []
-  } catch (e) {
-    spinHistoryError.value = e?.response?.data?.message ?? e?.message ?? 'Could not load spin history'
-    spinHistory.value = []
-  } finally {
-    spinHistoryLoading.value = false
-  }
 }
 
 async function loadMyClaims() {
@@ -219,7 +195,6 @@ onMounted(() => {
   if (authStore.user?.id) authStore.fetchUser?.()
   loadPointsAndLevels()
   loadMyRank()
-  loadSpinHistory()
   loadMyClaims()
 })
 
@@ -423,32 +398,6 @@ function openAvatarLightbox() {
             </div>
           </div>
         </template>
-      </div>
-    </section>
-
-    <!-- Spin History -->
-    <section class="profile-section profile-section--spin-history" aria-label="Spin history">
-      <div class="profile-section__inner">
-        <h2 class="profile-section__title">Spin History</h2>
-        <p class="profile-section__desc">Your recent spins on the wheel.</p>
-        <div v-if="spinHistoryLoading" class="profile-spin-loading">
-          <div class="profile-points-spinner" aria-hidden="true"></div>
-          <p>Loading spin history…</p>
-        </div>
-        <div v-else-if="spinHistoryError" class="profile-spin-error">
-          <p>{{ spinHistoryError }}</p>
-          <button type="button" class="profile-spin-retry" @click="loadSpinHistory">Retry</button>
-        </div>
-        <div v-else-if="!spinHistory.length" class="profile-spin-empty">
-          <p>No spin history yet.</p>
-        </div>
-        <ul v-else class="profile-spin-history-list">
-          <li v-for="item in spinHistory" :key="item.id" class="profile-spin-history-item">
-            <span class="profile-spin-history-date">{{ formatSpinDate(item.spun_at) }}</span>
-            <span class="profile-spin-history-label">{{ item.option?.label ?? item.option?.reward?.label ?? '—' }}</span>
-            <span class="profile-spin-history-num">Spin #{{ item.spin_number ?? '—' }}</span>
-          </li>
-        </ul>
       </div>
     </section>
 
@@ -1046,7 +995,7 @@ function openAvatarLightbox() {
   border-width: 2px;
 }
 
-/* Spin History & My Claims */
+/* My Claims (claimed rewards) */
 .profile-spin-loading {
   display: flex;
   flex-direction: column;
@@ -1094,44 +1043,6 @@ function openAvatarLightbox() {
 
 .profile-spin-empty p {
   margin: 0;
-}
-
-.profile-spin-history-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.profile-spin-history-item {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem 1rem;
-  padding: 0.875rem 1.25rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 14px;
-  font-size: 0.9rem;
-}
-
-.profile-spin-history-date {
-  color: rgba(255, 255, 255, 0.6);
-  flex-shrink: 0;
-}
-
-.profile-spin-history-label {
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.95);
-  flex: 1;
-  min-width: 0;
-}
-
-.profile-spin-history-num {
-  color: var(--neon-cyan);
-  font-size: 0.8rem;
 }
 
 .profile-claims-grid {

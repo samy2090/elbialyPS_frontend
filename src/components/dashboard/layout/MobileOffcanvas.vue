@@ -352,6 +352,16 @@ const navigationItems = computed(() => [
       { id: 'spin-wheel-history', label: 'History', icon: HistoryIcon }
     ]
   },
+
+  {
+    id: 'points',
+    label: 'Points',
+    icon: ScorePointsIcon,
+    subItems: [
+      { id: 'settings-score-points', label: 'Score Points', icon: ScorePointsIcon },
+      { id: 'settings-points-transactions', label: 'Points Transactions', icon: ScorePointsIcon }
+    ]
+  },
   { id: 'profile', label: 'Profile', icon: ProfileIcon },
   { 
     id: 'settings', 
@@ -359,9 +369,7 @@ const navigationItems = computed(() => [
     icon: SettingsIcon,
     subItems: [
       { id: 'settings-site', label: 'Site', icon: SiteIcon },
-      { id: 'settings-devices', label: 'Devices', icon: DevicesIcon },
-      { id: 'settings-score-points', label: 'Score Points', icon: ScorePointsIcon },
-      { id: 'settings-points-transactions', label: 'Points Transactions', icon: ScorePointsIcon }
+      { id: 'settings-devices', label: 'Devices', icon: DevicesIcon }
     ]
   }
 ])

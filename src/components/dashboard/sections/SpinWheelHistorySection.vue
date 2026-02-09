@@ -3,23 +3,23 @@
     <div class="section-header">
       <div class="header-info">
         <h1 class="section-title">Spin Wheel History</h1>
-        <p class="section-subtitle">Claim history across all users (spins and rewards)</p>
+        <p class="section-subtitle">Spin history across all users (spins and rewards)</p>
       </div>
     </div>
 
     <div v-if="fetchError" class="error-state">
       <p>{{ fetchError }}</p>
-      <button type="button" class="action-btn secondary" @click="fetchClaims(1)">Retry</button>
+      <button type="button" class="action-btn secondary" @click="fetchHistory(1)">Retry</button>
     </div>
 
     <div class="filters-row">
       <div class="filter-group">
         <label>User ID</label>
-        <input v-model.number="filters.user_id" type="number" min="1" placeholder="Optional" @keyup.enter="fetchClaims(1)" />
+        <input v-model.number="filters.user_id" type="number" min="1" placeholder="Optional" @keyup.enter="fetchHistory(1)" />
       </div>
       <div class="filter-group">
         <label>Reward type</label>
-        <select v-model="filters.reward_type" @change="fetchClaims(1)">
+        <select v-model="filters.reward_type" @change="fetchHistory(1)">
           <option value="">All</option>
           <option value="points">Points</option>
           <option value="percent_discount">Percent discount</option>
@@ -27,58 +27,74 @@
           <option value="free_product">Free product</option>
         </select>
       </div>
-      <div class="filter-group">
-        <label>Status</label>
-        <select v-model="filters.status" @change="fetchClaims(1)">
-          <option value="">All</option>
-          <option value="pending">Pending</option>
-          <option value="granted">Granted</option>
-          <option value="fulfilled">Fulfilled</option>
-        </select>
-      </div>
-      <button type="button" class="action-btn primary" @click="fetchClaims(1)">Apply</button>
+      <button type="button" class="action-btn primary" @click="fetchHistory(1)">Apply</button>
     </div>
 
-    <div v-if="loading && !claims.length" class="loading-state">
+    <div v-if="loading && !historyItems.length" class="loading-state">
       <div class="spinner"></div>
       <p>Loading history…</p>
     </div>
-    <div v-else-if="!claims.length" class="empty-state">
-      <p>No claim history yet.</p>
+    <div v-else-if="!historyItems.length" class="empty-state">
+      <p>No spin history yet.</p>
     </div>
     <template v-else>
-      <div class="table-wrap">
+      <!-- Desktop: table -->
+      <div class="table-wrap desktop-only">
         <table class="history-table">
           <thead>
             <tr>
               <th>User</th>
               <th>Option / Reward</th>
               <th>Type</th>
-              <th>Claimed at</th>
-              <th>Status</th>
+              <th>Spin #</th>
+              <th>Spun at</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="c in claims" :key="c.id">
+            <tr v-for="item in historyItems" :key="item.id">
               <td>
-                <span class="user-name">{{ c.user?.name ?? '—' }}</span>
-                <span class="user-email">{{ c.user?.email ?? '' }}</span>
+                <span class="user-name">{{ item.user?.name ?? '—' }}</span>
+                <span class="user-meta">{{ item.user?.username ? `@${item.user.username}` : '' }}</span>
               </td>
-              <td>{{ c.option?.label ?? rewardValueLabel(c.reward_value) }}</td>
-              <td><span class="badge">{{ c.reward_type }}</span></td>
-              <td>{{ formatDate(c.created_at) }}</td>
-              <td><span :class="['badge', 'badge-' + statusClass(c.status)]">{{ c.status }}</span></td>
+              <td>{{ optionLabel(item) }}</td>
+              <td><span class="badge">{{ rewardType(item) }}</span></td>
+              <td>{{ item.spin_number ?? '—' }}</td>
+              <td>{{ formatDate(item.spun_at) }}</td>
             </tr>
           </tbody>
         </table>
       </div>
 
+      <!-- Mobile: cards -->
+      <div class="history-cards mobile-only">
+        <div v-for="item in historyItems" :key="'card-' + item.id" class="history-card">
+          <div class="history-card-header">
+            <span class="user-name">{{ item.user?.name ?? '—' }}</span>
+            <span class="badge">#{{ item.spin_number ?? '—' }}</span>
+          </div>
+          <div class="history-card-body">
+            <div class="history-card-row">
+              <span class="history-card-label">Option / Reward</span>
+              <span>{{ optionLabel(item) }}</span>
+            </div>
+            <div class="history-card-row">
+              <span class="history-card-label">Type</span>
+              <span class="badge">{{ rewardType(item) }}</span>
+            </div>
+            <div class="history-card-row">
+              <span class="history-card-label">Spun at</span>
+              <span>{{ formatDate(item.spun_at) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div v-if="meta.last_page > 1" class="pagination">
-        <button type="button" class="action-btn secondary" :disabled="meta.current_page <= 1" @click="fetchClaims(meta.current_page - 1)">
+        <button type="button" class="action-btn secondary" :disabled="meta.current_page <= 1" @click="fetchHistory(meta.current_page - 1)">
           Previous
         </button>
         <span class="page-info">Page {{ meta.current_page }} of {{ meta.last_page }} ({{ meta.total }} total)</span>
-        <button type="button" class="action-btn secondary" :disabled="meta.current_page >= meta.last_page" @click="fetchClaims(meta.current_page + 1)">
+        <button type="button" class="action-btn secondary" :disabled="meta.current_page >= meta.last_page" @click="fetchHistory(meta.current_page + 1)">
           Next
         </button>
       </div>
@@ -92,7 +108,7 @@ import { spinWheelAdminApi } from '@/api/spinWheelAdmin'
 
 const loading = ref(false)
 const fetchError = ref(null)
-const claims = ref([])
+const historyItems = ref([])
 const meta = reactive({
   current_page: 1,
   last_page: 1,
@@ -101,14 +117,20 @@ const meta = reactive({
 })
 
 const filters = reactive({
-  status: '',
   user_id: '',
   reward_type: ''
 })
 
-function rewardValueLabel(rv) {
-  if (!rv) return '—'
-  return rv.label ?? (rv.value != null ? String(rv.value) : '—')
+/** Option label from item.option (label or option.reward.label) */
+function optionLabel(item) {
+  const opt = item?.option
+  if (!opt) return '—'
+  return opt.label ?? opt.reward?.label ?? '—'
+}
+
+/** Reward type from item.option.reward.type */
+function rewardType(item) {
+  return item?.option?.reward?.type ?? '—'
 }
 
 function formatDate(s) {
@@ -117,28 +139,21 @@ function formatDate(s) {
   return isNaN(d.getTime()) ? s : d.toLocaleString()
 }
 
-function statusClass(status) {
-  if (status === 'granted') return 'success'
-  if (status === 'pending') return 'warning'
-  if (status === 'fulfilled') return 'info'
-  return 'muted'
-}
-
-async function fetchClaims(page = 1) {
+async function fetchHistory(page = 1) {
   loading.value = true
   fetchError.value = null
   const params = { page, per_page: 15 }
-  if (filters.status) params.status = filters.status
   if (filters.user_id) params.user_id = filters.user_id
   if (filters.reward_type) params.reward_type = filters.reward_type
   try {
-    const res = await spinWheelAdminApi.getClaims(params)
-    claims.value = res?.data ?? []
+    const res = await spinWheelAdminApi.getHistory(params)
+    const data = res?.data
+    historyItems.value = Array.isArray(data) ? data : []
     const m = res?.meta ?? res?.pagination ?? {}
     meta.current_page = m.current_page ?? page
     meta.last_page = m.last_page ?? 1
     meta.per_page = m.per_page ?? 15
-    meta.total = m.total ?? 0
+    meta.total = m.total ?? historyItems.value.length
   } catch (err) {
     fetchError.value = err.response?.data?.message ?? err.message ?? 'Failed to load history'
   } finally {
@@ -146,7 +161,7 @@ async function fetchClaims(page = 1) {
   }
 }
 
-onMounted(() => fetchClaims(1))
+onMounted(() => fetchHistory(1))
 </script>
 
 <style scoped>
@@ -282,7 +297,7 @@ onMounted(() => fetchClaims(1))
   font-weight: 500;
 }
 
-.user-email {
+.user-meta {
   display: block;
   font-size: 0.8125rem;
   color: rgba(255, 255, 255, 0.6);
@@ -325,5 +340,180 @@ onMounted(() => fetchClaims(1))
 .page-info {
   font-size: 0.875rem;
   color: rgba(255, 255, 255, 0.7);
+}
+
+/* Mobile: cards (shown on small screens) */
+.history-cards.mobile-only {
+  display: none;
+}
+
+.history-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+}
+
+.history-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.history-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.history-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.history-card-label {
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.55);
+  flex-shrink: 0;
+}
+
+/* Mobile layout and touch targets */
+@media (max-width: 768px) {
+  .desktop-only {
+    display: none !important;
+  }
+
+  .mobile-only {
+    display: block !important;
+  }
+
+  .history-cards.mobile-only {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1rem;
+  }
+
+  .section-header {
+    margin-bottom: 1.25rem;
+  }
+
+  .section-title {
+    font-size: 1.35rem;
+    line-height: 1.25;
+  }
+
+  .section-subtitle {
+    font-size: 0.8125rem;
+    line-height: 1.4;
+  }
+
+  .filters-row {
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding: 1.25rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+  }
+
+  .filter-group {
+    width: 100%;
+  }
+
+  .filter-group label {
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .filter-group input,
+  .filter-group select {
+    width: 100%;
+    min-width: 0;
+    min-height: 48px;
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+    border-radius: 12px;
+    -webkit-appearance: none;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.5)' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    padding-right: 2.5rem;
+  }
+
+  .filter-group input[type="number"] {
+    background-image: none;
+    padding-right: 1rem;
+  }
+
+  .filters-row .action-btn.primary {
+    width: 100%;
+    min-height: 48px;
+    padding: 0.875rem 1.25rem;
+    font-size: 1rem;
+    border-radius: 12px;
+    margin-top: 0.25rem;
+  }
+
+  .loading-state,
+  .error-state,
+  .empty-state {
+    padding: 2.5rem 1.25rem;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.02);
+    margin: 0 0 1rem 0;
+  }
+
+  .empty-state p,
+  .loading-state p,
+  .error-state p {
+    font-size: 0.9375rem;
+  }
+
+  .error-state .action-btn {
+    min-height: 48px;
+    padding: 0.875rem 1.25rem;
+    font-size: 1rem;
+    border-radius: 12px;
+  }
+
+  .pagination {
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem 0;
+  }
+
+  .pagination .action-btn {
+    width: 100%;
+    min-height: 48px;
+    padding: 0.875rem 1.25rem;
+    font-size: 1rem;
+    border-radius: 12px;
+  }
+
+  .page-info {
+    text-align: center;
+    font-size: 0.8125rem;
+  }
+}
+
+@media (min-width: 769px) {
+  .desktop-only {
+    display: block !important;
+  }
+
+  .mobile-only {
+    display: none !important;
+  }
 }
 </style>

@@ -12,26 +12,36 @@
     <div class="filters-row">
       <div class="filter-group">
         <label>Status</label>
-        <select v-model="filters.status" @change="fetchClaims(1)">
-          <option value="">All</option>
-          <option value="pending">Pending</option>
-          <option value="granted">Granted</option>
-          <option value="fulfilled">Fulfilled</option>
-        </select>
+        <CustomDropdown
+          v-model="filters.status"
+          :options="statusOptions"
+          option-value="value"
+          option-label="label"
+          placeholder="All"
+          class="filter-dropdown"
+          @change="fetchClaims(1)"
+        />
       </div>
       <div class="filter-group">
-        <label>User ID</label>
-        <input v-model.number="filters.user_id" type="number" min="1" placeholder="Optional" @keyup.enter="fetchClaims(1)" />
+        <label>User</label>
+        <input
+          v-model.trim="filters.user"
+          type="text"
+          placeholder="Name, username, email or phone"
+          @keyup.enter="fetchClaims(1)"
+        />
       </div>
       <div class="filter-group">
         <label>Reward type</label>
-        <select v-model="filters.reward_type" @change="fetchClaims(1)">
-          <option value="">All</option>
-          <option value="points">Points</option>
-          <option value="percent_discount">Percent discount</option>
-          <option value="free_minutes">Free minutes</option>
-          <option value="free_product">Free product</option>
-        </select>
+        <CustomDropdown
+          v-model="filters.reward_type"
+          :options="rewardTypeOptions"
+          option-value="value"
+          option-label="label"
+          placeholder="All"
+          class="filter-dropdown"
+          @change="fetchClaims(1)"
+        />
       </div>
       <button type="button" class="action-btn primary" @click="fetchClaims(1)">Apply</button>
     </div>
@@ -163,6 +173,21 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { spinWheelAdminApi } from '@/api/spinWheelAdmin'
+import CustomDropdown from '@/components/base/ui/CustomDropdown.vue'
+
+const statusOptions = [
+  { value: '', label: 'All' },
+  { value: 'granted', label: 'Granted' },
+  { value: 'fulfilled', label: 'Fulfilled' }
+]
+
+const rewardTypeOptions = [
+  { value: '', label: 'All' },
+  { value: 'points', label: 'Points' },
+  { value: 'percent_discount', label: 'Percent discount' },
+  { value: 'free_minutes', label: 'Free minutes' },
+  { value: 'free_product', label: 'Free product' }
+]
 
 const loading = ref(false)
 const fetchError = ref(null)
@@ -176,7 +201,7 @@ const meta = reactive({
 
 const filters = reactive({
   status: '',
-  user_id: '',
+  user: '',
   reward_type: ''
 })
 
@@ -218,7 +243,7 @@ async function fetchClaims(page = 1) {
     per_page: 15
   }
   if (filters.status) params.status = filters.status
-  if (filters.user_id) params.user_id = filters.user_id
+  if (filters.user) params.user = filters.user
   if (filters.reward_type) params.reward_type = filters.reward_type
   try {
     const res = await spinWheelAdminApi.getClaims(params)
@@ -330,6 +355,10 @@ onMounted(() => fetchClaims(1))
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 10px;
   color: rgba(255, 255, 255, 0.95);
+  min-width: 140px;
+}
+
+.filter-dropdown {
   min-width: 140px;
 }
 
