@@ -7,6 +7,7 @@ import Lightbox from '@/components/base/ui/Lightbox.vue'
 import { userPointBalancesApi } from '@/api/userPointBalancesApi'
 import { userLevelsApi } from '@/api/userLevels'
 import { ranksApi } from '@/api/ranks'
+import { spinWheelApi } from '@/api/spinWheelUser'
 
 const authStore = useAuthStore()
 
@@ -157,10 +158,69 @@ async function loadPointsAndLevels() {
   }
 }
 
+/* Spin wheel: history and claims */
+const spinHistory = ref([])
+const spinHistoryLoading = ref(false)
+const spinHistoryError = ref(null)
+const myClaims = ref([])
+const myClaimsLoading = ref(false)
+const myClaimsError = ref(null)
+
+function formatSpinDate(s) {
+  if (!s) return '—'
+  const d = new Date(s)
+  return isNaN(d.getTime()) ? s : d.toLocaleString()
+}
+
+function formatClaimDate(s) {
+  if (!s) return '—'
+  const d = new Date(s)
+  return isNaN(d.getTime()) ? s : d.toLocaleString()
+}
+
+function claimStatusBadge(status) {
+  if (status === 'granted') return { text: 'Received', class: 'profile-claim-badge--success' }
+  if (status === 'pending') return { text: 'Pending', class: 'profile-claim-badge--warning' }
+  if (status === 'fulfilled') return { text: 'Fulfilled', class: 'profile-claim-badge--info' }
+  return { text: status || '—', class: 'profile-claim-badge--muted' }
+}
+
+async function loadSpinHistory() {
+  if (!authStore.user?.id) return
+  spinHistoryLoading.value = true
+  spinHistoryError.value = null
+  try {
+    const res = await spinWheelApi.getHistory({ limit: 20 })
+    spinHistory.value = res?.data ?? []
+  } catch (e) {
+    spinHistoryError.value = e?.response?.data?.message ?? e?.message ?? 'Could not load spin history'
+    spinHistory.value = []
+  } finally {
+    spinHistoryLoading.value = false
+  }
+}
+
+async function loadMyClaims() {
+  if (!authStore.user?.id) return
+  myClaimsLoading.value = true
+  myClaimsError.value = null
+  try {
+    const res = await spinWheelApi.getMyClaims({ limit: 20 })
+    myClaims.value = res?.data ?? []
+  } catch (e) {
+    myClaimsError.value = e?.response?.data?.message ?? e?.message ?? 'Could not load claims'
+    myClaims.value = []
+  } finally {
+    myClaimsLoading.value = false
+  }
+}
+
 onMounted(() => {
   if (authStore.user?.id) authStore.fetchUser?.()
   loadPointsAndLevels()
   loadMyRank()
+  loadSpinHistory()
+  loadMyClaims()
 })
 
 const topItems = ref([
@@ -363,6 +423,61 @@ function openAvatarLightbox() {
             </div>
           </div>
         </template>
+      </div>
+    </section>
+
+    <!-- Spin History -->
+    <section class="profile-section profile-section--spin-history" aria-label="Spin history">
+      <div class="profile-section__inner">
+        <h2 class="profile-section__title">Spin History</h2>
+        <p class="profile-section__desc">Your recent spins on the wheel.</p>
+        <div v-if="spinHistoryLoading" class="profile-spin-loading">
+          <div class="profile-points-spinner" aria-hidden="true"></div>
+          <p>Loading spin history…</p>
+        </div>
+        <div v-else-if="spinHistoryError" class="profile-spin-error">
+          <p>{{ spinHistoryError }}</p>
+          <button type="button" class="profile-spin-retry" @click="loadSpinHistory">Retry</button>
+        </div>
+        <div v-else-if="!spinHistory.length" class="profile-spin-empty">
+          <p>No spin history yet.</p>
+        </div>
+        <ul v-else class="profile-spin-history-list">
+          <li v-for="item in spinHistory" :key="item.id" class="profile-spin-history-item">
+            <span class="profile-spin-history-date">{{ formatSpinDate(item.spun_at) }}</span>
+            <span class="profile-spin-history-label">{{ item.option?.label ?? item.option?.reward?.label ?? '—' }}</span>
+            <span class="profile-spin-history-num">Spin #{{ item.spin_number ?? '—' }}</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- My Claims (Claimed Rewards) -->
+    <section class="profile-section profile-section--claims" aria-label="Claimed rewards">
+      <div class="profile-section__inner">
+        <h2 class="profile-section__title">My Rewards</h2>
+        <p class="profile-section__desc">Rewards you claimed from the spin wheel.</p>
+        <div v-if="myClaimsLoading" class="profile-spin-loading">
+          <div class="profile-points-spinner" aria-hidden="true"></div>
+          <p>Loading your rewards…</p>
+        </div>
+        <div v-else-if="myClaimsError" class="profile-spin-error">
+          <p>{{ myClaimsError }}</p>
+          <button type="button" class="profile-spin-retry" @click="loadMyClaims">Retry</button>
+        </div>
+        <div v-else-if="!myClaims.length" class="profile-spin-empty">
+          <p>No claims yet. Spin the wheel to win rewards!</p>
+        </div>
+        <div v-else class="profile-claims-grid">
+          <article v-for="claim in myClaims" :key="claim.id" class="profile-claim-card">
+            <div class="profile-claim-card__glass"></div>
+            <span class="profile-claim-card__label">{{ claim.option?.label ?? claim.option?.reward?.label ?? '—' }}</span>
+            <span :class="['profile-claim-badge', claimStatusBadge(claim.status).class]">{{ claimStatusBadge(claim.status).text }}</span>
+            <span class="profile-claim-card__meta">Claimed: {{ formatClaimDate(claim.created_at) }}</span>
+            <span v-if="claim.fulfilled_at" class="profile-claim-card__fulfilled">Fulfilled: {{ formatClaimDate(claim.fulfilled_at) }}</span>
+            <p v-else-if="claim.status === 'pending'" class="profile-claim-card__hint">Admin will fulfill your reward soon.</p>
+          </article>
+        </div>
       </div>
     </section>
 
@@ -929,6 +1044,166 @@ function openAvatarLightbox() {
   width: 24px;
   height: 24px;
   border-width: 2px;
+}
+
+/* Spin History & My Claims */
+.profile-spin-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9rem;
+}
+
+.profile-spin-error {
+  padding: 1rem 1.25rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 12px;
+  color: #fca5a5;
+  font-size: 0.9rem;
+}
+
+.profile-spin-error p {
+  margin: 0 0 0.5rem 0;
+}
+
+.profile-spin-retry {
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.profile-spin-retry:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.profile-spin-empty {
+  padding: 1.5rem;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.95rem;
+}
+
+.profile-spin-empty p {
+  margin: 0;
+}
+
+.profile-spin-history-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.profile-spin-history-item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  padding: 0.875rem 1.25rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  font-size: 0.9rem;
+}
+
+.profile-spin-history-date {
+  color: rgba(255, 255, 255, 0.6);
+  flex-shrink: 0;
+}
+
+.profile-spin-history-label {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-spin-history-num {
+  color: var(--neon-cyan);
+  font-size: 0.8rem;
+}
+
+.profile-claims-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.profile-claim-card {
+  position: relative;
+  padding: 1.25rem 1.25rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow: hidden;
+}
+
+.profile-claim-card__glass {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.03) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.profile-claim-card__label {
+  font-weight: 700;
+  font-size: 1.05rem;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.profile-claim-badge {
+  display: inline-block;
+  width: fit-content;
+  padding: 0.3rem 0.65rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.profile-claim-badge--success {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+
+.profile-claim-badge--warning {
+  background: rgba(234, 179, 8, 0.2);
+  color: #fde047;
+}
+
+.profile-claim-badge--info {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
+.profile-claim-badge--muted {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.profile-claim-card__meta,
+.profile-claim-card__fulfilled {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.profile-claim-card__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: rgba(234, 179, 8, 0.9);
 }
 
 /* My Rank: three stat-tiles */

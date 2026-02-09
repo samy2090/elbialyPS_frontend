@@ -76,6 +76,12 @@ const router = createRouter({
       redirect: () => ({ path: '/dashboard', query: { section: 'expenses' } }),
       meta: { requiresAuth: true, requiresDashboardAccess: true }
     },
+    {
+      path: '/spin-wheel',
+      name: 'spinWheelAdmin',
+      redirect: () => ({ path: '/dashboard', query: { section: 'spin-wheel-settings' } }),
+      meta: { requiresAuth: true, requiresDashboardAccess: true }
+    },
   ],
 })
 

@@ -254,6 +254,53 @@ const ScorePointsIcon = {
   `
 }
 
+const SpinWheelIcon = {
+  template: `
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+      <path d="M12 2L12 12L18 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M12 12L12 22L6 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M12 12L2 12L8 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M12 12L22 12L16 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  `
+}
+
+const SettingsWheelIcon = {
+  template: `
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+      <path d="M12 2V4M12 20V22M4 12H2M22 12H20M19.07 4.93L17.66 6.34M6.34 17.66L4.93 19.07M19.07 19.07L17.66 17.66M6.34 6.34L4.93 4.93" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  `
+}
+
+const ListIcon = {
+  template: `
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M8 6H21M8 12H21M8 18H21M3 6H3.01M3 12H3.01M3 18H3.01" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  `
+}
+
+const GiftIcon = {
+  template: `
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="3" y="8" width="18" height="4" rx="1" stroke="currentColor" stroke-width="2"/>
+      <path d="M12 8V21M12 8C12 8 10 6 8 6C6 6 4 8 4 8M12 8C12 8 14 6 16 6C18 6 20 8 20 8M12 21H4V12H12M12 21H20V12H12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  `
+}
+
+const HistoryIcon = {
+  template: `
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 8V12L15 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
+    </svg>
+  `
+}
+
 const props = defineProps({
   visible: {
     type: Boolean,
@@ -294,6 +341,17 @@ const navigationItems = computed(() => [
   { id: 'users', label: 'Users', icon: UsersIcon },
   { id: 'products', label: 'Products', icon: ProductsIcon },
   { id: 'expenses', label: 'Expenses', icon: ExpensesIcon },
+  {
+    id: 'spin-wheel',
+    label: 'Spin Wheel',
+    icon: SpinWheelIcon,
+    subItems: [
+      { id: 'spin-wheel-settings', label: 'Settings', icon: SettingsWheelIcon },
+      { id: 'spin-wheel-options', label: 'Options', icon: ListIcon },
+      { id: 'spin-wheel-claims', label: 'Claims', icon: GiftIcon },
+      { id: 'spin-wheel-history', label: 'History', icon: HistoryIcon }
+    ]
+  },
   { id: 'profile', label: 'Profile', icon: ProfileIcon },
   { 
     id: 'settings', 

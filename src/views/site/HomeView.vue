@@ -10,6 +10,7 @@ import SectionHeader from '@/components/base/ui/SectionHeader.vue'
 import FuturisticButton from '@/components/base/ui/FuturisticButton.vue'
 import FunHeroVisual from '@/components/site/FunHeroVisual.vue'
 import EventCard from '@/components/site/EventCard.vue'
+import SpinWheelSection from '@/components/site/SpinWheelSection.vue'
 import { ranksApi } from '@/api/ranks'
 
 const authStore = useAuthStore()
@@ -219,6 +220,15 @@ const events = ref([
         <FunHeroVisual />
       </template>
     </HeroSection>
+
+    <div class="home-section-divider" aria-hidden="true"></div>
+
+    <!-- Spin & Win (visible to all; only logged-in users can spin) -->
+    <section class="home-section home-section--spin" aria-label="Spin the wheel">
+      <div class="home-section__inner">
+        <SpinWheelSection :can-spin="authStore.isAuthenticated" />
+      </div>
+    </section>
 
     <div class="home-section-divider" aria-hidden="true"></div>
 

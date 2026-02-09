@@ -93,6 +93,12 @@
 
         <!-- Points Transactions Section (admin/staff only) -->
         <PointsTransactionsSection v-if="activeSection === 'settings-points-transactions'" />
+
+        <!-- Spin Wheel Admin -->
+        <SpinWheelSettingsSection v-if="activeSection === 'spin-wheel-settings'" />
+        <SpinWheelOptionsSection v-if="activeSection === 'spin-wheel-options'" />
+        <SpinWheelClaimsSection v-if="activeSection === 'spin-wheel-claims'" />
+        <SpinWheelHistorySection v-if="activeSection === 'spin-wheel-history'" />
       </div>
     </main>
 
@@ -158,6 +164,10 @@ import ExpensesSection from '@/components/dashboard/sections/ExpensesSection.vue
 import ScorePointsSettingsSection from '@/components/dashboard/sections/ScorePointsSettingsSection.vue'
 import PointsTransactionsSection from '@/components/dashboard/sections/PointsTransactionsSection.vue'
 import SiteSettingsSection from '@/components/dashboard/sections/SiteSettingsSection.vue'
+import SpinWheelSettingsSection from '@/components/dashboard/sections/SpinWheelSettingsSection.vue'
+import SpinWheelOptionsSection from '@/components/dashboard/sections/SpinWheelOptionsSection.vue'
+import SpinWheelClaimsSection from '@/components/dashboard/sections/SpinWheelClaimsSection.vue'
+import SpinWheelHistorySection from '@/components/dashboard/sections/SpinWheelHistorySection.vue'
 
 const route = useRoute()
 // Reactive state - load from localStorage or route query (e.g. /dashboard?section=expenses)
