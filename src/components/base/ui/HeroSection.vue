@@ -1,20 +1,40 @@
 <template>
-  <section ref="heroRef" class="hero-section" :class="{ 'hero-section--visible': isVisible }">
+  <section
+    ref="heroRef"
+    class="hero-section"
+    :class="{ 'hero-section--visible': isVisible, 'hero-section--with-logo': $slots.logo }"
+    @mousemove="onPointerMove"
+    @touchmove.passive="onPointerMove"
+    @mouseleave="resetPointer"
+  >
     <div class="hero-section__bg">
       <div class="hero-section__orb hero-section__orb--1" aria-hidden="true"></div>
       <div class="hero-section__orb hero-section__orb--2" aria-hidden="true"></div>
       <div class="hero-section__orb hero-section__orb--3" aria-hidden="true"></div>
       <div class="hero-section__orb hero-section__orb--4" aria-hidden="true"></div>
+      <!-- Cursor-reactive orbs (desktop) -->
+      <div class="hero-section__cursor-orbs" aria-hidden="true">
+        <div class="hero-section__cursor-orb hero-section__cursor-orb--1" :style="cursorOrbStyle(1)"></div>
+        <div class="hero-section__cursor-orb hero-section__cursor-orb--2" :style="cursorOrbStyle(2)"></div>
+      </div>
       <div class="hero-section__grid" aria-hidden="true"></div>
+      <div class="hero-section__grid-perspective" aria-hidden="true"></div>
       <div class="hero-section__hexgrid" aria-hidden="true"></div>
       <div class="hero-section__scan" aria-hidden="true"></div>
       <div class="hero-section__particles" aria-hidden="true">
-        <span v-for="n in 16" :key="n" class="hero-section__particle" :style="{ '--p': n }"></span>
+        <span v-for="n in 24" :key="n" class="hero-section__particle" :style="particleStyle(n)"></span>
       </div>
+      <div class="hero-section__vignette" aria-hidden="true"></div>
       <div class="hero-section__noise" aria-hidden="true"></div>
     </div>
 
-    <div class="hero-section__inner">
+    <div class="hero-section__inner" :class="{ 'hero-section__inner--with-logo': $slots.logo }">
+      <div v-if="$slots.logo" class="hero-section__logo-wrap">
+        <slot name="logo"></slot>
+      </div>
+      <div v-if="$slots['below-logo']" class="hero-section__below-logo">
+        <slot name="below-logo"></slot>
+      </div>
       <div class="hero-section__content">
         <div class="hero-section__text">
           <div v-if="$slots.badge" class="hero-section__badge-wrap">
@@ -44,7 +64,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 
 defineProps({
   title: { type: String, default: '' },
@@ -54,6 +74,54 @@ defineProps({
 
 const heroRef = ref(null)
 const isVisible = ref(false)
+const pointerX = ref(0.5)
+const pointerY = ref(0.5)
+let rafId = null
+let lastX = 0.5
+let lastY = 0.5
+
+function onPointerMove(e) {
+  const rect = heroRef.value?.getBoundingClientRect()
+  if (!rect) return
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY
+  lastX = (clientX - rect.left) / rect.width
+  lastY = (clientY - rect.top) / rect.height
+  if (rafId) return
+  rafId = requestAnimationFrame(() => {
+    pointerX.value = Math.max(0, Math.min(1, lastX))
+    pointerY.value = Math.max(0, Math.min(1, lastY))
+    rafId = null
+  })
+}
+
+function resetPointer() {
+  pointerX.value = 0.5
+  pointerY.value = 0.5
+}
+
+function cursorOrbStyle(index) {
+  const x = pointerX.value * 100
+  const y = pointerY.value * 100
+  const lag = index === 1 ? 0.4 : 0.7
+  return {
+    '--cursor-x': `${x}%`,
+    '--cursor-y': `${y}%`,
+    '--cursor-lag': `${lag}s`,
+  }
+}
+
+function particleStyle(n) {
+  const delay = (n / 24) * -6
+  const left = (n * 13) % 100
+  const top = (n * 11) % 100
+  return {
+    '--p': n,
+    '--p-left': `${left}%`,
+    '--p-top': `${top}%`,
+    '--p-delay': `${delay}s`,
+  }
+}
 
 // Only run animations when hero is in view (saves CPU when off-screen)
 let observer = null
@@ -73,6 +141,7 @@ onMounted(() => {
   observer.observe(heroRef.value)
 })
 onUnmounted(() => {
+  if (rafId) cancelAnimationFrame(rafId)
   if (observer && heroRef.value) observer.unobserve(heroRef.value)
 })
 </script>
@@ -80,11 +149,19 @@ onUnmounted(() => {
 <style scoped>
 .hero-section {
   position: relative;
-  min-height: clamp(72vh, 88vw, 88vh);
+  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   align-items: center;
-  padding: clamp(3rem, 8vw, 5.5rem) 1.5rem;
+  justify-content: center;
+  padding: clamp(2.5rem, 6vw, 4.5rem) 1.25rem;
   overflow: hidden;
+}
+
+/* Logo provides its own 50px above/below; no extra hero padding */
+.hero-section--with-logo {
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
 .hero-section__bg {
@@ -146,22 +223,72 @@ onUnmounted(() => {
 }
 
 @keyframes heroOrb {
-  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.35; }
-  25% { transform: translate(25px, -25px) scale(1.08); opacity: 0.5; }
-  50% { transform: translate(-20px, 20px) scale(0.95); opacity: 0.4; }
-  75% { transform: translate(15px, 15px) scale(1.05); opacity: 0.45; }
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.4; }
+  25% { transform: translate(30px, -30px) scale(1.1); opacity: 0.55; }
+  50% { transform: translate(-25px, 25px) scale(0.95); opacity: 0.45; }
+  75% { transform: translate(20px, 20px) scale(1.06); opacity: 0.5; }
+}
+
+/* Cursor-reactive orbs */
+.hero-section__cursor-orbs {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hero-section__cursor-orb {
+  position: absolute;
+  width: 280px;
+  height: 280px;
+  margin-left: -140px;
+  margin-top: -140px;
+  left: var(--cursor-x, 50%);
+  top: var(--cursor-y, 50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 245, 255, 0.12) 0%, transparent 65%);
+  filter: blur(40px);
+  transition: left var(--cursor-lag, 0.5s) ease-out, top var(--cursor-lag, 0.5s) ease-out;
+}
+
+.hero-section__cursor-orb--2 {
+  width: 180px;
+  height: 180px;
+  margin-left: -90px;
+  margin-top: -90px;
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.1) 0%, transparent 65%);
+  transition-duration: 0.8s;
+}
+
+@media (max-width: 1023px) {
+  .hero-section__cursor-orbs {
+    display: none;
+  }
 }
 
 .hero-section__grid {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-  background-size: 56px 56px;
-  mask-image: radial-gradient(ellipse 110% 90% at 50% 40%, black 15%, transparent 72%);
-  -webkit-mask-image: radial-gradient(ellipse 110% 90% at 50% 40%, black 15%, transparent 72%);
+    linear-gradient(rgba(0, 245, 255, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 245, 255, 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 120% 100% at 50% 45%, black 10%, transparent 70%);
+  -webkit-mask-image: radial-gradient(ellipse 120% 100% at 50% 45%, black 10%, transparent 70%);
   will-change: opacity;
+}
+
+.hero-section__grid-perspective {
+  position: absolute;
+  inset: -20%;
+  background: linear-gradient(180deg, rgba(0, 245, 255, 0.03) 0%, transparent 40%, transparent 60%, rgba(139, 92, 246, 0.04) 100%);
+  pointer-events: none;
+}
+
+.hero-section__vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 100% 80% at 50% 50%, transparent 40%, rgba(0, 0, 0, 0.35) 100%);
+  pointer-events: none;
 }
 
 .hero-section--visible .hero-section__grid {
@@ -227,39 +354,37 @@ onUnmounted(() => {
   width: 4px;
   height: 4px;
   border-radius: 50%;
-  background: rgba(139, 92, 246, 0.5);
+  background: rgba(0, 245, 255, 0.45);
   will-change: transform, opacity;
-  /* Position with % (one-time), animation uses only transform + opacity */
-  left: calc((var(--p, 1) * 6.25%) % 100%);
-  top: calc((var(--p, 1) * 7%) % 100%);
+  left: var(--p-left, 20%);
+  top: var(--p-top, 30%);
+  animation-delay: var(--p-delay, 0s);
 }
 
 .hero-section--visible .hero-section__particle {
-  animation: heroParticle 10s ease-in-out infinite;
-  animation-delay: calc(var(--p, 0) * -0.5s);
+  animation: heroParticle 12s ease-in-out infinite;
 }
 
 /* Light shadow on desktop only; none on mobile to reduce paint cost */
 .hero-section__particle::before {
   content: '';
   position: absolute;
-  inset: -3px;
+  inset: -4px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.4) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(0, 245, 255, 0.35) 0%, transparent 70%);
   pointer-events: none;
 }
 
 @keyframes heroParticle {
-  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.4; }
-  25% { transform: translate(20px, -30px) scale(1.2); opacity: 0.9; }
-  50% { transform: translate(-15px, -10px) scale(0.85); opacity: 0.5; }
-  75% { transform: translate(10px, -25px) scale(1.1); opacity: 0.8; }
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.35; }
+  33% { transform: translate(15px, -40px) scale(1.15); opacity: 0.85; }
+  66% { transform: translate(-20px, -15px) scale(0.9); opacity: 0.5; }
 }
 
 .hero-section__noise {
   position: absolute;
   inset: 0;
-  opacity: 0.025;
+  opacity: 0.04;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   pointer-events: none;
 }
@@ -272,11 +397,52 @@ onUnmounted(() => {
   margin: 0 auto;
 }
 
+.hero-section--visible.hero-section--with-logo .hero-section__inner {
+  animation: heroInnerBreathe 8s ease-in-out infinite;
+}
+
+@keyframes heroInnerBreathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.008); }
+}
+
+.hero-section__inner--with-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(0.9rem, 2.5vw, 1.5rem);
+  text-align: center;
+}
+
+.hero-section__logo-wrap {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
+.hero-section__below-logo {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
 .hero-section__content {
+  width: 100%;
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: clamp(2.5rem, 5vw, 4.5rem);
   align-items: center;
+}
+
+.hero-section__inner--with-logo .hero-section__content {
+  grid-template-columns: 1fr;
+  max-width: 640px;
+  margin: 0 auto;
 }
 
 .hero-section__text {
@@ -285,7 +451,7 @@ onUnmounted(() => {
 }
 
 .hero-section__badge-wrap {
-  margin-bottom: 1rem;
+  margin-bottom: 0.75rem;
   opacity: 0;
 }
 
@@ -299,28 +465,30 @@ onUnmounted(() => {
 }
 
 .hero-section__title {
-  font-size: clamp(2.5rem, 5.5vw, 4rem);
+  font-size: clamp(2.75rem, 7vw, 4.5rem);
   font-weight: 800;
-  line-height: 1.08;
-  color: rgba(255, 255, 255, 0.97);
-  margin-bottom: 1.35rem;
-  letter-spacing: -0.045em;
+  line-height: 1.05;
+  color: rgba(255, 255, 255, 0.98);
+  margin-bottom: 1.5rem;
+  letter-spacing: -0.04em;
   opacity: 0;
+  text-shadow: 0 0 60px rgba(0, 245, 255, 0.08);
 }
 
 .hero-section--visible .hero-section__title {
-  animation: heroTitleIn 1s cubic-bezier(0.34, 1.2, 0.64, 1) both;
+  animation: heroTitleIn 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
-/* Gradient text: animate background-position only (no filter in keyframes for perf) */
+/* Gradient text: cinematic neon highlight */
 .hero-section__title-highlight {
   display: inline-block;
-  background: linear-gradient(120deg, #a78bfa 0%, #06b6d4 40%, #a78bfa 70%, #ec4899 100%);
+  background: linear-gradient(120deg, #00f5ff 0%, #a78bfa 35%, #ec4899 70%, #00f5ff 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   position: relative;
+  filter: drop-shadow(0 0 30px rgba(0, 245, 255, 0.25));
 }
 
 .hero-section--visible .hero-section__title-highlight {
@@ -333,17 +501,18 @@ onUnmounted(() => {
 }
 
 @keyframes heroTitleIn {
-  from { opacity: 0; transform: translateY(28px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; transform: translateY(36px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .hero-section__description {
-  font-size: clamp(1.05rem, 2.2vw, 1.3rem);
-  color: rgba(255, 255, 255, 0.72);
-  line-height: 1.7;
-  margin-bottom: 2.25rem;
-  max-width: 520px;
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.75;
+  margin-bottom: 2rem;
+  max-width: 480px;
   opacity: 0;
+  letter-spacing: 0.02em;
 }
 
 .hero-section--visible .hero-section__description {
@@ -484,7 +653,8 @@ onUnmounted(() => {
   .hero-section__grid,
   .hero-section__scan,
   .hero-section__particle,
-  .hero-section__title-highlight {
+  .hero-section__title-highlight,
+  .hero-section__inner {
     animation: none !important;
   }
 

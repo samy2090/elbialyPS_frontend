@@ -9,6 +9,7 @@ import CtaBlock from '@/components/base/ui/CtaBlock.vue'
 import SectionHeader from '@/components/base/ui/SectionHeader.vue'
 import FuturisticButton from '@/components/base/ui/FuturisticButton.vue'
 import FunHeroVisual from '@/components/site/FunHeroVisual.vue'
+import NeonSignLogo from '@/components/site/NeonSignLogo.vue'
 import EventCard from '@/components/site/EventCard.vue'
 import SpinWheelSection from '@/components/site/SpinWheelSection.vue'
 import { ranksApi } from '@/api/ranks'
@@ -159,12 +160,15 @@ const events = ref([
       <div class="home-page__glow home-page__glow--3"></div>
     </div>
 
-    <!-- Hero: Play. Chill. Eat. Repeat. -->
+    <!-- Hero: neon sign + title + CTAs (shared animated background) -->
     <HeroSection
       title="Play. Chill. Eat."
       title-highlight="Repeat."
       description="Games, food, drinks & good vibes. The spot where you and your crew come to play, eat, and never stop having fun."
     >
+      <template #logo>
+        <NeonSignLogo />
+      </template>
       <template #badge>
         <span class="home-badge">🎮 Games • Drink • Vibes</span>
       </template>
@@ -227,26 +231,6 @@ const events = ref([
     <section class="home-section home-section--spin" aria-label="Spin the wheel">
       <div class="home-section__inner">
         <SpinWheelSection :can-spin="authStore.isAuthenticated" />
-      </div>
-    </section>
-
-    <div class="home-section-divider" aria-hidden="true"></div>
-
-    <!-- Fun stats -->
-    <section class="home-section home-section--stats" aria-label="Why us">
-      <div class="home-section__inner">
-        <div class="stats-grid">
-          <StatCard
-            v-for="(stat, i) in stats"
-            :key="stat.label"
-            :value="stat.value"
-            :label="stat.label"
-            :trend="stat.trend"
-            :variant="stat.variant"
-            :trend-direction="stat.trendDirection"
-            :style="{ '--delay': `${i * 0.1}s` }"
-          />
-        </div>
       </div>
     </section>
 
@@ -375,6 +359,26 @@ const events = ref([
             <span class="home-leaderboard-item__points">{{ (entry.points ?? 0).toLocaleString() }} pts</span>
           </li>
         </ul>
+      </div>
+    </section>
+
+    <div class="home-section-divider" aria-hidden="true"></div>
+
+    <!-- Fun stats -->
+    <section class="home-section home-section--stats" aria-label="Why us">
+      <div class="home-section__inner">
+        <div class="stats-grid">
+          <StatCard
+            v-for="(stat, i) in stats"
+            :key="stat.label"
+            :value="stat.value"
+            :label="stat.label"
+            :trend="stat.trend"
+            :variant="stat.variant"
+            :trend-direction="stat.trendDirection"
+            :style="{ '--delay': `${i * 0.1}s` }"
+          />
+        </div>
       </div>
     </section>
 
@@ -596,22 +600,28 @@ const events = ref([
 
 .home-badge {
   display: inline-block;
-  padding: 0.45rem 1rem;
+  padding: 0.5rem 1.15rem;
   font-size: 0.8rem;
   font-weight: 600;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--neon-cyan);
-  background: rgba(0, 245, 255, 0.08);
-  border: 1px solid rgba(0, 245, 255, 0.3);
+  background: rgba(0, 245, 255, 0.06);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 245, 255, 0.25);
   border-radius: 999px;
-  box-shadow: 0 0 24px -4px rgba(0, 245, 255, 0.25);
-  transition: box-shadow 0.35s ease, transform 0.25s ease;
+  box-shadow:
+    0 0 0 1px rgba(0, 245, 255, 0.08),
+    0 0 28px -4px rgba(0, 245, 255, 0.2);
+  transition: box-shadow 0.4s ease, transform 0.35s cubic-bezier(0.34, 1.2, 0.64, 1), border-color 0.3s ease;
 }
 
 .home-badge:hover {
-  box-shadow: 0 0 32px -2px rgba(0, 245, 255, 0.4);
-  transform: scale(1.02);
+  box-shadow:
+    0 0 0 1px rgba(0, 245, 255, 0.2),
+    0 0 40px -2px rgba(0, 245, 255, 0.4);
+  transform: scale(1.04);
+  border-color: rgba(0, 245, 255, 0.4);
 }
 
 @media (min-width: 768px) {
@@ -626,11 +636,21 @@ const events = ref([
 }
 
 .home-cta-primary {
-  box-shadow: 0 0 28px -4px rgba(0, 245, 255, 0.35);
+  box-shadow: 0 0 32px -4px rgba(0, 245, 255, 0.4);
+  transition: transform 0.35s cubic-bezier(0.34, 1.2, 0.64, 1), box-shadow 0.4s ease;
 }
 
 .home-cta-primary:hover {
-  box-shadow: 0 0 40px -4px rgba(0, 245, 255, 0.5);
+  box-shadow: 0 0 48px -2px rgba(0, 245, 255, 0.55);
+  transform: scale(1.03);
+}
+
+.home-page--fun :deep(.hero-section__actions .futuristic-button) {
+  transition: transform 0.35s cubic-bezier(0.34, 1.2, 0.64, 1), box-shadow 0.4s ease;
+}
+
+.home-page--fun :deep(.hero-section__actions .futuristic-button:hover) {
+  transform: scale(1.02);
 }
 
 .home-section-divider {
