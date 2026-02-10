@@ -155,12 +155,15 @@ onMounted(async () => {
     hasLoadedOnce.value = true
     return
   }
+  // Show cached site_name immediately (place_status is never cached)
+  const cached = await siteSettingsApi.getCachedStatic()
+  if (cached?.site_name) fetchedName.value = cached.site_name
   try {
     const data = await siteSettingsApi.get()
     fetchedName.value = data?.site_name ?? ''
     fetchedStatus.value = data?.place_status ?? 'open'
   } catch {
-    fetchedName.value = ''
+    fetchedName.value = fetchedName.value || ''
     fetchedStatus.value = 'open'
   } finally {
     loading.value = false
