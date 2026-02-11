@@ -82,6 +82,12 @@ const router = createRouter({
       redirect: () => ({ path: '/dashboard', query: { section: 'spin-wheel-settings' } }),
       meta: { requiresAuth: true, requiresDashboardAccess: true }
     },
+    {
+      path: '/posts',
+      name: 'postsAdmin',
+      redirect: () => ({ path: '/dashboard', query: { section: 'posts-pending' } }),
+      meta: { requiresAuth: true, requiresDashboardAccess: true }
+    },
   ],
 })
 

@@ -104,6 +104,17 @@
               <span class="toggle-slider"></span>
             </label>
           </div>
+
+          <div class="setting-item">
+            <div class="setting-info">
+              <label class="setting-label">Posts require approval</label>
+              <p class="setting-description">When enabled, new posts need admin approval before they appear on the public feed</p>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" v-model="form.posts_require_approval" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
         </div>
 
         <!-- Discount -->
@@ -201,6 +212,7 @@ const form = reactive({
   site_logo: '',
   place_status: 'open',
   maintenance_mode: false,
+  posts_require_approval: false,
   discount_percent: null,
   discount_start_at: '',
   discount_end_at: '',
@@ -229,6 +241,7 @@ function assignFromResponse(data) {
   form.site_logo = data.site_logo ?? ''
   form.place_status = data.place_status ?? 'open'
   form.maintenance_mode = data.maintenance_mode ?? false
+  form.posts_require_approval = data.posts_require_approval ?? false
   form.discount_percent = data.discount_percent != null ? data.discount_percent : null
   form.discount_start_at = data.discount_start_at ?? ''
   form.discount_end_at = data.discount_end_at ?? ''
@@ -262,6 +275,7 @@ function buildPayload() {
     site_logo: form.site_logo.trim() || null,
     place_status: form.place_status || null,
     maintenance_mode: form.maintenance_mode,
+    posts_require_approval: form.posts_require_approval,
   }
   const pct = form.discount_percent
   payload.discount_percent = pct === '' || pct == null ? null : Number(pct)

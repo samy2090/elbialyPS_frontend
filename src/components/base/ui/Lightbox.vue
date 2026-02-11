@@ -46,7 +46,9 @@ onBeforeUnmount(() => {
             <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="square" stroke-linejoin="miter"/>
           </svg>
         </button>
-        <img :src="modelValue" :alt="alt" class="lightbox__img" @click.self="close" />
+        <div class="lightbox__content">
+          <img :src="modelValue" :alt="alt" class="lightbox__img" @click.self="close" />
+        </div>
       </div>
     </Transition>
   </Teleport>
@@ -123,13 +125,27 @@ onBeforeUnmount(() => {
   filter: drop-shadow(0 0 6px var(--close-glow-dim));
 }
 
+.lightbox__content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  max-height: 90vh;
+  padding: 0.5rem;
+}
+
 .lightbox__img {
   max-width: 100%;
   max-height: 90vh;
+  width: auto;
+  height: auto;
   object-fit: contain;
+  object-position: center;
   border-radius: 8px;
   box-shadow: 0 24px 48px rgba(0, 0, 0, 0.5);
   cursor: default;
+  display: block;
+  vertical-align: middle;
 }
 
 .lightbox-fade-enter-active,

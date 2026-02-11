@@ -99,6 +99,12 @@
         <SpinWheelOptionsSection v-if="activeSection === 'spin-wheel-options'" />
         <SpinWheelClaimsSection v-if="activeSection === 'spin-wheel-claims'" />
         <SpinWheelHistorySection v-if="activeSection === 'spin-wheel-history'" />
+
+        <!-- Posts (Feed) admin: Pending, All posts, All comments -->
+        <PostsSection
+          v-if="['posts-pending', 'posts-all', 'posts-comments'].includes(activeSection)"
+          :section="activeSection"
+        />
       </div>
     </main>
 
@@ -168,6 +174,7 @@ import SpinWheelSettingsSection from '@/components/dashboard/sections/SpinWheelS
 import SpinWheelOptionsSection from '@/components/dashboard/sections/SpinWheelOptionsSection.vue'
 import SpinWheelClaimsSection from '@/components/dashboard/sections/SpinWheelClaimsSection.vue'
 import SpinWheelHistorySection from '@/components/dashboard/sections/SpinWheelHistorySection.vue'
+import PostsSection from '@/components/dashboard/sections/PostsSection.vue'
 
 const route = useRoute()
 // Reactive state - load from localStorage or route query (e.g. /dashboard?section=expenses)

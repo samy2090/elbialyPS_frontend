@@ -301,6 +301,24 @@ const HistoryIcon = {
   `
 }
 
+const FeedIcon = {
+  template: `
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M8 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M7 12H21M7 16H21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  `
+}
+
+const PendingIcon = {
+  template: `
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+      <path d="M12 6V12L16 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+  `
+}
+
 const props = defineProps({
   visible: {
     type: Boolean,
@@ -341,6 +359,16 @@ const navigationItems = computed(() => [
   { id: 'users', label: 'Users', icon: UsersIcon },
   { id: 'products', label: 'Products', icon: ProductsIcon },
   { id: 'expenses', label: 'Expenses', icon: ExpensesIcon },
+  {
+    id: 'posts',
+    label: 'Posts',
+    icon: FeedIcon,
+    subItems: [
+      { id: 'posts-pending', label: 'Pending', icon: PendingIcon },
+      { id: 'posts-all', label: 'All posts', icon: ListIcon },
+      { id: 'posts-comments', label: 'All comments', icon: FeedIcon }
+    ]
+  },
   {
     id: 'spin-wheel',
     label: 'Spin Wheel',

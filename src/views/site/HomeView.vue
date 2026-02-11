@@ -12,6 +12,7 @@ import FunHeroVisual from '@/components/site/FunHeroVisual.vue'
 import NeonSignLogo from '@/components/site/NeonSignLogo.vue'
 import EventCard from '@/components/site/EventCard.vue'
 import SpinWheelSection from '@/components/site/SpinWheelSection.vue'
+import PostsFeedSection from '@/components/site/posts/PostsFeedSection.vue'
 import { ranksApi } from '@/api/ranks'
 
 const authStore = useAuthStore()
@@ -231,6 +232,15 @@ const events = ref([
     <section class="home-section home-section--spin" aria-label="Spin the wheel">
       <div class="home-section__inner">
         <SpinWheelSection :can-spin="authStore.isAuthenticated" />
+      </div>
+    </section>
+
+    <div class="home-section-divider" aria-hidden="true"></div>
+
+    <!-- Posts feed -->
+    <section class="home-section home-section--feed" aria-label="Posts feed">
+      <div class="home-section__inner">
+        <PostsFeedSection />
       </div>
     </section>
 
@@ -516,6 +526,7 @@ const events = ref([
   position: relative;
   min-height: 100vh;
   background: var(--fun-bg);
+  overflow-x: hidden;
 }
 
 .home-page__bg {
@@ -676,6 +687,9 @@ const events = ref([
 .home-section__inner {
   max-width: 1200px;
   margin: 0 auto;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
 }
 
 .stats-grid {

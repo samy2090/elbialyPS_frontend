@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 import { resolveBackendImageUrl } from '@/utils/helpers'
 import ProfileSection from '@/components/dashboard/sections/ProfileSection.vue'
 import Lightbox from '@/components/base/ui/Lightbox.vue'
+import ProfilePostsSection from '@/components/site/posts/ProfilePostsSection.vue'
 import { userPointBalancesApi } from '@/api/userPointBalancesApi'
 import { userLevelsApi } from '@/api/userLevels'
 import { ranksApi } from '@/api/ranks'
@@ -493,6 +494,11 @@ function openAvatarLightbox() {
         </div>
       </div>
     </section>
+
+    <div class="profile-divider" aria-hidden="true"></div>
+
+    <!-- My posts -->
+    <ProfilePostsSection :is-logged-in="!!authStore.user?.id" />
 
     <div class="profile-divider" aria-hidden="true"></div>
 

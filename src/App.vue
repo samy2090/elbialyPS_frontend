@@ -33,6 +33,7 @@ const isDashboardRoute = computed(() => route.name === 'dashboard')
   background: var(--bg-primary);
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
 }
 
 .main-content {
@@ -41,6 +42,8 @@ const isDashboardRoute = computed(() => route.name === 'dashboard')
   max-width: none;
   margin: 0;
   width: 100%;
+  overflow-x: hidden;
+  min-width: 0;
 }
 
 @media (max-width: 768px) {

@@ -325,6 +325,51 @@ class UserService {
   }
 
   /**
+   * Search users by name (for feed author filter, tag people, etc.).
+   * Tries GET /api/users/search?q=... first. If backend returns 404 (no search endpoint),
+   * falls back to GET /api/users and filters client-side by name/username/email.
+   * @param {string} q - Search query (name or username)
+   * @returns {Promise<Array<{ id: number, name: string, username: string, avatar_url?: string }>>}
+   */
+  static async searchUsers(q) {
+    if (!q || typeof q !== 'string' || !q.trim()) return []
+    const searchLower = q.trim().toLowerCase()
+    try {
+      const response = await api.get('/api/users/search', { params: { q: q.trim() } })
+      const data = response.data?.data ?? response.data?.users ?? response.data
+      const list = Array.isArray(data) ? data : []
+      return list.map((u) => ({
+        id: u.id,
+        name: u.name ?? u.full_name ?? '',
+        username: u.username ?? '',
+        avatar_url: u.avatar_url ?? u.avatar ?? null,
+      }))
+    } catch (e) {
+      if (e.response?.status === 404) {
+        try {
+          const { users } = await UserService.getAllUsers({ per_page: 200 })
+          const list = Array.isArray(users) ? users : []
+          const filtered = list.filter((u) => {
+            const name = (u.name ?? u.full_name ?? '').toLowerCase()
+            const username = (u.username ?? '').toLowerCase()
+            const email = (u.email ?? '').toLowerCase()
+            return name.includes(searchLower) || username.includes(searchLower) || email.includes(searchLower)
+          })
+          return filtered.map((u) => ({
+            id: u.id,
+            name: u.name ?? u.full_name ?? '',
+            username: u.username ?? '',
+            avatar_url: u.avatar_url ?? u.avatar ?? null,
+          }))
+        } catch (fallbackErr) {
+          return []
+        }
+      }
+      return []
+    }
+  }
+
+  /**
    * Upload user avatar (current user or by id).
    * POST multipart/form-data to /api/user/avatar or /api/users/:id/avatar.
    * @param {File} file - Image file
