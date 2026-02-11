@@ -108,13 +108,14 @@ const timeAgo = computed(() => {
   return d.toLocaleDateString()
 })
 
-const reactionCountsText = computed(() => {
+const totalReactions = computed(() => props.post?.reactions_count ?? 0)
+
+const activeReactionTypes = computed(() => {
   const counts = props.post?.reaction_counts ?? {}
-  const parts = REACTION_TYPES.filter((r) => (counts[r.type] ?? 0) > 0).map((r) => `${r.emoji} ${counts[r.type]}`)
-  return parts.length ? parts.join(' · ') : ''
+  return REACTION_TYPES.filter((r) => (counts[r.type] ?? 0) > 0)
 })
 
-const totalReactions = computed(() => props.post?.reactions_count ?? 0)
+const commentsCount = computed(() => props.post?.comments_count ?? 0)
 
 function openLightbox(url) {
   const full = resolveBackendImageUrl(url) || url
@@ -289,64 +290,76 @@ watch(() => props.post?.id, () => {
     </div>
 
     <div class="post-card__actions">
-      <div class="post-card__reactions">
-        <div v-if="totalReactions || isLoggedIn" class="post-card__reactions-row">
-          <span v-if="totalReactions" class="post-card__reactions-counts">{{ reactionCountsText }}</span>
-          <div class="post-card__reaction-picker-wrap">
-            <button
-              ref="reactBtnRef"
-              type="button"
-              class="post-card__reaction-btn"
-              :class="{ 'post-card__reaction-btn--active': post.current_user_reaction }"
-              :disabled="reactLoading"
-              aria-haspopup="true"
-              :aria-expanded="showReactionPicker"
-              @click="onReactClick"
-            >
-              {{ post.current_user_reaction ? REACTION_TYPES.find(r => r.type === post.current_user_reaction)?.emoji : '👍' }} React
-            </button>
-            <Teleport to="body">
-              <Transition name="picker-fade">
-                <div
-                  v-if="showReactionPicker"
-                  class="post-card__reaction-picker post-card__reaction-picker--fixed"
-                  role="menu"
-                  :style="pickerFixedStyle"
-                >
-                  <button
-                    v-for="r in REACTION_TYPES"
-                    :key="r.type"
-                    type="button"
-                    role="menuitem"
-                    class="post-card__reaction-emoji"
-                    :title="r.label"
-                    @click="onChooseReaction(r.type)"
-                  >
-                    {{ r.emoji }}
-                  </button>
-                  <button
-                    v-if="post.current_user_reaction"
-                    type="button"
-                    role="menuitem"
-                    class="post-card__reaction-emoji post-card__reaction-emoji--remove"
-                    title="Remove reaction"
-                    @click.stop="onChooseReaction(null)"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </Transition>
-            </Teleport>
-          </div>
-        </div>
+      <div class="post-card__actions-left">
+        <button
+          ref="reactBtnRef"
+          type="button"
+          class="post-card__action-stat"
+          :class="{ 'post-card__action-stat--reacted': post.current_user_reaction }"
+          aria-label="Reactions"
+          aria-haspopup="true"
+          :aria-expanded="showReactionPicker"
+          :disabled="reactLoading"
+          @click="isLoggedIn ? onReactClick() : $emit('requireAuth')"
+        >
+          <span
+            class="post-card__action-icon post-card__action-icon--like"
+            :class="{ 'post-card__action-icon--saturated': post.current_user_reaction }"
+            aria-hidden="true"
+          >
+            {{ post.current_user_reaction ? REACTION_TYPES.find(r => r.type === post.current_user_reaction)?.emoji : '👍' }}
+          </span>
+          <span class="post-card__action-num">{{ totalReactions }}</span>
+        </button>
+        <button type="button" class="post-card__action-stat" @click="onShowComments" aria-label="Comments">
+          <span class="post-card__action-icon post-card__action-icon--comment" aria-hidden="true">💬</span>
+          <span class="post-card__action-num">{{ commentsCount }}</span>
+        </button>
       </div>
-      <button
-        type="button"
-        class="post-card__comments-toggle"
-        @click="onShowComments"
-      >
-        {{ post.comments_count ? `${post.comments_count} comment(s)` : 'Comment' }}
-      </button>
+      <div class="post-card__actions-right">
+        <div v-if="activeReactionTypes.length" class="post-card__reaction-pills">
+          <span
+            v-for="r in activeReactionTypes"
+            :key="r.type"
+            class="post-card__reaction-pill"
+            :title="r.label"
+          >
+            {{ r.emoji }}
+          </span>
+        </div>
+        <Teleport v-if="isLoggedIn" to="body">
+            <Transition name="picker-fade">
+              <div
+                v-if="showReactionPicker"
+                class="post-card__reaction-picker post-card__reaction-picker--fixed"
+                role="menu"
+                :style="pickerFixedStyle"
+              >
+                <button
+                  v-for="r in REACTION_TYPES"
+                  :key="r.type"
+                  type="button"
+                  role="menuitem"
+                  class="post-card__reaction-emoji"
+                  :title="r.label"
+                  @click="onChooseReaction(r.type)"
+                >
+                  {{ r.emoji }}
+                </button>
+                <button
+                  v-if="post.current_user_reaction"
+                  type="button"
+                  role="menuitem"
+                  class="post-card__reaction-emoji post-card__reaction-emoji--remove"
+                  title="Remove reaction"
+                  @click.stop="onChooseReaction(null)"
+                >
+                  ✕
+                </button>
+              </div>
+            </Transition>
+          </Teleport>
+      </div>
     </div>
 
     <div v-if="commentsLoaded" class="post-card__comments">
@@ -559,61 +572,107 @@ watch(() => props.post?.id, () => {
   display: block;
 }
 
+/* Facebook-style actions bar: counts left, reaction pills + React button right */
 .post-card__actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 1rem;
-  padding-top: 0.5rem;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.5rem 0 0;
+  margin-top: 0.5rem;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   overflow: visible;
 }
 
-.post-card__reactions {
-  flex: 1;
+.post-card__actions-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
   min-width: 0;
 }
 
-.post-card__reactions-row {
+.post-card__action-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0;
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.6);
+  background: none;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.post-card__action-stat:hover {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.post-card__action-icon {
+  font-size: 1rem;
+  opacity: 0.9;
+  line-height: 1;
+}
+
+.post-card__action-icon--like {
+  font-size: 1.05rem;
+  transition: filter 0.2s ease;
+}
+
+.post-card__action-icon--like:not(.post-card__action-icon--saturated) {
+  filter: grayscale(0.5);
+  opacity: 0.85;
+}
+
+.post-card__action-icon--like.post-card__action-icon--saturated,
+.post-card__action-stat--reacted .post-card__action-icon--like {
+  filter: none;
+  opacity: 1;
+}
+
+.post-card__action-icon--comment {
+  font-size: 1rem;
+}
+
+.post-card__action-num {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.post-card__actions-right {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  overflow: visible;
-  width: 100%;
+  flex-shrink: 0;
 }
 
-.post-card__reactions-counts {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.65);
+/* Facebook-like overlapping reaction avatars */
+.post-card__reaction-pills {
+  display: flex;
+  align-items: center;
+  margin-right: 0.25rem;
 }
 
-.post-card__reaction-picker-wrap {
-  position: relative;
-  overflow: visible;
-  width: 100%;
+.post-card__reaction-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: -6px;
+  border-radius: 50%;
+  font-size: 0.8rem;
+  background: rgba(255, 255, 255, 0.12);
+  border: 2px solid rgba(15, 20, 35, 0.95);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  line-height: 1;
 }
 
-.post-card__reaction-btn {
-  min-height: 44px;
-  padding: 0.4rem 0.75rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.8);
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
-}
-
-.post-card__reaction-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(0, 245, 255, 0.25);
-}
-
-.post-card__reaction-btn--active {
-  border-color: rgba(0, 245, 255, 0.4);
-  color: #00f5ff;
+.post-card__reaction-pill:first-child {
+  margin-left: 0;
 }
 
 .post-card__reaction-picker {
