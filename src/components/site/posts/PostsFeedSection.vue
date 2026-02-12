@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { RouterLink } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { postsApi } from '@/api/posts'
 import UserService from '@/api/users.js'
@@ -8,6 +9,15 @@ import PostCard from './PostCard.vue'
 import AuthRequiredModal from '@/components/base/ui/AuthRequiredModal.vue'
 
 const authStore = useAuthStore()
+
+const props = defineProps({
+  isPreview: { type: Boolean, default: false },
+  previewLimit: { type: Number, default: 4 },
+  previewLinkTo: {
+    type: [String, Object],
+    default: '/feed',
+  },
+})
 
 const PER_PAGE = 5
 const SORT_OPTIONS = [
@@ -32,6 +42,7 @@ const feedError = ref(null)
 const showComposer = ref(false)
 
 const isLoggedIn = computed(() => authStore.isAuthenticated)
+const displayedPosts = computed(() => (props.isPreview ? posts.value.slice(0, props.previewLimit) : posts.value))
 
 let authorSearchDebounce = null
 watch(authorSearchQuery, (q) => {
@@ -128,6 +139,7 @@ function onRequireAuth() {
 let scrollObserver = null
 
 function setupInfiniteScroll() {
+  if (props.isPreview) return
   const sentinel = document.querySelector('.posts-feed__sentinel')
   if (!sentinel) return
   scrollObserver = new IntersectionObserver(
@@ -144,6 +156,7 @@ function setupInfiniteScroll() {
 watch(
   () => posts.value.length,
   (len) => {
+    if (props.isPreview) return
     if (len > 0 && !scrollObserver) nextTick(setupInfiniteScroll)
   },
   { immediate: true }
@@ -159,7 +172,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section class="posts-feed" aria-label="Posts feed">
+  <section :class="['posts-feed', { 'posts-feed--preview': isPreview }]" aria-label="Posts feed">
     <div class="posts-feed__inner">
       <h2 class="posts-feed__title">Feed</h2>
       <p class="posts-feed__desc">Share and see what’s happening.</p>
@@ -243,7 +256,7 @@ onBeforeUnmount(() => {
       <template v-else>
         <div class="posts-feed__list">
           <PostCard
-            v-for="post in posts"
+            v-for="post in displayedPosts"
             :key="post.id"
             :post="post"
             :is-logged-in="isLoggedIn"
@@ -252,8 +265,13 @@ onBeforeUnmount(() => {
             @updated="onPostUpdated($event)"
           />
         </div>
-        <div class="posts-feed__sentinel" aria-hidden="true"></div>
-        <div v-if="loadingMore" class="posts-feed__loading-more">
+        <div v-if="isPreview && posts.length >= previewLimit" class="posts-feed__show-all">
+          <RouterLink :to="previewLinkTo" class="posts-feed__show-all-btn">
+            Show all posts
+          </RouterLink>
+        </div>
+        <div v-if="!isPreview" class="posts-feed__sentinel" aria-hidden="true"></div>
+        <div v-if="!isPreview && loadingMore" class="posts-feed__loading-more">
           <div class="posts-feed__spinner posts-feed__spinner--sm" aria-hidden="true"></div>
           <span>Loading more…</span>
         </div>
@@ -493,9 +511,71 @@ onBeforeUnmount(() => {
 }
 
 .posts-feed__list {
+  --posts-feed-gap: 1.25rem;
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: var(--posts-feed-gap);
+  min-height: 0;
+}
+
+.posts-feed--preview .posts-feed__list {
+  --posts-feed-card-preview-height: 520px;
+  max-height: calc(
+    (var(--posts-feed-card-preview-height) * 1.5) +
+    var(--posts-feed-gap)
+  );
+  overflow-y: auto;
+  padding-right: 0.35rem;
+  scroll-snap-type: y proximity;
+  mask-image: linear-gradient(180deg, transparent 0%, black 15%, black 75%, transparent 100%);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.posts-feed--preview .posts-feed__list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.posts-feed--preview .posts-feed__list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+}
+
+.posts-feed--preview .posts-feed__list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.posts-feed--preview :deep(.post-card) {
+  scroll-snap-align: start;
+}
+
+.posts-feed__show-all {
+  margin-top: 1.25rem;
+  text-align: center;
+}
+
+.posts-feed__show-all-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 48px;
+  padding: 0.6rem 1.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #00f5ff;
+  background: rgba(0, 245, 255, 0.12);
+  border: 1px solid rgba(0, 245, 255, 0.25);
+  border-radius: 999px;
+  text-decoration: none;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+
+.posts-feed__show-all-btn:hover {
+  background: rgba(0, 245, 255, 0.18);
+  border-color: rgba(0, 245, 255, 0.4);
+  color: #fff;
+  transform: translateY(-1px);
 }
 
 .posts-feed__sentinel {

@@ -240,7 +240,7 @@ const events = ref([
     <!-- Posts feed -->
     <section class="home-section home-section--feed" aria-label="Posts feed">
       <div class="home-section__inner">
-        <PostsFeedSection />
+        <PostsFeedSection is-preview />
       </div>
     </section>
 
@@ -507,7 +507,7 @@ const events = ref([
   </div>
 </template>
 
-<style scoped>
+<style>
 /* ==============================================
    GEN Z / FUN VENUE – Style guide (neon, bold, playful)
    ============================================== */
@@ -656,11 +656,11 @@ const events = ref([
   transform: scale(1.03);
 }
 
-.home-page--fun :deep(.hero-section__actions .futuristic-button) {
+.home-page--fun .hero-section__actions .futuristic-button {
   transition: transform 0.35s cubic-bezier(0.34, 1.2, 0.64, 1), box-shadow 0.4s ease;
 }
 
-.home-page--fun :deep(.hero-section__actions .futuristic-button:hover) {
+.home-page--fun .hero-section__actions .futuristic-button:hover {
   transform: scale(1.02);
 }
 
@@ -755,7 +755,7 @@ const events = ref([
   transition: transform 0.4s ease, box-shadow 0.4s ease;
 }
 
-:deep(.feature-card:hover) .fun-card-icon {
+.feature-card:hover .fun-card-icon {
   transform: scale(1.08);
   box-shadow: 0 0 28px -4px rgba(0, 245, 255, 0.3);
 }
@@ -1126,12 +1126,33 @@ const events = ref([
 }
 
 .home-leaderboard-list {
+  --home-leaderboard-row-height: 4rem;
+  --home-leaderboard-gap: 0.75rem;
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--home-leaderboard-gap);
+  max-height: calc((var(--home-leaderboard-row-height) * 3.4) + (var(--home-leaderboard-gap) * 3));
+  overflow-y: auto;
+  padding-right: 0.25rem;
+  scroll-snap-type: y proximity;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+}
+
+.home-leaderboard-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.home-leaderboard-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.home-leaderboard-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
 }
 
 .home-leaderboard-item {
@@ -1142,9 +1163,10 @@ const events = ref([
   padding: 0.9rem 1.25rem;
   border-radius: 16px;
   overflow: hidden;
-  min-height: 56px;
+  min-height: var(--home-leaderboard-row-height, 3.5rem);
   animation: homeRevealUp 0.5s cubic-bezier(0.34, 1.2, 0.64, 1) both;
   animation-delay: var(--delay, 0s);
+  scroll-snap-align: start;
 }
 
 .home-leaderboard-item__glass {
@@ -1236,9 +1258,9 @@ const events = ref([
   }
 }
 
-.home-section--games :deep(.section-header__title),
-.home-section--food :deep(.section-header__title),
-.home-section--events :deep(.section-header__title) {
+.home-section--games .section-header__title,
+.home-section--food .section-header__title,
+.home-section--events .section-header__title {
   background: linear-gradient(120deg, #fff 0%, var(--neon-cyan) 40%, var(--neon-magenta) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -1246,14 +1268,14 @@ const events = ref([
   filter: drop-shadow(0 0 20px rgba(0, 245, 255, 0.2));
 }
 
-.home-section--games :deep(.section-header__description),
-.home-section--food :deep(.section-header__description),
-.home-section--events :deep(.section-header__description) {
+.home-section--games .section-header__description,
+.home-section--food .section-header__description,
+.home-section--events .section-header__description {
   color: rgba(255, 255, 255, 0.7);
 }
 
 /* Hero title neon highlight override for fun theme */
-.home-page--fun :deep(.hero-section__title-highlight) {
+.home-page--fun .hero-section__title-highlight {
   background: linear-gradient(120deg, var(--neon-cyan) 0%, var(--neon-magenta) 50%, var(--neon-purple) 100%);
   background-size: 200% auto;
   -webkit-background-clip: text;
@@ -1262,12 +1284,12 @@ const events = ref([
   filter: drop-shadow(0 0 20px rgba(0, 245, 255, 0.4));
 }
 
-.home-page--fun :deep(.hero-section__title) {
+.home-page--fun .hero-section__title {
   font-family: 'Outfit', var(--font-sans, sans-serif);
   font-weight: 800;
 }
 
-.home-page--fun :deep(.hero-section__description) {
+.home-page--fun .hero-section__description {
   color: rgba(255, 255, 255, 0.8);
 }
 

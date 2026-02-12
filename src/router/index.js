@@ -17,6 +17,11 @@ const router = createRouter({
       component: () => import('../views/site/AboutView.vue'),
     },
     {
+      path: '/feed',
+      name: 'publicFeed',
+      component: () => import('../views/site/PublicFeedView.vue'),
+    },
+    {
       path: '/profile',
       name: 'profile',
       component: ProfileView,

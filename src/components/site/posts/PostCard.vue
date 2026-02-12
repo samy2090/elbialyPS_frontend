@@ -26,16 +26,22 @@ const REACTION_TYPES = [
 
 const lightboxUrl = ref(null)
 const showReactionPicker = ref(false)
+const commentsOpen = ref(false)
 const commentsLoaded = ref(false)
 const comments = ref([])
 const commentsMeta = ref({ next_cursor: null, has_more: false })
 const commentsLoading = ref(false)
 const commentBody = ref('')
 const commentSubmitting = ref(false)
+const replyingToCommentId = ref(null)
+const replyBody = ref('')
+const replySubmitting = ref(false)
 const reactLoading = ref(false)
 const reactBtnRef = ref(null)
+const pickerRef = ref(null)
 const pickerFixedStyle = ref({})
 let scrollResizeCleanup = null
+let clickOutsideCleanup = null
 
 function updatePickerFixedPosition() {
   const btn = reactBtnRef.value
@@ -69,18 +75,44 @@ function clearPickerFixedStyle() {
   }
 }
 
+function removeClickOutsideListener() {
+  if (clickOutsideCleanup) {
+    clickOutsideCleanup()
+    clickOutsideCleanup = null
+  }
+}
+
 watch(showReactionPicker, (open) => {
   if (open) {
     nextTick(() => {
       updatePickerFixedPosition()
       setupScrollResizeListeners()
+      // Close picker when clicking outside (button or picker). Use setTimeout so the opening click doesn't close it.
+      setTimeout(() => {
+        const onDocumentClick = (e) => {
+          if (!showReactionPicker.value) return
+          const btn = reactBtnRef.value
+          const picker = pickerRef.value
+          if (btn?.contains(e.target) || picker?.contains(e.target)) return
+          showReactionPicker.value = false
+          removeClickOutsideListener()
+        }
+        document.addEventListener('click', onDocumentClick, true)
+        clickOutsideCleanup = () => {
+          document.removeEventListener('click', onDocumentClick, true)
+        }
+      }, 0)
     })
   } else {
+    removeClickOutsideListener()
     clearPickerFixedStyle()
   }
 })
 
-onBeforeUnmount(clearPickerFixedStyle)
+onBeforeUnmount(() => {
+  removeClickOutsideListener()
+  clearPickerFixedStyle()
+})
 
 const sortedMedia = computed(() => {
   const m = props.post?.media ?? []
@@ -117,6 +149,27 @@ const activeReactionTypes = computed(() => {
 
 const commentsCount = computed(() => props.post?.comments_count ?? 0)
 
+/** Top-level comments with replies nested (2 levels only). */
+const nestedComments = computed(() => {
+  const list = comments.value
+  const top = list
+    .filter((c) => !c.parent_id)
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+  const byParent = new Map()
+  list.forEach((c) => {
+    if (c.parent_id) {
+      if (!byParent.has(c.parent_id)) byParent.set(c.parent_id, [])
+      byParent.get(c.parent_id).push(c)
+    }
+  })
+  return top.map((c) => ({
+    ...c,
+    replies: (byParent.get(c.id) ?? []).sort(
+      (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0)
+    ),
+  }))
+})
+
 function openLightbox(url) {
   const full = resolveBackendImageUrl(url) || url
   if (full) lightboxUrl.value = full
@@ -129,6 +182,9 @@ function onReactClick() {
   }
   showReactionPicker.value = !showReactionPicker.value
 }
+
+// Track the latest reaction request to handle race conditions
+let latestReactionRequestId = 0
 
 function onChooseReaction(type) {
   if (!props.isLoggedIn) return
@@ -160,20 +216,37 @@ function onChooseReaction(type) {
   const previousPost = { ...props.post }
   emit('updated', optimistic)
   reactLoading.value = true
-  const didRemove = type === null
+  
+  // Increment request ID to track which request is latest
+  const requestId = ++latestReactionRequestId
+  const expectedReaction = type || null
+  
   const promise = type ? postsApi.react(id, type) : postsApi.removeReact(id)
   promise
     .then(() => postsApi.getPost(id))
     .then((fresh) => {
       if (!fresh) return
-      if (didRemove && fresh.current_user_reaction != null) return
+      // Only emit if this is still the latest request
+      // This prevents older requests from overwriting newer state
+      if (requestId !== latestReactionRequestId) return
+      // Verify the fresh data matches what we expect
+      // If user removed reaction, fresh should show null
+      // If user added reaction, fresh should match the type
+      if (expectedReaction === null && fresh.current_user_reaction != null) return
+      if (expectedReaction !== null && fresh.current_user_reaction !== expectedReaction) return
       emit('updated', fresh)
     })
     .catch(() => {
-      emit('updated', previousPost)
+      // Only rollback if this is still the latest request
+      if (requestId === latestReactionRequestId) {
+        emit('updated', previousPost)
+      }
     })
     .finally(() => {
-      reactLoading.value = false
+      // Only clear loading if this is the latest request
+      if (requestId === latestReactionRequestId) {
+        reactLoading.value = false
+      }
     })
 }
 
@@ -196,6 +269,11 @@ function loadComments() {
 }
 
 function onShowComments() {
+  if (commentsOpen.value) {
+    commentsOpen.value = false
+    return
+  }
+  commentsOpen.value = true
   if (!commentsLoaded.value) loadComments()
 }
 
@@ -213,10 +291,39 @@ function onSubmitComment() {
       comments.value = [newComment, ...comments.value]
       commentBody.value = ''
       const c = (props.post.comments_count ?? 0) + 1
-      if (props.post) props.post.comments_count = c
-      emit('updated')
+      emit('updated', { ...props.post, comments_count: c })
     })
     .finally(() => { commentSubmitting.value = false })
+}
+
+function onReplyClick(commentId) {
+  if (!props.isLoggedIn) {
+    emit('requireAuth')
+    return
+  }
+  replyingToCommentId.value = replyingToCommentId.value === commentId ? null : commentId
+  if (replyingToCommentId.value) replyBody.value = ''
+}
+
+function cancelReply() {
+  replyingToCommentId.value = null
+  replyBody.value = ''
+}
+
+function onSubmitReply(parentId) {
+  const body = (replyBody.value || '').trim()
+  if (!body) return
+  replySubmitting.value = true
+  postsApi
+    .addComment(props.post.id, { body, parent_id: parentId })
+    .then((newComment) => {
+      comments.value = [newComment, ...comments.value]
+      replyBody.value = ''
+      replyingToCommentId.value = null
+      const c = (props.post.comments_count ?? 0) + 1
+      emit('updated', { ...props.post, comments_count: c })
+    })
+    .finally(() => { replySubmitting.value = false })
 }
 
 function onCommentInputFocus() {
@@ -224,6 +331,7 @@ function onCommentInputFocus() {
 }
 
 watch(() => props.post?.id, () => {
+  commentsOpen.value = false
   commentsLoaded.value = false
   comments.value = []
   commentsMeta.value = { next_cursor: null, has_more: false }
@@ -302,16 +410,33 @@ watch(() => props.post?.id, () => {
           :disabled="reactLoading"
           @click="isLoggedIn ? onReactClick() : $emit('requireAuth')"
         >
+          <!-- Unreacted: Facebook-style outline thumbs-up. Reacted: chosen emoji, saturated -->
           <span
-            class="post-card__action-icon post-card__action-icon--like"
-            :class="{ 'post-card__action-icon--saturated': post.current_user_reaction }"
+            v-if="!post.current_user_reaction"
+            class="post-card__action-icon post-card__action-icon--like post-card__action-icon--outline"
             aria-hidden="true"
           >
-            {{ post.current_user_reaction ? REACTION_TYPES.find(r => r.type === post.current_user_reaction)?.emoji : '👍' }}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">
+              <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 11H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3"/>
+            </svg>
           </span>
-          <span class="post-card__action-num">{{ totalReactions }}</span>
+          <span
+            v-else
+            class="post-card__action-icon post-card__action-icon--like post-card__action-icon--saturated"
+            aria-hidden="true"
+          >
+            {{ REACTION_TYPES.find(r => r.type === post.current_user_reaction)?.emoji }}
+          </span>
+          <span class="post-card__action-num" :class="{ 'post-card__action-num--reacted': post.current_user_reaction }">{{ totalReactions }}</span>
         </button>
-        <button type="button" class="post-card__action-stat" @click="onShowComments" aria-label="Comments">
+        <button
+          type="button"
+          class="post-card__action-stat"
+          :class="{ 'post-card__action-stat--comments-open': commentsOpen }"
+          @click="onShowComments"
+          aria-label="Comments"
+          :aria-expanded="commentsOpen"
+        >
           <span class="post-card__action-icon post-card__action-icon--comment" aria-hidden="true">💬</span>
           <span class="post-card__action-num">{{ commentsCount }}</span>
         </button>
@@ -331,6 +456,7 @@ watch(() => props.post?.id, () => {
             <Transition name="picker-fade">
               <div
                 v-if="showReactionPicker"
+                ref="pickerRef"
                 class="post-card__reaction-picker post-card__reaction-picker--fixed"
                 role="menu"
                 :style="pickerFixedStyle"
@@ -362,21 +488,78 @@ watch(() => props.post?.id, () => {
       </div>
     </div>
 
-    <div v-if="commentsLoaded" class="post-card__comments">
-      <div v-for="c in comments" :key="c.id" class="post-card__comment">
-        <div class="post-card__comment-avatar">
-          <img
-            v-if="resolveBackendImageUrl(c.user?.avatar_url)"
-            :src="resolveBackendImageUrl(c.user.avatar_url)"
-            :alt="c.user?.name"
-          />
-          <span v-else>{{ (c.user?.name || c.user?.username || '?').slice(0, 1).toUpperCase() }}</span>
+    <div v-if="commentsOpen" class="post-card__comments-outer">
+      <div v-if="commentsLoading && !commentsLoaded" class="post-card__comments-loading">Loading comments…</div>
+      <div v-else-if="commentsLoaded" class="post-card__comments">
+      <template v-for="group in nestedComments" :key="group.id">
+        <div class="post-card__comment-thread">
+          <div class="post-card__comment post-card__comment--top">
+            <div class="post-card__comment-avatar">
+              <img
+                v-if="resolveBackendImageUrl(group.user?.avatar_url)"
+                :src="resolveBackendImageUrl(group.user.avatar_url)"
+                :alt="group.user?.name"
+              />
+              <span v-else>{{ (group.user?.name || group.user?.username || '?').slice(0, 1).toUpperCase() }}</span>
+            </div>
+            <div class="post-card__comment-body">
+              <span class="post-card__comment-author">{{ group.user?.name || group.user?.username || '—' }}</span>
+              <span class="post-card__comment-text">{{ group.body }}</span>
+              <button
+                type="button"
+                class="post-card__comment-reply-btn"
+                @click="onReplyClick(group.id)"
+              >
+                Reply
+              </button>
+            </div>
+          </div>
+          <div v-if="group.replies?.length" class="post-card__comment-replies">
+            <div
+              v-for="r in group.replies"
+              :key="r.id"
+              class="post-card__comment post-card__comment--reply"
+            >
+              <div class="post-card__comment-avatar">
+                <img
+                  v-if="resolveBackendImageUrl(r.user?.avatar_url)"
+                  :src="resolveBackendImageUrl(r.user.avatar_url)"
+                  :alt="r.user?.name"
+                />
+                <span v-else>{{ (r.user?.name || r.user?.username || '?').slice(0, 1).toUpperCase() }}</span>
+              </div>
+              <div class="post-card__comment-body">
+                <span class="post-card__comment-author">{{ r.user?.name || r.user?.username || '—' }}</span>
+                <span class="post-card__comment-text">{{ r.body }}</span>
+              </div>
+            </div>
+          </div>
+          <div v-if="replyingToCommentId === group.id" class="post-card__reply-form">
+            <p class="post-card__reply-context">Replying to {{ group.user?.name || group.user?.username || '—' }}</p>
+            <input
+              v-model="replyBody"
+              type="text"
+              class="post-card__comment-input post-card__reply-input"
+              placeholder="Write a reply..."
+              maxlength="500"
+              @keydown.enter.prevent="onSubmitReply(group.id)"
+            />
+            <div class="post-card__reply-actions">
+              <button
+                type="button"
+                class="post-card__comment-submit post-card__reply-submit"
+                :disabled="!replyBody.trim() || replySubmitting"
+                @click="onSubmitReply(group.id)"
+              >
+                {{ replySubmitting ? 'Posting…' : 'Reply' }}
+              </button>
+              <button type="button" class="post-card__reply-cancel" @click="cancelReply">
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
-        <div class="post-card__comment-body">
-          <span class="post-card__comment-author">{{ c.user?.name || c.user?.username || '—' }}</span>
-          <span class="post-card__comment-text">{{ c.body }}</span>
-        </div>
-      </div>
+      </template>
       <button
         v-if="commentsMeta.has_more"
         type="button"
@@ -404,6 +587,7 @@ watch(() => props.post?.id, () => {
         >
           Post
         </button>
+      </div>
       </div>
     </div>
 
@@ -611,22 +795,46 @@ watch(() => props.post?.id, () => {
   background: rgba(255, 255, 255, 0.05);
 }
 
+/* Reaction button: clearer outline icon and count when unreacted */
+.post-card__action-stat:first-child {
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.post-card__action-stat:first-child:hover {
+  color: rgba(255, 255, 255, 1);
+}
+
 .post-card__action-icon {
   font-size: 1rem;
-  opacity: 0.9;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.8;
+}
+
+/* Unreacted: Facebook-style outline thumbs-up – clear, not faded */
+.post-card__action-icon--outline {
+  opacity: 1;
+  color: inherit;
+}
+
+.post-card__action-icon--outline svg {
+  width: 1.1em;
+  height: 1.1em;
+  stroke: currentColor;
 }
 
 .post-card__action-icon--like {
   font-size: 1.05rem;
-  transition: filter 0.2s ease;
+  transition: filter 0.2s ease, opacity 0.2s ease;
 }
 
 .post-card__action-icon--like:not(.post-card__action-icon--saturated) {
   filter: grayscale(0.5);
   opacity: 0.85;
 }
-
+/* Reacted: show chosen emoji fully saturated (no fade) */
 .post-card__action-icon--like.post-card__action-icon--saturated,
 .post-card__action-stat--reacted .post-card__action-icon--like {
   filter: none;
@@ -640,6 +848,11 @@ watch(() => props.post?.id, () => {
 .post-card__action-num {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  color: inherit;
+}
+
+.post-card__action-num--reacted {
+  color: rgba(255, 255, 255, 0.98);
 }
 
 .post-card__actions-right {
@@ -781,21 +994,52 @@ watch(() => props.post?.id, () => {
   color: #00f5ff;
 }
 
+/* ---- Comments: mobile-first, clear hierarchy, 44px tap targets ---- */
+.post-card__action-stat--comments-open {
+  color: rgba(0, 245, 255, 0.95);
+}
+
+.post-card__comments-outer {
+  margin-top: 0;
+}
+
+.post-card__comments-loading {
+  padding: 1.25rem 0;
+  text-align: center;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
 .post-card__comments {
   margin-top: 1rem;
   padding-top: 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.post-card__comment-thread {
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.post-card__comment-thread:last-of-type {
+  border-bottom: none;
 }
 
 .post-card__comment {
   display: flex;
   gap: 0.75rem;
-  margin-bottom: 0.75rem;
+  margin-bottom: 0;
+  align-items: flex-start;
+}
+
+.post-card__comment--top {
+  margin-bottom: 0.25rem;
 }
 
 .post-card__comment-avatar {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   overflow: hidden;
   flex-shrink: 0;
@@ -803,7 +1047,7 @@ watch(() => props.post?.id, () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   color: rgba(255, 255, 255, 0.8);
 }
 
@@ -820,48 +1064,190 @@ watch(() => props.post?.id, () => {
 
 .post-card__comment-author {
   font-weight: 600;
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.95);
   margin-right: 0.35rem;
 }
 
 .post-card__comment-text {
-  font-size: 0.9rem;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.95rem;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.85);
   word-break: break-word;
+  display: block;
+  margin-top: 0.15rem;
 }
 
-.post-card__load-more-comments {
+/* Reply button: tap-friendly, pill style */
+.post-card__comment-reply-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  min-width: 44px;
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.75rem;
   font-size: 0.85rem;
-  color: rgba(0, 245, 255, 0.9);
-  background: none;
+  font-weight: 500;
+  color: rgba(0, 245, 255, 0.95);
+  background: rgba(0, 245, 255, 0.08);
+  border: 1px solid rgba(0, 245, 255, 0.25);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.post-card__comment-reply-btn:hover {
+  background: rgba(0, 245, 255, 0.15);
+  border-color: rgba(0, 245, 255, 0.4);
+}
+
+.post-card__comment-reply-btn:active {
+  transform: scale(0.98);
+}
+
+/* Nested replies: clear visual hierarchy */
+.post-card__comment-replies {
+  margin-top: 0.5rem;
+  margin-left: 0.5rem;
+  padding-left: 1rem;
+  border-left: 3px solid rgba(0, 245, 255, 0.25);
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 0 8px 8px 0;
+  padding: 0.75rem 0.75rem 0.5rem 1rem;
+}
+
+.post-card__comment--reply {
+  margin-bottom: 0.75rem;
+}
+
+.post-card__comment--reply:last-child {
+  margin-bottom: 0;
+}
+
+.post-card__comment--reply .post-card__comment-avatar {
+  width: 32px;
+  height: 32px;
+  font-size: 0.8rem;
+}
+
+.post-card__comment--reply .post-card__comment-author,
+.post-card__comment--reply .post-card__comment-text {
+  font-size: 0.9rem;
+}
+
+.post-card__comment--reply .post-card__comment-text {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Reply form: context + input + actions */
+.post-card__reply-form {
+  margin-top: 0.75rem;
+  margin-left: 0.5rem;
+  padding: 0.75rem;
+  padding-left: 1rem;
+  border-left: 3px solid rgba(0, 245, 255, 0.2);
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 0 12px 12px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.post-card__reply-context {
+  margin: 0;
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.post-card__reply-input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.post-card__reply-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.post-card__reply-submit {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
+}
+
+.post-card__reply-cancel {
+  min-height: 44px;
+  padding: 0 1rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.65);
+  background: transparent;
   border: none;
   cursor: pointer;
-  padding: 0.35rem 0;
-  margin-bottom: 0.5rem;
+  border-radius: 12px;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.post-card__reply-cancel:hover {
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Load more: tap-friendly */
+.post-card__load-more-comments {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: rgba(0, 245, 255, 0.95);
+  background: rgba(0, 245, 255, 0.06);
+  border: 1px solid rgba(0, 245, 255, 0.2);
+  border-radius: 12px;
+  cursor: pointer;
+  padding: 0.6rem 1rem;
+  min-height: 44px;
+  margin-bottom: 0.75rem;
+  width: 100%;
+  transition: background 0.2s ease, border-color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .post-card__load-more-comments:hover:not(:disabled) {
-  text-decoration: underline;
+  background: rgba(0, 245, 255, 0.12);
+  border-color: rgba(0, 245, 255, 0.35);
 }
 
+.post-card__load-more-comments:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Main comment input row */
 .post-card__comment-input-wrap {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
+  gap: 0.6rem;
+  margin-top: 0.75rem;
+  align-items: stretch;
 }
 
 .post-card__comment-input {
   flex: 1;
-  min-height: 44px;
-  padding: 0.5rem 1rem;
-  font-size: 0.95rem;
+  min-height: 48px;
+  padding: 0.65rem 1rem;
+  font-size: 1rem;
   color: #fff;
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
+  border-radius: 24px;
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .post-card__comment-input::placeholder {
@@ -869,29 +1255,109 @@ watch(() => props.post?.id, () => {
 }
 
 .post-card__comment-input:focus {
-  border-color: rgba(0, 245, 255, 0.4);
-  box-shadow: 0 0 0 2px rgba(0, 245, 255, 0.15);
+  border-color: rgba(0, 245, 255, 0.45);
+  box-shadow: 0 0 0 2px rgba(0, 245, 255, 0.12);
 }
 
 .post-card__comment-submit {
-  min-height: 44px;
-  padding: 0.5rem 1rem;
-  font-size: 0.9rem;
+  min-height: 48px;
+  padding: 0.65rem 1.25rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: #fff;
-  background: linear-gradient(135deg, rgba(0, 245, 255, 0.25), rgba(168, 85, 247, 0.2));
-  border: 1px solid rgba(0, 245, 255, 0.35);
-  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.3), rgba(168, 85, 247, 0.25));
+  border: 1px solid rgba(0, 245, 255, 0.4);
+  border-radius: 24px;
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.15s ease;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .post-card__comment-submit:hover:not(:disabled) {
-  opacity: 1.1;
+  opacity: 1.05;
+}
+
+.post-card__comment-submit:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .post-card__comment-submit:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Mobile: larger tap targets and spacing */
+@media (max-width: 768px) {
+  .post-card__comments {
+    margin-top: 1rem;
+    padding-top: 1rem;
+  }
+
+  .post-card__comment-thread {
+    margin-bottom: 1.25rem;
+    padding: 0.85rem 0;
+  }
+
+  .post-card__comment-avatar {
+    width: 44px;
+    height: 44px;
+    font-size: 0.95rem;
+  }
+
+  .post-card__comment-reply-btn {
+    min-height: 44px;
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+  }
+
+  .post-card__comment-replies {
+    margin-left: 0.25rem;
+    padding-left: 0.85rem;
+    padding: 0.85rem 0.75rem 0.5rem 1rem;
+  }
+
+  .post-card__comment--reply .post-card__comment-avatar {
+    width: 36px;
+    height: 36px;
+  }
+
+  .post-card__reply-form {
+    margin-left: 0.25rem;
+    padding: 0.85rem;
+    padding-left: 1rem;
+    gap: 0.75rem;
+  }
+
+  .post-card__reply-submit,
+  .post-card__reply-cancel {
+    min-height: 48px;
+  }
+
+  .post-card__comment-input-wrap {
+    gap: 0.5rem;
+    margin-top: 0.85rem;
+  }
+
+  .post-card__comment-input {
+    min-height: 48px;
+    padding: 0.75rem 1rem;
+    font-size: 16px; /* avoids zoom on focus on iOS */
+  }
+
+  .post-card__comment-submit {
+    min-height: 48px;
+    padding: 0.75rem 1.25rem;
+  }
+}
+
+@media (max-width: 380px) {
+  .post-card__comment-input-wrap {
+    flex-direction: column;
+  }
+
+  .post-card__comment-submit {
+    width: 100%;
+  }
 }
 </style>

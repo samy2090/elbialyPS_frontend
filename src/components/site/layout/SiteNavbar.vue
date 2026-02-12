@@ -119,11 +119,14 @@ provide('closeNavMenu', closeMenu)
 
 const navItems = computed(() => [
   { to: '/', label: 'Home', icon: 'home' },
+  { to: '/feed', label: 'Feed', icon: 'feed' },
   { to: '/about', label: 'About', icon: 'info' },
-  ...(authStore.isAuthenticated ? [
-    { to: '/profile', label: 'My Profile', icon: 'profile' },
-    ...(authStore.canAccessDashboard ? [{ to: '/dashboard', label: 'Dashboard', icon: 'dashboard' }] : [])
-  ] : [])
+  ...(authStore.isAuthenticated
+    ? [
+        { to: '/profile', label: 'My Profile', icon: 'profile' },
+        ...(authStore.canAccessDashboard ? [{ to: '/dashboard', label: 'Dashboard', icon: 'dashboard' }] : []),
+      ]
+    : []),
 ])
 
 watch(() => route.path, () => {
@@ -438,6 +441,7 @@ onUnmounted(() => {
 }
 
 .site-nav-link-icon[data-icon="home"]::before { content: '⌂'; font-size: 1rem; font-family: inherit; }
+.site-nav-link-icon[data-icon="feed"]::before { content: '≋'; font-size: 1rem; font-family: inherit; }
 .site-nav-link-icon[data-icon="info"]::before { content: 'ℹ'; font-size: 1rem; font-family: inherit; }
 .site-nav-link-icon[data-icon="profile"]::before { content: '◇'; font-size: 1rem; font-family: inherit; }
 .site-nav-link-icon[data-icon="dashboard"]::before { content: '▤'; font-size: 1rem; font-family: inherit; }
