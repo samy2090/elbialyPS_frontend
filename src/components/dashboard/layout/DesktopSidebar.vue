@@ -315,15 +315,6 @@ const FeedIcon = {
   `
 }
 
-const PendingIcon = {
-  template: `
-    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-      <path d="M12 6V12L16 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    </svg>
-  `
-}
-
 const GiftIcon = {
   template: `
     <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -374,9 +365,7 @@ const navigationItems = computed(() => [
     label: 'Posts',
     icon: FeedIcon,
     subItems: [
-      { id: 'posts-pending', label: 'Pending', icon: PendingIcon },
-      { id: 'posts-all', label: 'All posts', icon: ListIcon },
-      { id: 'posts-comments', label: 'All comments', icon: FeedIcon }
+      { id: 'posts-all', label: 'All posts', icon: ListIcon }
     ]
   },
   {

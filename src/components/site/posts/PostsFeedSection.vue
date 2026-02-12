@@ -136,6 +136,14 @@ function onRequireAuth() {
   showAuthModal.value = true
 }
 
+function onAddPostClick() {
+  if (!isLoggedIn.value) {
+    showAuthModal.value = true
+    return
+  }
+  showComposer.value = true
+}
+
 let scrollObserver = null
 
 function setupInfiniteScroll() {
@@ -183,7 +191,7 @@ onBeforeUnmount(() => {
           v-if="!showComposer"
           type="button"
           class="posts-feed__add-post-btn"
-          @click="showComposer = true"
+          @click="onAddPostClick"
         >
           Add new post
         </button>

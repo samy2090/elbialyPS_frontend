@@ -90,7 +90,7 @@ const router = createRouter({
     {
       path: '/posts',
       name: 'postsAdmin',
-      redirect: () => ({ path: '/dashboard', query: { section: 'posts-pending' } }),
+      redirect: () => ({ path: '/dashboard', query: { section: 'posts-all' } }),
       meta: { requiresAuth: true, requiresDashboardAccess: true }
     },
   ],

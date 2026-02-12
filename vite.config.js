@@ -50,5 +50,10 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['vue', 'vue-router', 'pinia', 'axios']
-  }
+  },
+  build: {
+    // Dashboard chunk is ~525 kB; warning threshold is 500 kB by default.
+    // Raising limit avoids the warning; consider lazy-loading dashboard sections later to reduce size.
+    chunkSizeWarningLimit: 600,
+  },
 })
