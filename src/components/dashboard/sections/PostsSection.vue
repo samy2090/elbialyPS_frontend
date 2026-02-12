@@ -165,28 +165,73 @@
       <div class="filters-row">
         <div class="filter-group">
           <label class="filter-label">Status</label>
-          <select v-model="allPostsFilters.status" class="filter-select">
-            <option value="all">All</option>
-            <option value="pending">Pending</option>
-            <option value="published">Published</option>
-          </select>
+          <CustomDropdown
+            v-model="allPostsFilters.status"
+            :options="allPostsStatusOptions"
+            option-value="value"
+            option-label="label"
+            placeholder="All statuses"
+            :show-placeholder-in-menu="false"
+          />
         </div>
         <div class="filter-group">
-          <label class="filter-label">Author</label>
-          <select v-model="allPostsFilters.user_id" class="filter-select">
-            <option value="">All users</option>
-            <option v-for="u in userOptions" :key="u.id" :value="u.id">{{ u.name }} (@{{ u.username }})</option>
-          </select>
+          <label class="filter-label">User</label>
+          <div class="user-search-wrapper">
+            <input
+              v-model="allPostsUserSearchQuery"
+              @input="handleAllPostsUserSearch"
+              @focus="showAllPostsUserDropdown = true"
+              @blur="handleAllPostsUserBlur"
+              type="text"
+              class="filter-input user-search-input"
+              placeholder="Type to search users..."
+              autocomplete="off"
+            />
+            <div v-if="allPostsUserSearchLoading" class="search-loading-inline">
+              <div class="loading-spinner small"></div>
+            </div>
+            <div
+              v-if="showAllPostsUserDropdown && (allPostsUserSearchResults.length || allPostsUserSearchQuery.length)"
+              class="user-dropdown"
+            >
+              <div v-if="allPostsUserSearchLoading" class="dropdown-item loading-item">
+                <div class="loading-spinner small"></div>
+                <span>Searching…</span>
+              </div>
+              <div
+                v-else-if="!allPostsUserSearchResults.length && allPostsUserSearchQuery.trim().length"
+                class="dropdown-item no-results"
+              >
+                No users found
+              </div>
+              <div
+                v-for="u in allPostsUserSearchResults"
+                :key="u.id"
+                class="dropdown-item"
+                :class="{ selected: allPostsFilters.user_id === u.id }"
+                @mousedown.prevent="selectAllPostsUser(u)"
+              >
+                <div class="user-option">
+                  <span class="user-name">{{ u.name }}</span>
+                  <span class="user-username">@{{ u.username }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="filter-group">
-          <label class="filter-label">Date from</label>
-          <input v-model="allPostsFilters.date_from" type="date" class="filter-input" />
+        <div class="filter-group filter-group--date">
+          <label class="filter-label">Date range</label>
+          <DateRangePicker
+            v-model="allPostsDateRange"
+            placeholder="Select date range"
+            title="Filter by date"
+            class="filter-date-picker"
+            :auto-apply="true"
+            :allow-mode-toggle="true"
+            default-mode="range"
+          />
         </div>
-        <div class="filter-group">
-          <label class="filter-label">Date to</label>
-          <input v-model="allPostsFilters.date_to" type="date" class="filter-input" />
-        </div>
-        <button type="button" class="action-btn primary" @click="applyAllPostsFilters">Apply</button>
+        <button type="button" class="action-btn primary filters-apply-btn" @click="applyAllPostsFilters">Apply</button>
       </div>
       <div v-if="allPostsLoading" class="loading-state">
         <div class="loading-spinner"></div>
@@ -234,6 +279,21 @@
             </div>
             <div class="post-actions">
               <button type="button" class="action-btn secondary" @click="openCommentsModal(post)">View comments</button>
+              <button
+                type="button"
+                class="action-btn secondary"
+                @click="openEditPost(post)"
+              >
+                Edit post
+              </button>
+              <button
+                type="button"
+                class="action-btn danger"
+                :disabled="deletingPostId === post.id"
+                @click="confirmDeletePost(post)"
+              >
+                Delete post
+              </button>
             </div>
           </article>
         </div>
@@ -251,25 +311,67 @@
       <p class="pending-subtitle">Filter and view all comments</p>
       <div class="filters-row">
         <div class="filter-group">
-          <label class="filter-label">Author</label>
-          <select v-model="commentsFilters.user_id" class="filter-select">
-            <option value="">All users</option>
-            <option v-for="u in userOptions" :key="u.id" :value="u.id">{{ u.name }} (@{{ u.username }})</option>
-          </select>
+          <label class="filter-label">User</label>
+          <div class="user-search-wrapper">
+            <input
+              v-model="commentsUserSearchQuery"
+              @input="handleCommentsUserSearch"
+              @focus="showCommentsUserDropdown = true"
+              @blur="handleCommentsUserBlur"
+              type="text"
+              class="filter-input user-search-input"
+              placeholder="Type to search users..."
+              autocomplete="off"
+            />
+            <div v-if="commentsUserSearchLoading" class="search-loading-inline">
+              <div class="loading-spinner small"></div>
+            </div>
+            <div
+              v-if="showCommentsUserDropdown && (commentsUserSearchResults.length || commentsUserSearchQuery.length)"
+              class="user-dropdown"
+            >
+              <div v-if="commentsUserSearchLoading" class="dropdown-item loading-item">
+                <div class="loading-spinner small"></div>
+                <span>Searching…</span>
+              </div>
+              <div
+                v-else-if="!commentsUserSearchResults.length && commentsUserSearchQuery.trim().length"
+                class="dropdown-item no-results"
+              >
+                No users found
+              </div>
+              <div
+                v-for="u in commentsUserSearchResults"
+                :key="u.id"
+                class="dropdown-item"
+                :class="{ selected: commentsFilters.user_id === u.id }"
+                @mousedown.prevent="selectCommentsUser(u)"
+              >
+                <div class="user-option">
+                  <span class="user-name">{{ u.name }}</span>
+                  <span class="user-username">@{{ u.username }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="filter-group">
           <label class="filter-label">Post ID</label>
           <input v-model.number="commentsFilters.post_id" type="number" min="1" placeholder="Post ID" class="filter-input narrow" />
         </div>
-        <div class="filter-group">
-          <label class="filter-label">Date from</label>
-          <input v-model="commentsFilters.date_from" type="date" class="filter-input" />
+        <div class="filter-group filter-group--date">
+          <label class="filter-label">Date range</label>
+          <DateRangePicker
+            v-model="commentsDateRange"
+            placeholder="Select date range"
+            title="Filter comments by date"
+            class="filter-date-picker"
+            :auto-apply="true"
+            :allow-mode-toggle="true"
+            default-mode="range"
+          />
         </div>
-        <div class="filter-group">
-          <label class="filter-label">Date to</label>
-          <input v-model="commentsFilters.date_to" type="date" class="filter-input" />
-        </div>
-        <button type="button" class="action-btn primary" @click="applyCommentsFilters">Apply</button>
+        <button type="button" class="action-btn primary filters-apply-btn" @click="applyCommentsFilters">Apply</button>
       </div>
       <div v-if="commentsLoading" class="loading-state">
         <div class="loading-spinner"></div>
@@ -283,7 +385,8 @@
         <p>No comments found.</p>
       </div>
       <template v-else>
-        <div class="comments-table-wrap">
+        <!-- Desktop table -->
+        <div class="comments-table-wrap desktop-only">
           <table class="comments-table">
             <thead>
               <tr>
@@ -291,6 +394,7 @@
                 <th>Comment</th>
                 <th>Post</th>
                 <th>Created</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -301,16 +405,139 @@
                 <td><span class="comment-body-cell">{{ truncateBody(c.body, 80) }}</span></td>
                 <td>#{{ c.post_id }} <span v-if="c.post?.body" class="post-excerpt">{{ truncateBody(c.post.body, 40) }}</span></td>
                 <td>{{ formatDate(c.created_at) }}</td>
+                <td>
+                  <button
+                    type="button"
+                    class="action-btn danger"
+                    :disabled="deletingCommentId === c.id"
+                    @click="confirmDeleteComment(c)"
+                  >
+                    Delete
+                  </button>
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
+
+        <!-- Mobile cards -->
+        <div class="comments-cards mobile-only">
+          <article
+            v-for="c in commentsList"
+            :key="c.id"
+            class="comment-card"
+          >
+            <div class="comment-card-header">
+              <div class="comment-card-author">
+                <div class="comment-avatar">
+                  <span>{{ authorInitials(c.user) }}</span>
+                </div>
+                <div class="comment-author-info">
+                  <span class="comment-author-name">{{ c.user?.name || '—' }}</span>
+                  <span class="comment-author-username">@{{ c.user?.username || '—' }}</span>
+                </div>
+              </div>
+              <time class="comment-card-date" :datetime="c.created_at">
+                {{ formatDate(c.created_at) }}
+              </time>
+            </div>
+            <div class="comment-card-body">
+              <p class="comment-card-text">
+                {{ truncateBody(c.body, 120) }}
+              </p>
+            </div>
+            <div class="comment-card-meta">
+              <span class="comment-card-post-label">Post #{{ c.post_id }}</span>
+              <span v-if="c.post?.body" class="comment-card-post-excerpt">
+                {{ truncateBody(c.post.body, 60) }}
+              </span>
+            </div>
+            <div class="comment-card-actions">
+              <button
+                type="button"
+                class="comment-card-btn danger"
+                :disabled="deletingCommentId === c.id"
+                @click="confirmDeleteComment(c)"
+              >
+                Delete comment
+              </button>
+            </div>
+          </article>
+        </div>
+
         <div v-if="commentsMeta.last_page > 1" class="pagination">
           <button type="button" class="pagination-btn" :disabled="commentsMeta.current_page <= 1" @click="goToCommentsPage(commentsMeta.current_page - 1)">Previous</button>
           <span class="pagination-info">Page {{ commentsMeta.current_page }} of {{ commentsMeta.last_page }}</span>
           <button type="button" class="pagination-btn" :disabled="commentsMeta.current_page >= commentsMeta.last_page" @click="goToCommentsPage(commentsMeta.current_page + 1)">Next</button>
         </div>
       </template>
+    </div>
+
+    <!-- Delete comment confirm modal -->
+    <div v-if="deleteCommentTarget" class="modal-overlay" @click.self="deleteCommentTarget = null">
+      <div class="modal-box">
+        <h3 class="modal-title">Delete comment</h3>
+        <p class="modal-text">Delete this comment? This action cannot be undone.</p>
+        <div class="modal-actions">
+          <button type="button" class="action-btn secondary" @click="deleteCommentTarget = null">Cancel</button>
+          <button
+            type="button"
+            class="action-btn danger"
+            :disabled="deletingCommentId === deleteCommentTarget?.id"
+            @click="deleteCommentConfirm"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete post confirm modal (All posts tab) -->
+    <div v-if="deletePostTarget" class="modal-overlay" @click.self="deletePostTarget = null">
+      <div class="modal-box">
+        <h3 class="modal-title">Delete post</h3>
+        <p class="modal-text">Delete this post? This action cannot be undone.</p>
+        <div class="modal-actions">
+          <button type="button" class="action-btn secondary" @click="deletePostTarget = null">Cancel</button>
+          <button
+            type="button"
+            class="action-btn danger"
+            :disabled="deletingPostId === deletePostTarget?.id"
+            @click="deletePostConfirm"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Edit post modal -->
+    <div v-if="editPostModalVisible" class="modal-overlay" @click.self="closeEditPostModal">
+      <div class="modal-box">
+        <h3 class="modal-title">Edit post</h3>
+        <div class="modal-text">
+          Update the post text. Media and tagged users stay the same.
+        </div>
+        <div class="modal-body edit-post-body">
+          <textarea
+            v-model="editPostBody"
+            class="edit-post-textarea"
+            rows="6"
+            placeholder="Post content"
+          />
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="action-btn secondary" @click="closeEditPostModal">Cancel</button>
+          <button
+            type="button"
+            class="action-btn primary"
+            :disabled="editPostSaving"
+            @click="saveEditedPost"
+          >
+            {{ editPostSaving ? 'Saving…' : 'Save changes' }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Reject confirm modal -->
@@ -333,12 +560,14 @@
     </div>
 
     <!-- Comments modal (for View comments from Pending or All posts) -->
-    <PostCommentsModal
-      :visible="commentsModalVisible"
-      :post-id="commentsModalPostId"
-      :post-body="commentsModalPostBody"
-      @close="commentsModalVisible = false"
-    />
+    <Teleport to="body">
+      <PostCommentsModal
+        :visible="commentsModalVisible"
+        :post-id="commentsModalPostId"
+        :post-body="commentsModalPostBody"
+        @close="commentsModalVisible = false"
+      />
+    </Teleport>
   </div>
 </template>
 
@@ -348,6 +577,9 @@ import { postsAdminApi } from '@/api/postsAdmin'
 import { commentsAdminApi } from '@/api/commentsAdmin'
 import { siteSettingsApi } from '@/api/siteSettings'
 import UserService from '@/api/users'
+import { postsApi } from '@/api/posts'
+import CustomDropdown from '@/components/base/ui/CustomDropdown.vue'
+import DateRangePicker from '@/components/base/ui/DateRangePicker.vue'
 import PostCommentsModal from './PostCommentsModal.vue'
 
 const PER_PAGE = 15
@@ -530,6 +762,19 @@ const allPostsFilters = ref({
   date_from: '',
   date_to: '',
 })
+const allPostsDateRange = ref({
+  startDate: '',
+  endDate: '',
+})
+const allPostsStatusOptions = [
+  { value: 'all', label: 'All statuses' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'published', label: 'Published' },
+]
+const allPostsUserSearchQuery = ref('')
+const allPostsUserSearchResults = ref([])
+const allPostsUserSearchLoading = ref(false)
+const showAllPostsUserDropdown = ref(false)
 const allPostsList = ref([])
 const allPostsMeta = ref({ current_page: 1, last_page: 1, per_page: PER_PAGE, total: 0 })
 const allPostsLoading = ref(false)
@@ -542,6 +787,48 @@ function buildAllPostsParams() {
   if (allPostsFilters.value.date_from) p.date_from = allPostsFilters.value.date_from
   if (allPostsFilters.value.date_to) p.date_to = allPostsFilters.value.date_to
   return p
+}
+
+watch(
+  allPostsDateRange,
+  (range) => {
+    allPostsFilters.value.date_from = range.startDate || ''
+    allPostsFilters.value.date_to = range.endDate || range.startDate || ''
+  },
+  { deep: true }
+)
+
+function handleAllPostsUserSearch() {
+  const q = allPostsUserSearchQuery.value.trim().toLowerCase()
+  if (!q) {
+    allPostsUserSearchResults.value = []
+    allPostsFilters.value.user_id = ''
+    return
+  }
+
+  allPostsUserSearchLoading.value = true
+  setTimeout(() => {
+    const base = userOptions.value || []
+    allPostsUserSearchResults.value = base.filter((u) => {
+      const name = (u.name || '').toLowerCase()
+      const username = (u.username || '').toLowerCase()
+      const email = (u.email || '').toLowerCase()
+      return name.includes(q) || username.includes(q) || email.includes(q)
+    })
+    allPostsUserSearchLoading.value = false
+  }, 80)
+}
+
+function selectAllPostsUser(user) {
+  allPostsFilters.value.user_id = user?.id || ''
+  allPostsUserSearchQuery.value = user ? user.name || user.username || '' : ''
+  showAllPostsUserDropdown.value = false
+}
+
+function handleAllPostsUserBlur() {
+  setTimeout(() => {
+    showAllPostsUserDropdown.value = false
+  }, 150)
 }
 
 async function loadAllPosts() {
@@ -576,10 +863,26 @@ const commentsFilters = ref({
   date_from: '',
   date_to: '',
 })
+const commentsDateRange = ref({
+  startDate: '',
+  endDate: '',
+})
+const commentsUserSearchQuery = ref('')
+const commentsUserSearchResults = ref([])
+const commentsUserSearchLoading = ref(false)
+const showCommentsUserDropdown = ref(false)
 const commentsList = ref([])
 const commentsMeta = ref({ current_page: 1, last_page: 1, per_page: PER_PAGE, total: 0 })
 const commentsLoading = ref(false)
 const commentsError = ref(null)
+const deletingCommentId = ref(null)
+const deleteCommentTarget = ref(null)
+const deletingPostId = ref(null)
+const deletePostTarget = ref(null)
+const editPostModalVisible = ref(false)
+const editingPost = ref(null)
+const editPostBody = ref('')
+const editPostSaving = ref(false)
 
 function buildCommentsParams() {
   const p = { page: commentsMeta.value.current_page, per_page: PER_PAGE }
@@ -588,6 +891,133 @@ function buildCommentsParams() {
   if (commentsFilters.value.date_from) p.date_from = commentsFilters.value.date_from
   if (commentsFilters.value.date_to) p.date_to = commentsFilters.value.date_to
   return p
+}
+
+watch(
+  commentsDateRange,
+  (range) => {
+    commentsFilters.value.date_from = range.startDate || ''
+    commentsFilters.value.date_to = range.endDate || range.startDate || ''
+  },
+  { deep: true }
+)
+
+function handleCommentsUserSearch() {
+  const q = commentsUserSearchQuery.value.trim().toLowerCase()
+  if (!q) {
+    commentsUserSearchResults.value = []
+    commentsFilters.value.user_id = ''
+    return
+  }
+
+  commentsUserSearchLoading.value = true
+  setTimeout(() => {
+    const base = userOptions.value || []
+    commentsUserSearchResults.value = base.filter((u) => {
+      const name = (u.name || '').toLowerCase()
+      const username = (u.username || '').toLowerCase()
+      const email = (u.email || '').toLowerCase()
+      return name.includes(q) || username.includes(q) || email.includes(q)
+    })
+    commentsUserSearchLoading.value = false
+  }, 80)
+}
+
+function selectCommentsUser(user) {
+  commentsFilters.value.user_id = user?.id || ''
+  commentsUserSearchQuery.value = user ? user.name || user.username || '' : ''
+  showCommentsUserDropdown.value = false
+}
+
+function handleCommentsUserBlur() {
+  setTimeout(() => {
+    showCommentsUserDropdown.value = false
+  }, 150)
+}
+
+function confirmDeleteComment(comment) {
+  deleteCommentTarget.value = comment
+}
+
+async function deleteCommentConfirm() {
+  if (!deleteCommentTarget.value) return
+  const comment = deleteCommentTarget.value
+  deletingCommentId.value = comment.id
+  try {
+    await commentsAdminApi.deleteComment(comment.id)
+    commentsList.value = commentsList.value.filter((c) => c.id !== comment.id)
+    commentsMeta.value = {
+      ...commentsMeta.value,
+      total: Math.max(0, (commentsMeta.value.total ?? 1) - 1),
+    }
+    showToast('Comment deleted.')
+    deleteCommentTarget.value = null
+  } catch (err) {
+    showToast(err.response?.data?.message ?? err.message ?? 'Failed to delete comment', 'error')
+  } finally {
+    deletingCommentId.value = null
+  }
+}
+
+function confirmDeletePost(post) {
+  deletePostTarget.value = post
+}
+
+async function deletePostConfirm() {
+  if (!deletePostTarget.value) return
+  const post = deletePostTarget.value
+  deletingPostId.value = post.id
+  try {
+    await postsAdminApi.reject(post.id)
+    allPostsList.value = allPostsList.value.filter((p) => p.id !== post.id)
+    allPostsMeta.value = {
+      ...allPostsMeta.value,
+      total: Math.max(0, (allPostsMeta.value.total ?? 1) - 1),
+    }
+    showToast('Post deleted.')
+    deletePostTarget.value = null
+  } catch (err) {
+    showToast(err.response?.data?.message ?? err.message ?? 'Failed to delete post', 'error')
+  } finally {
+    deletingPostId.value = null
+  }
+}
+
+function openEditPost(post) {
+  editingPost.value = post
+  editPostBody.value = post.body || ''
+  editPostModalVisible.value = true
+}
+
+function closeEditPostModal() {
+  editPostModalVisible.value = false
+  editingPost.value = null
+  editPostBody.value = ''
+}
+
+async function saveEditedPost() {
+  if (!editingPost.value) return
+  const trimmed = (editPostBody.value || '').trim()
+  if (!trimmed) {
+    showToast('Post text cannot be empty.', 'error')
+    return
+  }
+  editPostSaving.value = true
+  try {
+    const updated = await postsApi.update(editingPost.value.id, { body: trimmed })
+    allPostsList.value = allPostsList.value.map((p) =>
+      p.id === editingPost.value.id ? { ...p, ...updated } : p,
+    )
+    posts.value = posts.value.map((p) =>
+      p.id === editingPost.value.id ? { ...p, ...updated } : p,
+    )
+    showToast('Post updated.')
+    closeEditPostModal()
+  } catch (err) {
+    showToast(err.response?.data?.message ?? err.message ?? 'Failed to update post', 'error')
+  } finally {
+    editPostSaving.value = false
+  }
 }
 
 async function loadAllComments() {
@@ -804,10 +1234,89 @@ onMounted(async () => {
   margin-bottom: 1.5rem;
 }
 
+.user-search-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.user-search-input {
+  padding-right: 2.5rem;
+}
+
+.search-loading-inline {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  left: 0;
+  right: 0;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.98));
+  border-radius: 12px;
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(139, 92, 246, 0.25);
+  z-index: 10000;
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 0.25rem 0;
+}
+
+.user-dropdown .dropdown-item {
+  padding: 0.65rem 0.9rem;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition: all 0.2s ease;
+}
+
+.user-dropdown .dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.user-dropdown .dropdown-item:hover {
+  background: rgba(139, 92, 246, 0.18);
+}
+
+.user-dropdown .dropdown-item.selected {
+  background: rgba(139, 92, 246, 0.28);
+}
+
+.user-dropdown .dropdown-item.no-results {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  font-style: italic;
+}
+
+.user-option {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.user-name {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.user-username {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
 .filter-group {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+}
+
+.filter-group--date {
+  flex: 1 1 220px;
+  min-width: 220px;
 }
 
 .filter-label {
@@ -827,9 +1336,23 @@ onMounted(async () => {
   min-width: 140px;
 }
 
+.filter-date-picker {
+  width: 100%;
+}
+
+.filter-date-picker :deep(.date-picker-trigger) {
+  width: 100%;
+  min-width: 0;
+  justify-content: flex-start;
+}
+
 .filter-input.narrow {
   min-width: 90px;
   width: 90px;
+}
+
+.filters-apply-btn {
+  margin-left: auto;
 }
 
 .status-badge {
@@ -1211,5 +1734,198 @@ onMounted(async () => {
   display: flex;
   gap: 0.75rem;
   justify-content: flex-end;
+}
+
+.edit-post-body {
+  padding: 0;
+}
+
+.edit-post-textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: 0.75rem 0.9rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(15, 23, 42, 0.95);
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.edit-post-textarea:focus {
+  outline: none;
+  border-color: rgba(139, 92, 246, 0.6);
+  box-shadow: 0 0 0 1px rgba(139, 92, 246, 0.4);
+}
+
+@media (max-width: 768px) {
+  .posts-tabs {
+    padding: 0.375rem;
+    border-radius: 12px;
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    background: linear-gradient(180deg, rgba(15, 15, 23, 0.96), rgba(20, 20, 28, 0.94));
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    gap: 0.375rem;
+  }
+
+  .tab-btn {
+    flex: 1 1 calc(33.333% - 0.25rem);
+    min-width: 0;
+    justify-content: center;
+    text-align: center;
+    padding: 0.75rem 0.5rem;
+    font-size: 0.8125rem;
+    border-radius: 999px;
+  }
+
+  .filters-row {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 1rem;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(139, 92, 246, 0.12);
+  }
+
+  .filter-group,
+  .filter-group--date {
+    width: 100%;
+  }
+
+  .filter-select,
+  .filter-input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .filter-date-picker :deep(.date-picker-trigger) {
+    min-width: 0;
+  }
+
+  .filters-apply-btn {
+    width: 100%;
+    justify-content: center;
+    margin-left: 0;
+    min-height: 44px;
+  }
+
+  .comments-table-wrap.desktop-only {
+    display: none;
+  }
+
+  .comments-cards.mobile-only {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .comment-card {
+    padding: 1rem 0.9rem;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(20, 20, 28, 0.98), rgba(15, 15, 23, 0.98));
+    border: 1px solid rgba(139, 92, 246, 0.35);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  }
+
+  .comment-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .comment-card-author {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .comment-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    background: rgba(139, 92, 246, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #e9d5ff;
+  }
+
+  .comment-author-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  .comment-author-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.95);
+  }
+
+  .comment-author-username {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .comment-card-date {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
+    text-align: right;
+  }
+
+  .comment-card-body {
+    margin: 0.35rem 0 0.5rem;
+  }
+
+  .comment-card-text {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.4;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .comment-card-meta {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 0.75rem;
+  }
+
+  .comment-card-post-label {
+    font-weight: 600;
+    margin-right: 0.25rem;
+  }
+
+  .comment-card-post-excerpt {
+    display: block;
+    margin-top: 0.15rem;
+  }
+
+  .comment-card-actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .comment-card-btn {
+    padding: 0.55rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+    cursor: pointer;
+  }
+
+  .comment-card-btn.danger {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #fecaca;
+  }
 }
 </style>

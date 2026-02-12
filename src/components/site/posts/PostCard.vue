@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onBeforeUnmount } from 'vue'
 import { resolveBackendImageUrl } from '@/utils/helpers'
+import { normalizeCommentsResponse, buildNestedComments } from '@/utils/comments'
 import Lightbox from '@/components/base/ui/Lightbox.vue'
 import { postsApi } from '@/api/posts'
 
@@ -149,26 +150,8 @@ const activeReactionTypes = computed(() => {
 
 const commentsCount = computed(() => props.post?.comments_count ?? 0)
 
-/** Top-level comments with replies nested (2 levels only). */
-const nestedComments = computed(() => {
-  const list = comments.value
-  const top = list
-    .filter((c) => !c.parent_id)
-    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
-  const byParent = new Map()
-  list.forEach((c) => {
-    if (c.parent_id) {
-      if (!byParent.has(c.parent_id)) byParent.set(c.parent_id, [])
-      byParent.get(c.parent_id).push(c)
-    }
-  })
-  return top.map((c) => ({
-    ...c,
-    replies: (byParent.get(c.id) ?? []).sort(
-      (a, b) => new Date(a.created_at || 0) - new Date(b.created_at || 0)
-    ),
-  }))
-})
+/** Top-level comments with replies nested (2 levels). Uses shared normalizer for API flat/nested + parent_id. */
+const nestedComments = computed(() => buildNestedComments(comments.value || []))
 
 function openLightbox(url) {
   const full = resolveBackendImageUrl(url) || url
@@ -256,14 +239,15 @@ function loadComments() {
   const cursor = commentsLoaded.value ? commentsMeta.value.next_cursor : null
   postsApi
     .getComments(props.post.id, { per_page: 10, cursor })
-    .then(({ data, meta }) => {
+    .then((res) => {
+      const flat = normalizeCommentsResponse(res)
       if (!commentsLoaded.value) {
-        comments.value = data
+        comments.value = flat
         commentsLoaded.value = true
       } else {
-        comments.value = [...comments.value, ...data]
+        comments.value = [...comments.value, ...flat]
       }
-      commentsMeta.value = meta
+      commentsMeta.value = res?.meta ?? { next_cursor: null, has_more: false }
     })
     .finally(() => { commentsLoading.value = false })
 }

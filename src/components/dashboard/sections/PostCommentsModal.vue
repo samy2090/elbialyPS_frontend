@@ -23,23 +23,66 @@
         </div>
         <template v-else>
           <ul class="comments-list">
-            <li v-for="c in comments" :key="c.id" class="comment-item">
-              <div class="comment-author">
-                <img
-                  v-if="c.user?.avatar_url"
-                  :src="c.user.avatar_url"
-                  :alt="c.user.name"
-                  class="comment-avatar"
-                />
-                <span v-else class="comment-avatar placeholder">{{ authorInitials(c.user) }}</span>
-                <div class="comment-meta">
-                  <span class="comment-name">{{ c.user?.name || 'Unknown' }}</span>
-                  <span class="comment-username">@{{ c.user?.username || '—' }}</span>
-                  <time class="comment-date">{{ formatDate(c.created_at) }}</time>
+            <li v-for="group in nestedComments" :key="group.id" class="comment-item comment-thread">
+              <div class="comment-row">
+                <div class="comment-main">
+                  <div class="comment-author">
+                    <img
+                      v-if="group.user?.avatar_url"
+                      :src="group.user.avatar_url"
+                      :alt="group.user.name"
+                      class="comment-avatar"
+                    />
+                    <span v-else class="comment-avatar placeholder">{{ authorInitials(group.user) }}</span>
+                    <div class="comment-meta">
+                      <span class="comment-name">{{ group.user?.name || 'Unknown' }}</span>
+                      <span class="comment-username">@{{ group.user?.username || '—' }}</span>
+                      <time class="comment-date">{{ formatDate(group.created_at) }}</time>
+                    </div>
+                  </div>
+                  <p class="comment-body">{{ group.body }}</p>
                 </div>
+                <button
+                  type="button"
+                  class="comment-delete-btn"
+                  :disabled="deletingCommentId === group.id"
+                  @click="deleteComment(group)"
+                >
+                  Delete
+                </button>
               </div>
-              <p class="comment-body">{{ c.body }}</p>
-              <div v-if="c.replies_count" class="comment-replies-badge">{{ c.replies_count }} {{ c.replies_count === 1 ? 'reply' : 'replies' }}</div>
+
+              <ul v-if="group.replies?.length" class="replies-list">
+                <li v-for="r in group.replies" :key="r.id" class="reply-item">
+                  <div class="comment-row">
+                    <div class="comment-main">
+                      <div class="comment-author">
+                        <img
+                          v-if="r.user?.avatar_url"
+                          :src="r.user.avatar_url"
+                          :alt="r.user.name"
+                          class="comment-avatar"
+                        />
+                        <span v-else class="comment-avatar placeholder">{{ authorInitials(r.user) }}</span>
+                        <div class="comment-meta">
+                          <span class="comment-name">{{ r.user?.name || 'Unknown' }}</span>
+                          <span class="comment-username">@{{ r.user?.username || '—' }}</span>
+                          <time class="comment-date">{{ formatDate(r.created_at) }}</time>
+                        </div>
+                      </div>
+                      <p class="comment-body comment-body--reply">{{ r.body }}</p>
+                    </div>
+                    <button
+                      type="button"
+                      class="comment-delete-btn comment-delete-btn--reply"
+                      :disabled="deletingCommentId === r.id"
+                      @click="deleteComment(r)"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </li>
+              </ul>
             </li>
           </ul>
           <div v-if="hasMore" class="load-more-wrap">
@@ -62,6 +105,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { commentsAdminApi } from '@/api/commentsAdmin'
+import { normalizeCommentsResponse, buildNestedComments } from '@/utils/comments'
 
 const PER_PAGE = 10
 
@@ -79,6 +123,9 @@ const error = ref(null)
 const comments = ref([])
 const nextCursor = ref(null)
 const hasMore = ref(false)
+const deletingCommentId = ref(null)
+
+const nestedComments = computed(() => buildNestedComments(comments.value || []))
 
 const postExcerpt = computed(() => {
   const b = props.postBody || ''
@@ -107,9 +154,9 @@ async function loadComments() {
   hasMore.value = false
   try {
     const res = await commentsAdminApi.getCommentsForPost(props.postId, { per_page: PER_PAGE })
-    comments.value = res.data ?? []
-    nextCursor.value = res.meta?.next_cursor ?? null
-    hasMore.value = !!res.meta?.has_more
+    comments.value = normalizeCommentsResponse(res)
+    nextCursor.value = res?.meta?.next_cursor ?? null
+    hasMore.value = !!res?.meta?.has_more
   } catch (err) {
     error.value = err.response?.data?.message ?? err.message ?? 'Failed to load comments'
   } finally {
@@ -125,14 +172,38 @@ async function loadMore() {
       per_page: PER_PAGE,
       cursor: nextCursor.value,
     })
-    const newComments = res.data ?? []
+    const newComments = normalizeCommentsResponse(res)
     comments.value = [...comments.value, ...newComments]
-    nextCursor.value = res.meta?.next_cursor ?? null
-    hasMore.value = !!res.meta?.has_more
+    nextCursor.value = res?.meta?.next_cursor ?? null
+    hasMore.value = !!res?.meta?.has_more
   } catch (err) {
     error.value = err.response?.data?.message ?? err.message ?? 'Failed to load more'
   } finally {
     loadingMore.value = false
+  }
+}
+
+async function deleteComment(comment) {
+  if (!comment?.id) return
+  // Simple inline confirmation to avoid extra modal nesting
+  if (!window.confirm('Delete this comment? This action cannot be undone.')) return
+
+  deletingCommentId.value = comment.id
+  try {
+    await commentsAdminApi.deleteComment(comment.id)
+    // If top-level (no parent), also remove its direct replies for a clean thread
+    const parentId = getParentId(comment)
+    if (!parentId) {
+      comments.value = comments.value.filter(
+        (c) => c.id !== comment.id && getParentId(c) !== comment.id,
+      )
+    } else {
+      comments.value = comments.value.filter((c) => c.id !== comment.id)
+    }
+  } catch (err) {
+    error.value = err.response?.data?.message ?? err.message ?? 'Failed to delete comment'
+  } finally {
+    deletingCommentId.value = null
   }
 }
 
@@ -151,7 +222,7 @@ watch(
   inset: 0;
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(4px);
-  z-index: 1000;
+  z-index: 1400;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -260,15 +331,27 @@ watch(
   list-style: none;
   margin: 0;
   padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
 }
 
 .comment-item {
-  padding: 1rem 0;
+  padding: 0.75rem 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .comment-item:last-child {
   border-bottom: none;
+}
+
+.replies-list {
+  list-style: none;
+  margin: 0.5rem 0 0 2.25rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
 }
 
 .comment-author {
@@ -326,9 +409,45 @@ watch(
   word-break: break-word;
 }
 
-.comment-replies-badge {
+.comment-body--reply {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.comment-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.comment-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.comment-delete-btn {
+  flex-shrink: 0;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(248, 113, 113, 0.5);
+  background: rgba(248, 113, 113, 0.12);
+  color: #fecaca;
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.comment-delete-btn:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.2);
+}
+
+.comment-delete-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.comment-delete-btn--reply {
+  align-self: center;
 }
 
 .load-more-wrap {

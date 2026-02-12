@@ -13,4 +13,7 @@ export const commentsAdminApi = {
   getCommentsForPost(postId, params = {}) {
     return api.get(`${base}/posts/${postId}/comments`, { params }).then((r) => r.data)
   },
+  deleteComment(commentId) {
+    return api.delete(`${base}/admin/comments/${commentId}`).then((r) => r.data)
+  },
 }
