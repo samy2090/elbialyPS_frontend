@@ -273,7 +273,7 @@ onBeforeUnmount(() => {
             @updated="onPostUpdated($event)"
           />
         </div>
-        <div v-if="isPreview && posts.length >= previewLimit" class="posts-feed__show-all">
+        <div v-if="isPreview && posts.length >= 1" class="posts-feed__show-all">
           <RouterLink :to="previewLinkTo" class="posts-feed__show-all-btn">
             Show all posts
           </RouterLink>
@@ -535,7 +535,7 @@ onBeforeUnmount(() => {
   overflow-y: auto;
   padding-right: 0.35rem;
   scroll-snap-type: y proximity;
-  mask-image: linear-gradient(180deg, transparent 0%, black 15%, black 75%, transparent 100%);
+  mask-image: linear-gradient(180deg, black 0%, black 15%, black 85%, transparent 100%);
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
 }
