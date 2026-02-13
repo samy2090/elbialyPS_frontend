@@ -223,7 +223,7 @@ onBeforeUnmount(() => {
             {{ opt.label }}
           </button>
         </div>
-        <div class="posts-feed__author-filter">
+        <div v-if="isLoggedIn" class="posts-feed__author-filter">
           <div v-if="selectedAuthor" class="posts-feed__author-chip">
             <span>{{ selectedAuthor.name || selectedAuthor.username }}</span>
             <button type="button" aria-label="Clear filter" @click="clearAuthor">×</button>
