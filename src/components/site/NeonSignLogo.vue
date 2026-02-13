@@ -28,9 +28,9 @@
     <!-- CLOSED: subtle overlay only (no heavy scanline) -->
     <div v-show="normalizedStatus === 'closed'" class="neon-lamp__sleep" aria-hidden="true"></div>
 
-    <div class="neon-lamp__inner" :style="innerParallaxStyle">
+    <div ref="innerRef" class="neon-lamp__inner" :style="innerStyle">
       <!-- Lamp body: hyper-realistic 3D tubes — no container -->
-      <div class="neon-lamp__tubes-wrap" :style="tubesStyle">
+      <div ref="tubesWrapRef" class="neon-lamp__tubes-wrap" :style="tubesWrapStyle">
         <!-- Ambient spill (subtle, so letters stay readable) -->
         <div class="neon-lamp__diffusion" aria-hidden="true">
           <span class="neon-lamp__diffusion-text">{{ displayText }}</span>
@@ -50,10 +50,10 @@
       </div>
 
       <!-- Hanging status sign: one cable, glass panel, pendulum (directly under neon) -->
-      <div class="neon-lamp__hanging" :aria-live="normalizedStatus === 'closed' ? 'polite' : 'off'" aria-label="Status">
-        <div class="neon-lamp__hanging-pivot">
-          <span class="neon-lamp__hanging-cable" aria-hidden="true"></span>
-          <div class="neon-lamp__hanging-panel">
+      <div ref="hangingRef" class="neon-lamp__hanging" :aria-live="normalizedStatus === 'closed' ? 'polite' : 'off'" aria-label="Status">
+        <div ref="hangingPivotRef" class="neon-lamp__hanging-pivot">
+          <span ref="hangingCableRef" class="neon-lamp__hanging-cable" aria-hidden="true"></span>
+          <div ref="hangingPanelRef" class="neon-lamp__hanging-panel">
             <div class="neon-lamp__hanging-reflection" aria-hidden="true"></div>
             <span class="neon-lamp__hanging-label">{{ statusLabel }}</span>
           </div>
@@ -64,7 +64,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import gsap from 'gsap'
 import { siteSettingsApi } from '@/api/siteSettings'
 
 const props = defineProps({
@@ -75,7 +76,15 @@ const props = defineProps({
 })
 
 const rootRef = ref(null)
+const innerRef = ref(null)
+const tubesWrapRef = ref(null)
+const hangingRef = ref(null)
+const hangingPivotRef = ref(null)
+const hangingPanelRef = ref(null)
+const hangingCableRef = ref(null)
 const loading = ref(true)
+const prefersReducedMotion = ref(false)
+const useTubesGSAP = ref(false)
 const fetchedName = ref('')
 const fetchedStatus = ref('')
 const hasLoadedOnce = ref(false)
@@ -140,6 +149,13 @@ const tubesStyle = computed(() => {
   }
 })
 
+const innerStyle = computed(() =>
+  useTubesGSAP.value ? {} : innerParallaxStyle.value
+)
+const tubesWrapStyle = computed(() =>
+  useTubesGSAP.value ? {} : tubesStyle.value
+)
+
 function particleStyle(n) {
   const x = (n * 19) % 100
   const delay = (n / 12) * -5
@@ -149,13 +165,205 @@ function particleStyle(n) {
   }
 }
 
+let pendulumTween = null
+let entranceTween = null
+let floatTween = null
+let tubesEntranceTween = null
+
+function runTubesGSAP() {
+  const inner = innerRef.value
+  const tubesWrap = tubesWrapRef.value
+  if (!inner || !tubesWrap || !rootRef.value) return
+
+  const reduced =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (reduced) return
+
+  if (normalizedStatus.value !== 'open') return
+
+  useTubesGSAP.value = true
+  rootRef.value.classList.add('neon-lamp--tubes-gsap')
+
+  // Entrance: tubes scale in with overshoot, inner drops into place
+  gsap.set(tubesWrap, {
+    scale: 0.82,
+    opacity: 0,
+    transformPerspective: 1000,
+    rotationX: 0,
+    rotationY: 0,
+    y: 0,
+  })
+  gsap.set(inner, { x: 0, y: -24 })
+
+  tubesEntranceTween = gsap.timeline({
+    defaults: { ease: 'power2.out' },
+    onComplete: startFloat,
+  })
+  tubesEntranceTween
+    .to(tubesWrap, {
+      scale: 1,
+      opacity: 1,
+      duration: 0.9,
+      ease: 'back.out(1.3)',
+    })
+    .to(inner, { y: 0, duration: 0.55, ease: 'power2.out' }, '-=0.45')
+}
+
+function startFloat() {
+  const inner = innerRef.value
+  const tubesWrap = tubesWrapRef.value
+  if (!inner || !tubesWrap || normalizedStatus.value !== 'open') return
+
+  floatTween = gsap.timeline({ repeat: -1, repeatDelay: 0 })
+  floatTween
+    .to(tubesWrap, { y: -10, duration: 2.6, ease: 'sine.inOut' })
+    .to(tubesWrap, { y: 0, duration: 2.6, ease: 'sine.inOut' })
+}
+
+function updateTubesParallax() {
+  if (!useTubesGSAP.value || normalizedStatus.value !== 'open') return
+  const inner = innerRef.value
+  const tubesWrap = tubesWrapRef.value
+  if (!inner || !tubesWrap) return
+  const x = normalizedX.value * 8
+  const y = normalizedY.value * 8
+  const rx = normalizedY.value * -5
+  const ry = normalizedX.value * 8
+  gsap.set(inner, { x, y })
+  gsap.set(tubesWrap, { rotationX: rx, rotationY: ry, transformPerspective: 1000 })
+}
+
+function killTubesGSAP() {
+  if (tubesEntranceTween) {
+    tubesEntranceTween.kill()
+    tubesEntranceTween = null
+  }
+  if (floatTween) {
+    floatTween.kill()
+    floatTween = null
+  }
+  useTubesGSAP.value = false
+  rootRef.value?.classList.remove('neon-lamp--tubes-gsap')
+  const inner = innerRef.value
+  const tubesWrap = tubesWrapRef.value
+  if (inner) gsap.set(inner, { clearProps: 'transform' })
+  if (tubesWrap) gsap.set(tubesWrap, { clearProps: 'transform' })
+}
+
+function runHangingGSAP() {
+  const pivot = hangingPivotRef.value
+  const panel = hangingPanelRef.value
+  const cable = hangingCableRef.value
+  const container = hangingRef.value
+  if (!pivot || !panel || !cable || !container) return
+
+  prefersReducedMotion.value =
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+  if (prefersReducedMotion.value) return
+
+  container.classList.add('neon-lamp__hanging--gsap')
+
+  // Entrance: bigger drop from above with stronger overshoot, cable stretches in
+  gsap.set(pivot, { rotation: 0, y: -72, opacity: 0 })
+  gsap.set(cable, { scaleY: 0.15, transformOrigin: 'top center' })
+  gsap.set(panel, { opacity: 0, y: 8 })
+
+  entranceTween = gsap.timeline({
+    defaults: { ease: 'power2.out' },
+    onComplete: startPendulum,
+  })
+  entranceTween
+    .to(pivot, {
+      y: 0,
+      opacity: 1,
+      duration: 0.85,
+      ease: 'back.out(1.7)',
+    })
+    .to(
+      cable,
+      { scaleY: 1, duration: 0.5, ease: 'power2.inOut' },
+      '-=0.4'
+    )
+    .to(panel, { opacity: 1, y: 0, duration: 0.35 }, '-=0.45')
+}
+
+function startPendulum() {
+  const pivot = hangingPivotRef.value
+  if (!pivot || prefersReducedMotion.value) return
+  pendulumTween = gsap.timeline({ repeat: -1, repeatDelay: 0 })
+  pendulumTween
+    .to(pivot, {
+      rotation: 16,
+      duration: 2.2,
+      ease: 'sine.inOut',
+    })
+    .to(pivot, {
+      rotation: -16,
+      duration: 2.2,
+      ease: 'sine.inOut',
+    })
+    .to(pivot, {
+      rotation: 0,
+      duration: 1.2,
+      ease: 'sine.inOut',
+    })
+}
+
+function killHangingGSAP() {
+  if (entranceTween) {
+    entranceTween.kill()
+    entranceTween = null
+  }
+  if (pendulumTween) {
+    pendulumTween.kill()
+    pendulumTween = null
+  }
+  const container = hangingRef.value
+  if (container) container.classList.remove('neon-lamp__hanging--gsap')
+}
+
+watch(
+  [() => normalizedStatus.value, () => hasLoadedOnce.value],
+  () => {
+    if (normalizedStatus.value !== 'open' || !hasLoadedOnce.value) {
+      if (floatTween) {
+        floatTween.kill()
+        floatTween = null
+      }
+      if (useTubesGSAP.value && normalizedStatus.value !== 'open') {
+        const inner = innerRef.value
+        const tubesWrap = tubesWrapRef.value
+        if (inner) gsap.set(inner, { x: 0, y: 0 })
+        if (tubesWrap) gsap.set(tubesWrap, { rotationX: 0, rotationY: 0, y: 0 })
+      }
+      return
+    }
+    if (useTubesGSAP.value && tubesWrapRef.value && innerRef.value && !floatTween)
+      startFloat()
+    else if (!useTubesGSAP.value && innerRef.value && tubesWrapRef.value)
+      nextTick().then(() => runTubesGSAP())
+  },
+  { immediate: true }
+)
+
+watch(
+  () => [normalizedX.value, normalizedY.value],
+  () => updateTubesParallax(),
+  { immediate: true }
+)
+
 onMounted(async () => {
   if (props.siteName && props.placeStatus) {
     loading.value = false
     hasLoadedOnce.value = true
+    await nextTick()
+    runTubesGSAP()
+    runHangingGSAP()
     return
   }
-  // Show cached site_name immediately (place_status is never cached)
   const cached = await siteSettingsApi.getCachedStatic()
   if (cached?.site_name) fetchedName.value = cached.site_name
   try {
@@ -168,11 +376,16 @@ onMounted(async () => {
   } finally {
     loading.value = false
     hasLoadedOnce.value = true
+    await nextTick()
+    runTubesGSAP()
+    runHangingGSAP()
   }
 })
 
 onUnmounted(() => {
   if (rafId) cancelAnimationFrame(rafId)
+  killTubesGSAP()
+  killHangingGSAP()
 })
 </script>
 
@@ -197,7 +410,7 @@ onUnmounted(() => {
 }
 
 .neon-lamp:not(.neon-lamp--embedded) {
-  min-height: clamp(220px, 34vh, 320px);
+  
   padding: 24px 0.75rem;
 }
 
@@ -264,13 +477,19 @@ onUnmounted(() => {
 .neon-lamp__inner {
   position: relative;
   z-index: 2;
-  max-width: min(96vw, 800px);
+  width: 100%;
+  max-width: min(96vw, 1280px);
   margin: 0 auto;
   transition: transform 0.2s var(--ease);
+  box-sizing: border-box;
 }
 
 .neon-lamp--embedded.neon-lamp--open .neon-lamp__inner {
   animation: lampFloat 6s ease-in-out infinite;
+}
+
+.neon-lamp--tubes-gsap.neon-lamp--embedded.neon-lamp--open .neon-lamp__inner {
+  animation: none;
 }
 
 @keyframes lampFloat {
@@ -582,6 +801,11 @@ onUnmounted(() => {
 .neon-lamp__hanging-pivot {
   transform-origin: 50% 0;
   animation: lampHangingPendulum 5.5s var(--ease-pendulum) infinite;
+}
+
+/* GSAP drives entrance + pendulum; disable CSS pendulum when active */
+.neon-lamp__hanging--gsap .neon-lamp__hanging-pivot {
+  animation: none;
 }
 
 .neon-lamp__hanging-cable {

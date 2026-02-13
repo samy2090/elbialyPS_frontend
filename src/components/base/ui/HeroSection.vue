@@ -2,25 +2,29 @@
   <section
     ref="heroRef"
     class="hero-section"
-    :class="{ 'hero-section--visible': isVisible, 'hero-section--with-logo': $slots.logo }"
+    :class="{
+      'hero-section--visible': isVisible,
+      'hero-section--with-logo': $slots.logo,
+      'hero-section--gsap': useGsap
+    }"
     @mousemove="onPointerMove"
     @touchmove.passive="onPointerMove"
     @mouseleave="resetPointer"
   >
     <div class="hero-section__bg">
-      <div class="hero-section__orb hero-section__orb--1" aria-hidden="true"></div>
-      <div class="hero-section__orb hero-section__orb--2" aria-hidden="true"></div>
-      <div class="hero-section__orb hero-section__orb--3" aria-hidden="true"></div>
-      <div class="hero-section__orb hero-section__orb--4" aria-hidden="true"></div>
+      <div ref="orb1Ref" class="hero-section__orb hero-section__orb--1" aria-hidden="true"></div>
+      <div ref="orb2Ref" class="hero-section__orb hero-section__orb--2" aria-hidden="true"></div>
+      <div ref="orb3Ref" class="hero-section__orb hero-section__orb--3" aria-hidden="true"></div>
+      <div ref="orb4Ref" class="hero-section__orb hero-section__orb--4" aria-hidden="true"></div>
       <!-- Cursor-reactive orbs (desktop) -->
       <div class="hero-section__cursor-orbs" aria-hidden="true">
         <div class="hero-section__cursor-orb hero-section__cursor-orb--1" :style="cursorOrbStyle(1)"></div>
         <div class="hero-section__cursor-orb hero-section__cursor-orb--2" :style="cursorOrbStyle(2)"></div>
       </div>
-      <div class="hero-section__grid" aria-hidden="true"></div>
+      <div ref="gridRef" class="hero-section__grid" aria-hidden="true"></div>
       <div class="hero-section__grid-perspective" aria-hidden="true"></div>
       <div class="hero-section__hexgrid" aria-hidden="true"></div>
-      <div class="hero-section__scan" aria-hidden="true"></div>
+      <div ref="scanRef" class="hero-section__scan" aria-hidden="true"></div>
       <div class="hero-section__particles" aria-hidden="true">
         <span v-for="n in 24" :key="n" class="hero-section__particle" :style="particleStyle(n)"></span>
       </div>
@@ -28,8 +32,8 @@
       <div class="hero-section__noise" aria-hidden="true"></div>
     </div>
 
-    <div class="hero-section__inner" :class="{ 'hero-section__inner--with-logo': $slots.logo }">
-      <div v-if="$slots.logo" class="hero-section__logo-wrap">
+    <div ref="innerRef" class="hero-section__inner" :class="{ 'hero-section__inner--with-logo': $slots.logo }">
+      <div v-if="$slots.logo" ref="logoWrapRef" class="hero-section__logo-wrap">
         <slot name="logo"></slot>
       </div>
       <div v-if="$slots['below-logo']" class="hero-section__below-logo">
@@ -37,25 +41,25 @@
       </div>
       <div class="hero-section__content">
         <div class="hero-section__text">
-          <div v-if="$slots.badge" class="hero-section__badge-wrap">
+          <div v-if="$slots.badge" ref="badgeRef" class="hero-section__badge-wrap">
             <slot name="badge"></slot>
           </div>
-          <h1 class="hero-section__title">
+          <h1 ref="titleRef" class="hero-section__title">
             <slot name="title">
               {{ title }}
-              <span v-if="titleHighlight" class="hero-section__title-highlight">{{ titleHighlight }}</span>
+              <span v-if="titleHighlight" ref="titleHighlightRef" class="hero-section__title-highlight">{{ titleHighlight }}</span>
             </slot>
           </h1>
-          <p class="hero-section__description">
+          <p ref="descriptionRef" class="hero-section__description">
             <slot name="description">
               {{ description }}
             </slot>
           </p>
-          <div class="hero-section__actions">
+          <div ref="actionsRef" class="hero-section__actions">
             <slot name="actions"></slot>
           </div>
         </div>
-        <div v-if="$slots.visual" class="hero-section__visual">
+        <div v-if="$slots.visual" ref="visualRef" class="hero-section__visual">
           <slot name="visual"></slot>
         </div>
       </div>
@@ -64,7 +68,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
+import gsap from 'gsap'
 
 defineProps({
   title: { type: String, default: '' },
@@ -73,12 +78,33 @@ defineProps({
 })
 
 const heroRef = ref(null)
+const innerRef = ref(null)
+const logoWrapRef = ref(null)
+const badgeRef = ref(null)
+const titleRef = ref(null)
+const titleHighlightRef = ref(null)
+const descriptionRef = ref(null)
+const actionsRef = ref(null)
+const visualRef = ref(null)
+const orb1Ref = ref(null)
+const orb2Ref = ref(null)
+const orb3Ref = ref(null)
+const orb4Ref = ref(null)
+const gridRef = ref(null)
+const scanRef = ref(null)
+
 const isVisible = ref(false)
+const useGsap = ref(false)
 const pointerX = ref(0.5)
 const pointerY = ref(0.5)
 let rafId = null
 let lastX = 0.5
 let lastY = 0.5
+let entryTl = null
+let orbsTl = null
+let scanTl = null
+let gridTl = null
+let breatheTl = null
 
 function onPointerMove(e) {
   const rect = heroRef.value?.getBoundingClientRect()
@@ -123,6 +149,151 @@ function particleStyle(n) {
   }
 }
 
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+function runEntryTimeline() {
+  const badge = badgeRef.value
+  const title = titleRef.value
+  const titleHighlight = titleHighlightRef.value
+  const description = descriptionRef.value
+  const actions = actionsRef.value
+  const visual = visualRef.value
+
+  entryTl = gsap.timeline({ defaults: { ease: 'power3.out' } })
+
+  if (badge) {
+    gsap.set(badge, { opacity: 0, y: 16 })
+    entryTl.to(badge, { opacity: 1, y: 0, duration: 0.65, ease: 'back.out(1.4)' })
+  }
+  if (title) {
+    gsap.set(title, { opacity: 0, y: 42, scale: 0.96 })
+    entryTl.to(
+      title,
+      { opacity: 1, y: 0, scale: 1, duration: 1.05, ease: 'back.out(1.1)' },
+      badge ? '-=0.4' : 0
+    )
+  }
+  if (titleHighlight) {
+    gsap.set(titleHighlight, { opacity: 0.92 })
+    entryTl.to(
+      titleHighlight,
+      { opacity: 1, duration: 0.5 },
+      title ? '-=0.6' : 0
+    )
+  }
+  if (description) {
+    gsap.set(description, { opacity: 0, y: 24 })
+    entryTl.to(
+      description,
+      { opacity: 1, y: 0, duration: 0.85, ease: 'power2.out' },
+      title ? '-=0.5' : 0
+    )
+  }
+  if (actions) {
+    gsap.set(actions, { opacity: 0, y: 20 })
+    entryTl.to(
+      actions,
+      { opacity: 1, y: 0, duration: 0.8, ease: 'back.out(1.2)' },
+      description ? '-=0.45' : 0
+    )
+  }
+  if (visual) {
+    gsap.set(visual, { opacity: 0, scale: 0.88, x: 40 })
+    entryTl.to(
+      visual,
+      { opacity: 1, scale: 1, x: 0, duration: 1, ease: 'back.out(1.15)' },
+      title ? '-=0.55' : 0
+    )
+  }
+}
+
+function runOrbsLoop() {
+  const orbs = [orb1Ref.value, orb2Ref.value, orb3Ref.value, orb4Ref.value].filter(Boolean)
+  if (!orbs.length) return
+  orbsTl = gsap.timeline({ repeat: -1 })
+  orbsTl
+    .to(orbs, {
+      x: 30,
+      y: -30,
+      scale: 1.1,
+      opacity: 0.55,
+      duration: 3.5,
+      ease: 'sine.inOut',
+    })
+    .to(orbs, {
+      x: -25,
+      y: 25,
+      scale: 0.95,
+      opacity: 0.45,
+      duration: 3.5,
+      ease: 'sine.inOut',
+    })
+    .to(orbs, {
+      x: 20,
+      y: 20,
+      scale: 1.06,
+      opacity: 0.5,
+      duration: 3.5,
+      ease: 'sine.inOut',
+    })
+    .to(orbs, {
+      x: 0,
+      y: 0,
+      scale: 1,
+      opacity: 0.4,
+      duration: 3.5,
+      ease: 'sine.inOut',
+    })
+}
+
+function runScanLoop() {
+  const scan = scanRef.value
+  if (!scan) return
+  gsap.set(scan, { y: 0, opacity: 0.6 })
+  scanTl = gsap.timeline({ repeat: -1 })
+  scanTl
+    .to(scan, { y: '100vh', opacity: 0.4, duration: 4, ease: 'none' })
+    .set(scan, { y: 0, opacity: 0.6 })
+}
+
+function runGridLoop() {
+  const grid = gridRef.value
+  if (!grid) return
+  gridTl = gsap.timeline({ repeat: -1 })
+  gridTl
+    .to(grid, { opacity: 1, duration: 4, ease: 'sine.inOut' })
+    .to(grid, { opacity: 0.8, duration: 4, ease: 'sine.inOut' })
+}
+
+function runBreatheLoop() {
+  const inner = innerRef.value
+  if (!inner || !logoWrapRef.value) return
+  breatheTl = gsap.timeline({ repeat: -1 })
+  breatheTl
+    .to(inner, { scale: 1.012, duration: 4, ease: 'sine.inOut' })
+    .to(inner, { scale: 1, duration: 4, ease: 'sine.inOut' })
+}
+
+function runHeroGSAP() {
+  if (prefersReducedMotion()) return
+  useGsap.value = true
+  runEntryTimeline()
+  runOrbsLoop()
+  runScanLoop()
+  runGridLoop()
+  runBreatheLoop()
+}
+
+function killHeroGSAP() {
+  ;[entryTl, orbsTl, scanTl, gridTl, breatheTl].forEach((tl) => {
+    if (tl) tl.kill()
+  })
+  entryTl = orbsTl = scanTl = gridTl = breatheTl = null
+  useGsap.value = false
+}
+
 // Only run animations when hero is in view (saves CPU when off-screen)
 let observer = null
 onMounted(() => {
@@ -140,9 +311,19 @@ onMounted(() => {
   )
   observer.observe(heroRef.value)
 })
+
+watch(isVisible, (visible) => {
+  if (!visible) return
+  nextTick().then(() => {
+    if (prefersReducedMotion()) return
+    runHeroGSAP()
+  })
+}, { immediate: true })
+
 onUnmounted(() => {
   if (rafId) cancelAnimationFrame(rafId)
   if (observer && heroRef.value) observer.unobserve(heroRef.value)
+  killHeroGSAP()
 })
 </script>
 
@@ -180,6 +361,10 @@ onUnmounted(() => {
 
 .hero-section--visible .hero-section__orb {
   animation: heroOrb 14s ease-in-out infinite;
+}
+
+.hero-section--gsap .hero-section__orb {
+  animation: none;
 }
 
 .hero-section__orb--1 {
@@ -295,6 +480,10 @@ onUnmounted(() => {
   animation: heroGridPulse 8s ease-in-out infinite;
 }
 
+.hero-section--gsap .hero-section__grid {
+  animation: none;
+}
+
 @keyframes heroGridPulse {
   0%, 100% { opacity: 0.8; }
   50% { opacity: 1; }
@@ -333,6 +522,10 @@ onUnmounted(() => {
 
 .hero-section--visible .hero-section__scan {
   animation: heroScan 4s linear infinite;
+}
+
+.hero-section--gsap .hero-section__scan {
+  animation: none;
 }
 
 @keyframes heroScan {
@@ -392,13 +585,19 @@ onUnmounted(() => {
 .hero-section__inner {
   position: relative;
   z-index: 1;
-  width: 100%;
-  max-width: 1280px;
-  margin: 0 auto;
+  width: 80vw;
+  max-width: 80vw;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
 }
 
 .hero-section--visible.hero-section--with-logo .hero-section__inner {
   animation: heroInnerBreathe 8s ease-in-out infinite;
+}
+
+.hero-section--gsap.hero-section--with-logo .hero-section__inner {
+  animation: none;
 }
 
 @keyframes heroInnerBreathe {
@@ -459,6 +658,10 @@ onUnmounted(() => {
   animation: heroBadgeIn 0.7s cubic-bezier(0.34, 1.2, 0.64, 1) both;
 }
 
+.hero-section--gsap .hero-section__badge-wrap {
+  animation: none;
+}
+
 @keyframes heroBadgeIn {
   from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
@@ -479,6 +682,10 @@ onUnmounted(() => {
   animation: heroTitleIn 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+.hero-section--gsap .hero-section__title {
+  animation: none;
+}
+
 /* Gradient text: cinematic neon highlight */
 .hero-section__title-highlight {
   display: inline-block;
@@ -493,6 +700,10 @@ onUnmounted(() => {
 
 .hero-section--visible .hero-section__title-highlight {
   animation: heroHighlightShimmer 6s ease-in-out infinite;
+}
+
+.hero-section--gsap .hero-section__title-highlight {
+  animation: none;
 }
 
 @keyframes heroHighlightShimmer {
@@ -519,6 +730,10 @@ onUnmounted(() => {
   animation: heroDescIn 1s cubic-bezier(0.34, 1.2, 0.64, 1) 0.2s both;
 }
 
+.hero-section--gsap .hero-section__description {
+  animation: none;
+}
+
 @keyframes heroDescIn {
   from { opacity: 0; transform: translateY(20px); }
   to { opacity: 1; transform: translateY(0); }
@@ -535,6 +750,10 @@ onUnmounted(() => {
   animation: heroActionsIn 1s cubic-bezier(0.34, 1.2, 0.64, 1) 0.35s both;
 }
 
+.hero-section--gsap .hero-section__actions {
+  animation: none;
+}
+
 @keyframes heroActionsIn {
   from { opacity: 0; transform: translateY(16px); }
   to { opacity: 1; transform: translateY(0); }
@@ -549,6 +768,10 @@ onUnmounted(() => {
 
 .hero-section--visible .hero-section__visual {
   animation: heroVisualIn 1.2s cubic-bezier(0.34, 1.2, 0.64, 1) 0.25s both;
+}
+
+.hero-section--gsap .hero-section__visual {
+  animation: none;
 }
 
 @keyframes heroVisualIn {

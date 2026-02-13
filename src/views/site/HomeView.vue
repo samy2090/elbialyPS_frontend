@@ -1,15 +1,16 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import gsap from 'gsap'
 import { useAuthStore } from '@/stores/auth'
 import { resolveBackendImageUrl } from '@/utils/helpers'
 import HeroSection from '@/components/base/ui/HeroSection.vue'
-import StatCard from '@/components/base/ui/StatCard.vue'
 import FeatureCard from '@/components/base/ui/FeatureCard.vue'
 import CtaBlock from '@/components/base/ui/CtaBlock.vue'
 import SectionHeader from '@/components/base/ui/SectionHeader.vue'
 import FuturisticButton from '@/components/base/ui/FuturisticButton.vue'
 import FunHeroVisual from '@/components/site/FunHeroVisual.vue'
 import NeonSignLogo from '@/components/site/NeonSignLogo.vue'
+import GlassStatCard from '@/components/site/GlassStatCard.vue'
 import EventCard from '@/components/site/EventCard.vue'
 import SpinWheelSection from '@/components/site/SpinWheelSection.vue'
 import PostsFeedSection from '@/components/site/posts/PostsFeedSection.vue'
@@ -87,9 +88,92 @@ function setMainPeriod(period) {
   loadMainLeaderboard()
 }
 
+/* Hero stats: animate when in view (lightweight for mobile) */
+const heroStatsRef = ref(null)
+const heroStatsAnimated = ref(false)
+
+function runHeroStatsAnimation() {
+  if (heroStatsAnimated.value || !heroStatsRef.value) return
+  const grid = heroStatsRef.value.querySelector('.hero-stats__grid')
+  const cards = grid?.querySelectorAll('[data-glass-card]')
+  const scan = heroStatsRef.value.querySelector('.hero-stats__scan')
+  const icons = grid?.querySelectorAll('.glass-stat-card__icon')
+  const glows = grid?.querySelectorAll('.glass-stat-card__glow')
+  if (!cards?.length) return
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  heroStatsAnimated.value = true
+
+  if (reducedMotion) {
+    if (scan) scan.style.opacity = '0.5'
+    cards.forEach((el) => {
+      el.style.opacity = '1'
+      el.style.transform = 'translateY(0) scale(1)'
+    })
+    return
+  }
+
+  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
+
+  tl.fromTo(scan, { opacity: 0.2 }, { opacity: 0.7, duration: 0.35 }, 0)
+
+  tl.fromTo(
+    cards,
+    { opacity: 0, y: 24, scale: 0.95 },
+    {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      duration: 0.6,
+      stagger: { amount: 0.45, from: 'start' },
+    },
+    0.08
+  )
+
+  if (icons?.length) {
+    tl.fromTo(
+      icons,
+      { scale: 0.9 },
+      {
+        scale: 1,
+        duration: 0.4,
+        stagger: { amount: 0.2, from: 'start' },
+        ease: 'back.out(1.4)',
+      },
+      0.25
+    )
+  }
+
+  if (glows?.length) {
+    tl.to(
+      glows,
+      {
+        opacity: 0.5,
+        duration: 8,
+        ease: 'sine.inOut',
+        yoyo: true,
+        repeat: -1,
+        stagger: { each: 1.2, from: 'center' },
+      },
+      0.8
+    )
+  }
+}
+
 onMounted(() => {
   loadTodayTop3()
   loadMainLeaderboard()
+  if (typeof IntersectionObserver === 'undefined') {
+    runHeroStatsAnimation()
+    return
+  }
+  const obs = new IntersectionObserver(
+    (entries) => {
+      if (entries[0]?.isIntersecting) runHeroStatsAnimation()
+    },
+    { rootMargin: '80px', threshold: 0.1 }
+  )
+  if (heroStatsRef.value) obs.observe(heroStatsRef.value)
+  else setTimeout(() => { if (heroStatsRef.value) obs.observe(heroStatsRef.value) }, 100)
 })
 
 /* Games & Entertainment */
@@ -135,12 +219,13 @@ const foodDrink = ref([
   },
 ])
 
-/* Fun stats */
-const stats = ref([
-  { label: 'Games', value: '50+', trend: '', variant: 'purple', trendDirection: 'positive' },
-  { label: 'Open late', value: '✓', trend: '', variant: 'cyan', trendDirection: 'positive' },
-  { label: 'Vibes', value: '100%', trend: '', variant: 'green', trendDirection: 'positive' },
-  { label: 'Good times', value: '∞', trend: '', variant: 'orange', trendDirection: 'positive' },
+/* Hero stats: artistic strip under hero (venue vibe, not generic metrics) */
+const heroStats = ref([
+  { icon: '🎮', value: '50+', tagline: 'Arcade & beyond' },
+  { icon: '🌙', value: 'Late', tagline: 'Open after dark' },
+  { icon: '∞', value: 'Good times', tagline: 'No ceiling' },
+  { icon: '✨', value: '100%', tagline: 'Vibes' },
+  { icon: '📶', value: 'Free', tagline: 'WiFi on us' },
 ])
 
 /* Events / Community */
@@ -225,6 +310,26 @@ const events = ref([
         <FunHeroVisual />
       </template>
     </HeroSection>
+
+    <!-- Hero stats: premium glass modules (mobile-first, GSAP) -->
+    <section
+      class="hero-stats"
+      aria-label="Why us"
+      ref="heroStatsRef"
+    >
+      <div class="hero-stats__inner">
+        <div class="hero-stats__scan" aria-hidden="true"></div>
+        <div class="hero-stats__grid">
+          <GlassStatCard
+            v-for="item in heroStats"
+            :key="item.tagline"
+            :icon="item.icon"
+            :value="item.value"
+            :tagline="item.tagline"
+          />
+        </div>
+      </div>
+    </section>
 
     <div class="home-section-divider" aria-hidden="true"></div>
 
@@ -369,26 +474,6 @@ const events = ref([
             <span class="home-leaderboard-item__points">{{ (entry.points ?? 0).toLocaleString() }} pts</span>
           </li>
         </ul>
-      </div>
-    </section>
-
-    <div class="home-section-divider" aria-hidden="true"></div>
-
-    <!-- Fun stats -->
-    <section class="home-section home-section--stats" aria-label="Why us">
-      <div class="home-section__inner">
-        <div class="stats-grid">
-          <StatCard
-            v-for="(stat, i) in stats"
-            :key="stat.label"
-            :value="stat.value"
-            :label="stat.label"
-            :trend="stat.trend"
-            :variant="stat.variant"
-            :trend-direction="stat.trendDirection"
-            :style="{ '--delay': `${i * 0.1}s` }"
-          />
-        </div>
       </div>
     </section>
 
@@ -676,6 +761,89 @@ const events = ref([
 @keyframes homeDividerPulse {
   0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
+}
+
+/* Hero stats: premium glass strip under hero (mobile-first) */
+.hero-stats {
+  position: relative;
+  z-index: 1;
+  padding: 0 1rem clamp(2rem, 5vw, 3rem);
+}
+
+.hero-stats::before {
+  content: '';
+  position: absolute;
+  inset: -20% 0 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100%, 600px);
+  height: 80%;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0, 245, 255, 0.06) 0%, rgba(168, 85, 247, 0.04) 40%, transparent 70%);
+  pointer-events: none;
+}
+
+.hero-stats__inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  position: relative;
+  padding: 1.5rem 1.25rem 0;
+}
+
+.hero-stats__scan {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent 0%, rgba(0, 245, 255, 0.5) 20%, rgba(255, 0, 128, 0.4) 50%, rgba(0, 245, 255, 0.5) 80%, transparent 100%);
+  opacity: 0.6;
+  transform: translateY(-100%);
+  animation: heroStatsScan 4s ease-in-out infinite;
+}
+
+@keyframes heroStatsScan {
+  0% { transform: translateY(-100%); opacity: 0.25; }
+  50% { transform: translateY(500%); opacity: 0.85; }
+  100% { transform: translateY(-100%); opacity: 0.25; }
+}
+
+.hero-stats__grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: stretch;
+  gap: 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 768px) {
+  .hero-stats {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .hero-stats__inner {
+    padding: 1rem 0.75rem 0;
+  }
+
+  .hero-stats__grid {
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-stats__scan {
+    animation: none;
+    opacity: 0.45;
+  }
 }
 
 .home-section {
