@@ -223,6 +223,19 @@ const ExpensesIcon = {
   `
 }
 
+const AnalyticsIcon = {
+  template: `
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3 3v18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M7 14l4-4 3 3 5-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="7" cy="14" r="1.5" fill="currentColor"/>
+      <circle cx="11" cy="10" r="1.5" fill="currentColor"/>
+      <circle cx="14" cy="13" r="1.5" fill="currentColor"/>
+      <circle cx="19" cy="7" r="1.5" fill="currentColor"/>
+    </svg>
+  `
+}
+
 // Submenu icons
 const SiteIcon = {
   template: `
@@ -349,6 +362,7 @@ const navigationItems = computed(() => [
   { id: 'users', label: 'Users', icon: UsersIcon },
   { id: 'products', label: 'Products', icon: ProductsIcon },
   { id: 'expenses', label: 'Expenses', icon: ExpensesIcon },
+  { id: 'financial-analytics', label: 'Financial Analytics', icon: AnalyticsIcon },
   {
     id: 'posts',
     label: 'Posts',

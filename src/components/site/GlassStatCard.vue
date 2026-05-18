@@ -9,11 +9,10 @@
     @pointerup="onTapEnd"
     @pointerleave="onTapEnd"
   >
-    <div class="glass-stat-card__border" aria-hidden="true"></div>
-    <div ref="glowRef" class="glass-stat-card__glow" aria-hidden="true"></div>
-    <div class="glass-stat-card__orb" aria-hidden="true"></div>
+    <span class="glass-stat-card__shape" aria-hidden="true"></span>
+    <span class="glass-stat-card__bg" aria-hidden="true"></span>
     <div class="glass-stat-card__inner">
-      <span ref="iconRef" class="glass-stat-card__icon" aria-hidden="true">{{ icon }}</span>
+      <span class="glass-stat-card__icon" aria-hidden="true">{{ icon }}</span>
       <span class="glass-stat-card__value">{{ value }}</span>
       <span class="glass-stat-card__tagline">{{ tagline }}</span>
     </div>
@@ -31,158 +30,161 @@ defineProps({
 })
 
 const cardRef = ref(null)
-const glowRef = ref(null)
-const iconRef = ref(null)
 let tapTween = null
 
 function onTapStart() {
   if (tapTween) tapTween.kill()
-  if (!cardRef.value || !glowRef.value) return
-  tapTween = gsap.timeline()
-  tapTween.to(cardRef.value, { scale: 0.96, duration: 0.06, ease: 'power2.out' })
-  tapTween.to(glowRef.value, { opacity: 0.75, duration: 0.08 }, 0)
+  if (!cardRef.value) return
+  tapTween = gsap.to(cardRef.value, { scale: 0.96, duration: 0.08, ease: 'power2.out' })
 }
 
 function onTapEnd() {
   if (tapTween) tapTween.kill()
-  if (!cardRef.value || !glowRef.value) return
-  tapTween = gsap.timeline()
-  tapTween.to(cardRef.value, { scale: 1, duration: 0.25, ease: 'power2.out' })
-  tapTween.to(glowRef.value, { opacity: 0.35, duration: 0.2 }, 0)
+  if (!cardRef.value) return
+  tapTween = gsap.to(cardRef.value, { scale: 1, duration: 0.22, ease: 'power2.out' })
 }
 </script>
 
 <style scoped>
+/* Cyberpunk panel: chamfered top-right + bottom-left corners, 1px gradient border. */
 .glass-stat-card {
-  --glass-neon: rgba(0, 245, 255, 0.35);
-  --glass-neon-soft: rgba(0, 245, 255, 0.12);
-  --glass-pink: rgba(255, 100, 180, 0.2);
+  --cut: 12px;
   position: relative;
-  flex: 1 1 160px;
   min-width: 0;
-  border-radius: 20px;
-  overflow: hidden;
+  height: 100%;
   opacity: 0;
-  transform: translateY(24px) scale(0.95);
-  will-change: transform;
+  transform: translateY(16px);
   touch-action: manipulation;
+  isolation: isolate;
 }
 
-.glass-stat-card__border {
+/* Gradient border layer */
+.glass-stat-card__shape {
   position: absolute;
   inset: 0;
-  border-radius: 20px;
-  padding: 1px;
-  background: linear-gradient(135deg, var(--glass-neon) 0%, var(--glass-pink) 50%, rgba(168, 85, 247, 0.25) 100%);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  opacity: 0.8;
+  background: linear-gradient(135deg, rgba(0, 245, 255, 0.7) 0%, rgba(168, 85, 247, 0.55) 50%, rgba(255, 0, 128, 0.7) 100%);
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--cut)) 0,
+    100% var(--cut),
+    100% 100%,
+    var(--cut) 100%,
+    0 calc(100% - var(--cut))
+  );
+  z-index: 0;
+  transition: opacity 0.25s ease;
 }
 
-.glass-stat-card__glow {
+/* Inner background sits 1px inside the gradient to fake a 1px gradient border. */
+.glass-stat-card__bg {
   position: absolute;
-  inset: -20%;
-  background: radial-gradient(ellipse 80% 60% at 50% 30%, var(--glass-neon-soft) 0%, transparent 60%);
-  pointer-events: none;
-  opacity: 0.35;
-}
-
-.glass-stat-card__orb {
-  position: absolute;
-  top: -30%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 120%;
-  height: 60%;
-  background: radial-gradient(ellipse at center, rgba(0, 245, 255, 0.08) 0%, transparent 70%);
-  pointer-events: none;
+  inset: 1px;
+  background:
+    linear-gradient(180deg, rgba(0, 245, 255, 0.04) 0%, transparent 60%),
+    rgba(10, 10, 20, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--cut) + 1px) 0,
+    100% calc(var(--cut) - 1px),
+    100% 100%,
+    calc(var(--cut) - 1px) 100%,
+    0 calc(100% - var(--cut) + 1px)
+  );
+  z-index: 1;
 }
 
 .glass-stat-card__inner {
   position: relative;
-  z-index: 1;
-  padding: 1.25rem 1rem;
-  background: rgba(255, 255, 255, 0.04);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-radius: 20px;
+  z-index: 2;
+  padding: clamp(0.55rem, 1.6vw, 1rem) clamp(0.4rem, 1.2vw, 0.85rem);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
-  min-height: 100%;
+  height: 100%;
   box-sizing: border-box;
+  gap: clamp(0.15rem, 0.6vw, 0.4rem);
 }
 
 .glass-stat-card__icon {
   display: block;
-  font-size: clamp(1.5rem, 3.5vw, 2rem);
-  margin-bottom: 0.5rem;
-  filter: drop-shadow(0 0 10px var(--glass-neon-soft));
-  will-change: transform;
+  font-size: clamp(1rem, 3.5vw, 1.85rem);
+  line-height: 1;
+  filter: drop-shadow(0 0 8px rgba(0, 245, 255, 0.4));
 }
 
 .glass-stat-card__value {
   display: block;
-  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  font-size: clamp(0.8rem, 2.4vw, 1.65rem);
   font-weight: 800;
   color: rgba(255, 255, 255, 0.98);
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  /* Subtle chromatic aberration matching the hero title. */
   text-shadow:
-    0 0 20px var(--glass-neon-soft),
-    0 0 40px rgba(0, 245, 255, 0.15),
-    0 1px 2px rgba(0, 0, 0, 0.2);
-  margin-bottom: 0.25rem;
+    0.02em 0 0 rgba(255, 0, 128, 0.5),
+    -0.02em 0 0 rgba(0, 245, 255, 0.5),
+    0 0 16px rgba(0, 245, 255, 0.18);
+  max-width: 100%;
+  /* Allow multi-word values like "Good times" to wrap instead of getting cut off. */
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 
 .glass-stat-card__tagline {
   display: block;
-  font-size: 0.75rem;
+  font-size: clamp(0.48rem, 1.5vw, 0.7rem);
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.5);
-  letter-spacing: 0.12em;
+  color: rgba(255, 255, 255, 0.55);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
+  line-height: 1.2;
+  max-width: 100%;
+  /* Allow tagline to wrap to 2 lines on narrow cards instead of cutting off. */
+  overflow-wrap: anywhere;
+  hyphens: auto;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 419px) {
   .glass-stat-card {
-    flex: 0 0 auto;
-    min-width: 100px;
-    scroll-snap-align: start;
-    border-radius: 18px;
+    --cut: 9px;
   }
-
-  .glass-stat-card__border {
-    border-radius: 18px;
-  }
-
   .glass-stat-card__inner {
-    padding: 0.9rem 0.75rem;
-    border-radius: 18px;
+    /* Tighter padding so tagline has room to breathe on tiny phones. */
+    padding: 0.45rem 0.3rem;
+    gap: 0.15rem;
   }
+}
 
-  .glass-stat-card__icon {
-    font-size: 1.35rem;
-    margin-bottom: 0.35rem;
+@media (max-width: 768px) and (min-width: 420px) {
+  .glass-stat-card {
+    --cut: 10px;
   }
+}
 
-  .glass-stat-card__value {
-    font-size: 1.25rem;
+@media (hover: hover) {
+  .glass-stat-card:hover .glass-stat-card__shape {
+    opacity: 1;
+    background: linear-gradient(135deg, rgba(0, 245, 255, 1) 0%, rgba(168, 85, 247, 0.85) 50%, rgba(255, 0, 128, 1) 100%);
   }
-
-  .glass-stat-card__tagline {
-    font-size: 0.65rem;
-    letter-spacing: 0.08em;
+  .glass-stat-card:hover .glass-stat-card__value {
+    text-shadow:
+      0.04em 0 0 rgba(255, 0, 128, 0.8),
+      -0.04em 0 0 rgba(0, 245, 255, 0.8),
+      0 0 22px rgba(0, 245, 255, 0.28);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .glass-stat-card {
-    will-change: auto;
+    opacity: 1;
+    transform: none;
   }
-
-  .glass-stat-card__icon {
-    will-change: auto;
+  .glass-stat-card__value {
+    text-shadow: 0 0 16px rgba(0, 245, 255, 0.15);
   }
 }
 </style>

@@ -96,67 +96,30 @@ function runHeroStatsAnimation() {
   if (heroStatsAnimated.value || !heroStatsRef.value) return
   const grid = heroStatsRef.value.querySelector('.hero-stats__grid')
   const cards = grid?.querySelectorAll('[data-glass-card]')
-  const scan = heroStatsRef.value.querySelector('.hero-stats__scan')
-  const icons = grid?.querySelectorAll('.glass-stat-card__icon')
-  const glows = grid?.querySelectorAll('.glass-stat-card__glow')
   if (!cards?.length) return
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   heroStatsAnimated.value = true
 
   if (reducedMotion) {
-    if (scan) scan.style.opacity = '0.5'
     cards.forEach((el) => {
       el.style.opacity = '1'
-      el.style.transform = 'translateY(0) scale(1)'
+      el.style.transform = 'translateY(0)'
     })
     return
   }
 
-  const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
-
-  tl.fromTo(scan, { opacity: 0.2 }, { opacity: 0.7, duration: 0.35 }, 0)
-
-  tl.fromTo(
+  // Simple: short fade + slide up with a light stagger. No continuous loops.
+  gsap.fromTo(
     cards,
-    { opacity: 0, y: 24, scale: 0.95 },
+    { opacity: 0, y: 16 },
     {
       opacity: 1,
       y: 0,
-      scale: 1,
-      duration: 0.6,
-      stagger: { amount: 0.45, from: 'start' },
-    },
-    0.08
+      duration: 0.55,
+      ease: 'power3.out',
+      stagger: 0.08,
+    }
   )
-
-  if (icons?.length) {
-    tl.fromTo(
-      icons,
-      { scale: 0.9 },
-      {
-        scale: 1,
-        duration: 0.4,
-        stagger: { amount: 0.2, from: 'start' },
-        ease: 'back.out(1.4)',
-      },
-      0.25
-    )
-  }
-
-  if (glows?.length) {
-    tl.to(
-      glows,
-      {
-        opacity: 0.5,
-        duration: 8,
-        ease: 'sine.inOut',
-        yoyo: true,
-        repeat: -1,
-        stagger: { each: 1.2, from: 'center' },
-      },
-      0.8
-    )
-  }
 }
 
 onMounted(() => {
@@ -224,7 +187,6 @@ const heroStats = ref([
   { icon: '🎮', value: '50+', tagline: 'Arcade & beyond' },
   { icon: '🌙', value: 'Late', tagline: 'Open after dark' },
   { icon: '∞', value: 'Good times', tagline: 'No ceiling' },
-  { icon: '✨', value: '100%', tagline: 'Vibes' },
   { icon: '📶', value: 'Free', tagline: 'WiFi on us' },
 ])
 
@@ -763,11 +725,11 @@ const events = ref([
   50% { opacity: 1; }
 }
 
-/* Hero stats: premium glass strip under hero (mobile-first) */
+/* Hero stats: single-row futuristic strip — never scrolls */
 .hero-stats {
   position: relative;
   z-index: 1;
-  padding: 0 1rem clamp(2rem, 5vw, 3rem);
+  padding: 0 clamp(0.6rem, 2vw, 1rem) clamp(2rem, 5vw, 3rem);
 }
 
 .hero-stats::before {
@@ -776,9 +738,9 @@ const events = ref([
   inset: -20% 0 0;
   left: 50%;
   transform: translateX(-50%);
-  width: min(100%, 600px);
+  width: min(100%, 720px);
   height: 80%;
-  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0, 245, 255, 0.06) 0%, rgba(168, 85, 247, 0.04) 40%, transparent 70%);
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(0, 245, 255, 0.08) 0%, rgba(168, 85, 247, 0.04) 40%, transparent 70%);
   pointer-events: none;
 }
 
@@ -786,7 +748,7 @@ const events = ref([
   max-width: 1100px;
   margin: 0 auto;
   position: relative;
-  padding: 1.5rem 1.25rem 0;
+  padding: clamp(1.25rem, 3vw, 1.75rem) clamp(0.25rem, 1.5vw, 1rem) 0;
 }
 
 .hero-stats__scan {
@@ -794,54 +756,24 @@ const events = ref([
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, transparent 0%, rgba(0, 245, 255, 0.5) 20%, rgba(255, 0, 128, 0.4) 50%, rgba(0, 245, 255, 0.5) 80%, transparent 100%);
-  opacity: 0.6;
-  transform: translateY(-100%);
-  animation: heroStatsScan 4s ease-in-out infinite;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(0, 245, 255, 0.6) 25%, rgba(255, 0, 128, 0.5) 50%, rgba(0, 245, 255, 0.6) 75%, transparent 100%);
+  filter: drop-shadow(0 0 4px rgba(0, 245, 255, 0.5));
+  pointer-events: none;
 }
 
-@keyframes heroStatsScan {
-  0% { transform: translateY(-100%); opacity: 0.25; }
-  50% { transform: translateY(500%); opacity: 0.85; }
-  100% { transform: translateY(-100%); opacity: 0.25; }
-}
-
+/* Always 4 in one row, never scrolls. Cards squeeze on tight screens via minmax(0, 1fr). */
 .hero-stats__grid {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(0.35rem, 1.4vw, 0.85rem);
   align-items: stretch;
-  gap: 1rem;
   position: relative;
   z-index: 1;
 }
 
-@media (max-width: 768px) {
-  .hero-stats {
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
-  }
-
-  .hero-stats__inner {
-    padding: 1rem 0.75rem 0;
-  }
-
-  .hero-stats__grid {
-    flex-wrap: nowrap;
-    gap: 0.75rem;
-    justify-content: flex-start;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scroll-snap-type: x mandatory;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 6px;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .hero-stats__scan {
-    animation: none;
     opacity: 0.45;
   }
 }

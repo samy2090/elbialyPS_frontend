@@ -88,6 +88,9 @@
         <!-- Expenses Section (admin/staff only) -->
         <ExpensesSection v-if="activeSection === 'expenses'" />
 
+        <!-- Financial Analytics Section (admin/staff only) -->
+        <FinancialAnalyticsSection v-if="activeSection === 'financial-analytics'" />
+
         <!-- Score Points Settings Section (admin/staff only) -->
         <ScorePointsSettingsSection v-if="activeSection === 'settings-score-points'" />
 
@@ -167,6 +170,7 @@ import ProductsSection from '@/components/dashboard/sections/ProductsSection.vue
 import SessionsSection from '@/components/dashboard/sections/SessionsSection.vue'
 import DevicesSection from '@/components/dashboard/sections/DevicesSection.vue'
 import ExpensesSection from '@/components/dashboard/sections/ExpensesSection.vue'
+import FinancialAnalyticsSection from '@/components/dashboard/sections/FinancialAnalyticsSection.vue'
 import ScorePointsSettingsSection from '@/components/dashboard/sections/ScorePointsSettingsSection.vue'
 import PointsTransactionsSection from '@/components/dashboard/sections/PointsTransactionsSection.vue'
 import SiteSettingsSection from '@/components/dashboard/sections/SiteSettingsSection.vue'
